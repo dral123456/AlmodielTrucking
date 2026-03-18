@@ -1,0 +1,39 @@
+{{> partials/main }}
+
+<head>
+
+    {{> partials/title-meta title="Blank"}}
+    {{> partials/head-css}}
+
+</head>
+{{> partials/body}}
+
+<!-- begin::App -->
+<div id="layout-wrapper">
+    {{> partials/header}}
+    {{> partials/sidebar}}
+    {{> partials/horizontal}}
+
+    <main class="app-wrapper">
+        <div class="container-fluid">
+
+            {{> partials/page-title title-sub="Pages" title="Blank"}}
+
+        </div><!--End container-fluid-->
+    </main><!--End app-wrapper-->
+
+    {{> partials/switcher}}
+    {{> partials/scroll-to-top}}
+    {{> partials/footer}}
+
+</div>
+<!-- End Begin page -->
+
+{{> partials/vendor-scripts}}
+
+<!-- App js -->
+<script src="assets/js/app.js"></script>
+
+</body>
+
+</html>

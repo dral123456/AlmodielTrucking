@@ -1,0 +1,75 @@
+{{> partials/main }}
+
+<head>
+    {{> partials/title-meta title="UI Tree View"}}
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.12/themes/default/style.min.css" />
+    {{> partials/head-css}}
+</head>
+
+{{> partials/body}}
+
+<!--begin::App-->
+<div id="layout-wrapper">
+    {{> partials/header}}
+    {{> partials/sidebar}}
+    {{> partials/horizontal}}
+
+    <main class="app-wrapper">
+        <div class="container-fluid">
+
+            {{> partials/page-title title-sub="Base UI" title="Tree View"}}
+
+            <div class="row">
+
+                <div class="col-12 col-xl-6">
+                    <div class="card card-h-100">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Basic Example</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="tree-container-2" class="tree"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12 col-xl-6">
+                    <div class="card card-h-100">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Default Close</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="tree-container-3" class="tree"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12 col-xl-6">
+                    <div class="card card-h-100">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Custom Icons and Colors</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="tree-container-1" class="tree"></div>
+                        </div>
+                    </div>
+                </div>
+
+            </div><!--End row-->
+        </div><!--End container-fluid-->
+    </main><!--End app-wrapper-->
+
+    {{> partials/switcher}}
+    {{> partials/scroll-to-top}}
+    {{> partials/footer}}
+
+</div>
+<!--end::App-->
+
+{{> partials/vendor-scripts}}
+
+<script src="assets/js/ui/jstree.init.js"></script>
+<script src="assets/js/app.js"></script>
+
+</body>
+
+</html>
