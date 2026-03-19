@@ -4,7 +4,7 @@
         <div class="d-flex justify-content-between align-items-center">
             <div class="d-inline-flex align-items-center gap-2">
                 <a href="index.html" class="align-items-end logo-main d-none me-5">
-                    <img height="35" width="34" class="logo-dark" alt="Dark Logo" src="assets/images/logo-md.png">
+                    <img height="35" width="34" class="logo-dark" alt="Dark Logo" src="views/assets/images/logo-md.png">
                     <h3 class="text-body-emphasis fw-bolder mb-0 ms-1">Urbix</h3>
                 </a>
                 <button type="button" class="vertical-toggle btn header-btn" id="toggleSidebar" aria-label="Toggle Sidebar">
@@ -52,7 +52,7 @@
                                     </a>
                                 </div>
                                 <div class="noti-item">
-                                    <img src="assets/images/avatar/avatar-8.jpg" alt="Avatar Iamge" class="avatar-md">
+                                    <img src="views/assets/images/avatar/avatar-8.jpg" alt="Avatar Iamge" class="avatar-md">
                                     <div>
                                         <a href="#!" class="stretched-link">
                                             <h6 class="mb-1 text-muted"><strong class="fw-semibold text-body">Donald</strong><i class="ri-heart-3-fill text-danger ms-1"></i></h6>
@@ -77,7 +77,7 @@
                                     <a href="#!" class="position-absolute top-10 end-0 fs-18 z-1 link link-danger me-3"><i class="bi bi-x"></i></a>
                                 </div>
                                 <div class="noti-item">
-                                    <img src="assets/images/avatar/avatar-5.jpg" alt="Avatar Image" class="avatar-md">
+                                    <img src="views/assets/images/avatar/avatar-5.jpg" alt="Avatar Image" class="avatar-md">
                                     <div>
                                         <a href="#!" class="stretched-link">
                                             <h6 class="mb-1 text-muted"><strong class="fw-semibold text-body">Richard</strong><i class="bi bi-person-plus-fill text-primary fs-16 ms-1"></i></h6>
@@ -87,7 +87,7 @@
                                     <a href="#!" class="position-absolute top-10 end-0 fs-18 z-1 link link-danger me-3"><i class="bi bi-x"></i></a>
                                 </div>
                                 <div class="noti-item">
-                                    <img src="assets/images/avatar/avatar-4.jpg" alt="Avatar Image" class="avatar-md">
+                                    <img src="views/assets/images/avatar/avatar-4.jpg" alt="Avatar Image" class="avatar-md">
                                     <div>
                                         <a href="#!" class="stretched-link">
                                             <h6 class="mb-2">Olivia <strong class="fw-normal text-muted fs-13">liked your recent post</strong></h6>
@@ -97,7 +97,7 @@
                                     <a href="#!" class="position-absolute top-10 end-0 fs-18 z-1 link link-danger me-3"><i class="bi bi-x"></i></a>
                                 </div>
                                 <div class="noti-item">
-                                    <img src="assets/images/avatar/avatar-1.jpg" alt="Avatar Image" class="avatar-md">
+                                    <img src="views/assets/images/avatar/avatar-1.jpg" alt="Avatar Image" class="avatar-md">
                                     <div>
                                         <a href="#!" class="stretched-link">
                                             <h6 class="mb-2 text-body">Mia <strong class="fw-normal text-muted fs-13">shared a file in Marketing Campaign</strong></h6>
@@ -134,7 +134,7 @@
                                 <ul class="list-unstyled list-none mb-0 p-4" id="header-cart-items-scroll">
                                     <li class="cart-item">
                                         <div class="d-flex items-start cart-dropdown-item">
-                                            <img src="assets/images/product/img-02.png" class="avatar-lg me-4 p-1 rounded border" alt="img">
+                                            <img src="views/assets/images/product/img-02.png" class="avatar-lg me-4 p-1 rounded border" alt="img">
                                             <div class="flex-grow-1">
                                                 <div>
                                                     <h6><a href="apps-ecommerce-products-details.html" class="text-reset">Stop Watch</a></h6>
@@ -151,7 +151,7 @@
                                     </li>
                                     <li class="cart-item">
                                         <div class="d-flex items-start cart-dropdown-item">
-                                            <img src="assets/images/product/img-03.png" class="avatar-lg me-4 p-1 rounded border" alt="img">
+                                            <img src="views/assets/images/product/img-03.png" class="avatar-lg me-4 p-1 rounded border" alt="img">
                                             <div class="flex-grow-1">
                                                 <div>
                                                     <h6><a href="apps-ecommerce-products-details.html" class="text-reset">Jeens Shoes</a></h6>
@@ -168,7 +168,7 @@
                                     </li>
                                     <li class="cart-item">
                                         <div class="d-flex items-start cart-dropdown-item">
-                                            <img src="assets/images/product/img-04.png" class="avatar-lg me-4 p-1 rounded border" alt="img">
+                                            <img src="views/assets/images/product/img-04.png" class="avatar-lg me-4 p-1 rounded border" alt="img">
                                             <div class="flex-grow-1">
                                                 <div>
                                                     <h6><a href="apps-ecommerce-products-details.html" class="text-reset">Solder Less T-shirt</a></h6>
@@ -217,12 +217,12 @@
                             <span class="d-block mb-0 fs-10 text-muted">jaydon@gmail.com</span>
                         </div>
                         <span class="header-btn btn position-relative">
-                            <img src="assets/images/avatar/avatar-3.jpg" alt="Avatar Image" class="img-fluid rounded-circle">
+                            <img src="views/assets/images/avatar/avatar-3.jpg" alt="Avatar Image" class="img-fluid rounded-circle">
                         </span>
                     </button>
                     <div class="dropdown-menu dropdown-mega-sm header-dropdown-menu p-3">
                         <div class="border-bottom pb-2 mb-2 d-flex align-items-center gap-2">
-                            <img src="assets/images/avatar/avatar-3.jpg" alt="Avatar Image" class="avatar-md">
+                            <img src="views/assets/images/avatar/avatar-3.jpg" alt="Avatar Image" class="avatar-md">
                             <div>
                                 <a href="javascript:void(0)">
                                     <h6 class="mb-0 lh-base">Jaydon Levin</h6>
@@ -241,7 +241,7 @@
                             <li><a class="dropdown-item" href="javascript:void(0)"><i class="bi bi-headset me-2"></i> Support</a></li>
                         </ul>
                         <ul class="list-unstyled mb-0">
-                            <li><a class="dropdown-item" href="auth-signout.html"><i class="bi bi-box-arrow-right me-2"></i> Sign Out</a></li>
+                            <li><a class="dropdown-item" href="index.php"><i class="bi bi-box-arrow-right me-2"></i> Sign Out</a></li>
                         </ul>
                     </div>
                 </div>
