@@ -1,33 +1,3 @@
-<!DOCTYPE html>
-<?php
-  session_start();
-?>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <title>Almodiel Trucking Service </title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <meta content="Admin & Dashboards Template" name="description" />
-  <meta content="Pixeleyez" name="author" />
-  
-  <!-- layout setup -->
-  <script type="module" src="views/assets/js/layout-setup.js"></script>
-  
-  <!-- App favicon -->
-  <link rel="shortcut icon" href="views/assets/images/favicon.png">  <!-- Simplebar Css -->
-  <link rel="stylesheet" href="views/assets/libs/simplebar/simplebar.min.css">
-  <!-- Swiper Css -->
-  <link href="views/assets/libs/swiper/swiper-bundle.min.css" rel="stylesheet">
-  <!-- Nouislider Css -->
-  <link href="views/assets/libs/nouislider/nouislider.min.css" rel="stylesheet">
-  <!-- Bootstrap Css -->
-  <link href="views/assets/css/bootstrap.min.css" id="bootstrap-style" rel="stylesheet" type="text/css">
-  <!--icons css-->
-  <link href="views/assets/css/icons.min.css" rel="stylesheet" type="text/css">
-  <!-- App Css-->
-  <link href="views/assets/css/app.min.css" id="app-style" rel="stylesheet" type="text/css">
-</head>
-
 <body>
 <!-- START -->
 <div class="position-fixed top-0 bottom-0 end-0 start-0 z-0 bg-pattern"></div>
@@ -52,15 +22,31 @@
         <div class="card-body p-8">
           <h3 class="fw-medium text-center">Welcome back!</h3>
           <p class="mb-8 text-muted text-center">Create Your Account in Minutes</p>
-          <form>
+          <form id="formAuthentication" method="POST" action="">
             <div class="mb-4">
               <label for="username" class="form-label">Username <span class="text-danger">*</span></label>
-              <input type="text" class="form-control" id="username" placeholder="Enter your username" required>
+              <input 
+                type="text" 
+                class="form-control" 
+                id="username" 
+                name="username" 
+                value="admin" 
+                placeholder="Enter your username" 
+                autofocus 
+                required>
             </div>
             <div class="mb-4">
               <label for="password" class="form-label">Password <span class="text-danger">*</span></label>
               <div class="position-relative">
-                <input type="password" class="form-control" id="password" placeholder="Enter your password" required>
+                <input 
+                  type="password" 
+                  class="form-control" 
+                  id="password" 
+                  name = "password"
+                  value="admin"
+                  placeholder="&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;"
+                  aria-describedby="password" 
+                  required>
                 <button type="button" class="btn btn-link position-absolute end-0 top-0 text-decoration-none text-muted toggle-password" id="toggle-password" data-target="password"><i class="ri-eye-off-line align-middle"></i></button>
               </div>
             </div>
@@ -76,11 +62,17 @@
               </div>
             </div>
             <div>
-              <button type="submit" class="btn btn-primary w-100 mb-4">Sign In</button>
+              <button type="submit" name = "loginUser" class="btn btn-primary w-100 mb-4">Sign In</button>
+              <?php
+                $login = new ControllerUserRights();
+                $login -> ctrUserLogin();
+              ?>
               <button type="button" class="btn btn-outline-light w-100 d-flex align-items-center gap-2 justify-content-center text-muted">
                 <img src="views/assets/images/google.png" alt="Google Logo" class="h-20px w-20px">Sign in with Google
               </button>
             </div>
+
+            
           </form>
           <p class="text-center mt-6 mb-0 text-muted fs-13">Don't have an account? <a href="auth-signup.html" class="link fw-semibold">Sign up here</a></p>
         </div>
@@ -93,11 +85,8 @@
 </div>
 
 <!-- JAVASCRIPT -->
-<script src="views/assets/libs/swiper/swiper-bundle.min.js"></script>
-<script src="views/assets/libs/bootstrap/js/bootstrap.bundle.min.js"></script>
-<script src="views/assets/libs/simplebar/simplebar.min.js"></script>
-<script src="views/assets/js/scroll-top.init.js"></script>
-<script src="views/assets/js/auth/auth.init.js"></script>
+
+
 </body>
 
 </html>
