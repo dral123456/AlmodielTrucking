@@ -1,37 +1,4 @@
-<<<<<<< HEAD
-<!DOCTYPE html>
-<?php
-  session_start();
-?>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <title>Almodiel Trucking Service Login </title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <meta content="Admin & Dashboards Template" name="description" />
-  <meta content="Pixeleyez" name="author" />
-  
-  <!-- layout setup -->
-  <script type="module" src="views/assets/js/layout-setup.js"></script>
-  
-  <!-- App favicon -->
-  <link rel="shortcut icon" href="views/assets/images/favicon.png">  <!-- Simplebar Css -->
-  <link rel="stylesheet" href="views/assets/libs/simplebar/simplebar.min.css">
-  <!-- Swiper Css -->
-  <link href="views/assets/libs/swiper/swiper-bundle.min.css" rel="stylesheet">
-  <!-- Nouislider Css -->
-  <link href="views/assets/libs/nouislider/nouislider.min.css" rel="stylesheet">
-  <!-- Bootstrap Css -->
-  <link href="views/assets/css/bootstrap.min.css" id="bootstrap-style" rel="stylesheet" type="text/css">
-  <!--icons css-->
-  <link href="views/assets/css/icons.min.css" rel="stylesheet" type="text/css">
-  <!-- App Css-->
-  <link href="views/assets/css/app.min.css" id="app-style" rel="stylesheet" type="text/css">
-</head>
 
-=======
->>>>>>> f84ffb6fcbb0fcdf341057e1387759b797b40c5a
-<body>
 <!-- START -->
 <div class="position-fixed top-0 bottom-0 end-0 start-0 z-0 bg-pattern"></div>
 <div class="auth-pattern-shapes d-none d-lg-block"></div>
@@ -116,10 +83,3 @@
     </div>
   </div>
 </div>
-
-<!-- JAVASCRIPT -->
-
-
-</body>
-
-</html>

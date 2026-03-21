@@ -29,8 +29,7 @@
 </head>
 
 <body>
-<<<<<<< HEAD
-=======
+
   <?php 
     if(isset($_SESSION["loggedIn"]) && $_SESSION["loggedIn"] == "ok"){
       // echo '<div class="layout-wrapper layout-content-navbar">';
@@ -42,8 +41,6 @@
       //       echo '<i class="ti tabler-chevron-right icon-base"></i>';
       //     echo '</a>';
       //     echo '</div>';
->>>>>>> f84ffb6fcbb0fcdf341057e1387759b797b40c5a
-
       //     echo '<div class="layout-page">';
       //       //include "modules/navbar.php";
       //       echo '<div class="content-wrapper">';

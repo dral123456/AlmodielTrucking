@@ -241,7 +241,7 @@
                             <li><a class="dropdown-item" href="javascript:void(0)"><i class="bi bi-headset me-2"></i> Support</a></li>
                         </ul>
                         <ul class="list-unstyled mb-0">
-                            <li><a class="dropdown-item" href="index.php"><i class="bi bi-box-arrow-right me-2"></i> Sign Out</a></li>
+                            <li><a href="/almodieltruckingservice/views/modules/logout.php" class="dropdown-item"><i class="bi bi-box-arrow-right me-2"></i> Sign Out</a></li>
                         </ul>
                     </div>
                 </div>
