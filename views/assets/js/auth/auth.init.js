@@ -10,6 +10,21 @@ document.addEventListener("DOMContentLoaded", function () {
   initPasswordToggle();
 });
 
+// const form = document.getElementById("formAuthentication");
+
+// form.addEventListener("submit", (event) => {
+//   event.preventDefault(); // Prevent default submission
+//   const username = document.getElementById("username").value;
+//   const password = document.getElementById("password").value;
+
+//   if (!username || !password) {
+//     alert("Please fill in all fields.");
+//   } else {
+//     alert(`Submitting: ${username}, ${password}`);
+//     form.submit();
+//   }
+// });
+
 function initPasswordToggle() {
   const toggles = document.querySelectorAll(".toggle-password");
   if (!toggles.length) return;

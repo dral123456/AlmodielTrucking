@@ -2,8 +2,8 @@
     <div class="pe-app-sidebar-logo px-6 d-flex align-items-center position-relative">
         <!--begin::Brand Image-->
         <a href="index.html" class="d-flex align-items-end logo-main">
-            <img height="35" width="34" class="logo-dark" alt="Dark Logo" src="assets/images/logo-md.png">
-            <img height="35" width="34" class="logo-light" alt="Light Logo" src="assets/images/logo-md-light.png">
+            <img height="35" width="34" class="logo-dark" alt="Dark Logo" src="views/assets/images/logo-md.png">
+            <img height="35" width="34" class="logo-light" alt="Light Logo" src="views/assets/images/logo-md-light.png">
             <h3 class="text-body-emphasis fw-bolder mb-0 ms-1">Urbix</h3>
         </a>
         <button type="button" id="sidebarDefaultArrow" class="btn btn-sm p-0 fs-16 text-body-emphasis ms-auto float-end d-none icon-hover-btn d-none"><i class="ri-arrow-right-line fs-5"></i></button>
@@ -733,7 +733,7 @@
             </ul>
             <!-- Widgets -->
             <div class="sidebar-widget text-center">
-                <img src="assets/images/sidebar-widget.png" alt="Widget Image">
+                <img src="views/assets/images/sidebar-widget.png" alt="Widget Image">
                 <p class="text-muted fw-semibold">Click here to update the new version</p>
                 <button class="btn btn-primary rounded-pill w-100">Update Now</button>
             </div>
