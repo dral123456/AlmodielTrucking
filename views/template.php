@@ -26,48 +26,70 @@
   <link href="views/assets/css/icons.min.css" rel="stylesheet" type="text/css">
   <!-- App Css-->
   <link href="views/assets/css/app.min.css" id="app-style" rel="stylesheet" type="text/css">
+  <style>
+    .layout-container {
+      display: flex;
+    }
+
+    .layout-page {
+      flex: 1;
+      min-width: 0;
+      overflow-x: hidden;
+      margin-left: 240px !important; /* replace with actual sidebar width from console */
+      width: calc(100% - 240px) !important;
+    }
+
+    .content-wrapper {
+      padding-top: 74px !important;
+    }
+</style>
+
 </head>
 
 <body>
 
   <?php 
     if(isset($_SESSION["loggedIn"]) && $_SESSION["loggedIn"] == "ok"){
-      // echo '<div class="layout-wrapper layout-content-navbar">';
-      //   echo '<div class="layout-container">';
-      //     //include "modules/sidebar.php";
-      //     echo '<div class="menu-mobile-toggler d-xl-none rounded-1">';
-      //       echo '<a href="javascript:void(0);" class="layout-menu-toggle menu-link text-large text-bg-secondary p-2 rounded-1">';
-      //       echo '<i class="ti tabler-menu icon-base"></i>';
-      //       echo '<i class="ti tabler-chevron-right icon-base"></i>';
-      //     echo '</a>';
-      //     echo '</div>';
-      //     echo '<div class="layout-page">';
-      //       //include "modules/navbar.php";
-      //       echo '<div class="content-wrapper">';
-            if(isset($_GET["route"])){
-              $route = basename($_GET["route"]);
-              $allowedRoutes = [
-                  'sample'
-                  // 'home',
-                  // 'staffclinic',
-                  // 'logout'
-              ];
+      echo '<div class="layout-wrapper layout-content-navbar">';
+        echo '<div class="layout-container">';
 
-              if (in_array($route, $allowedRoutes)) {
-                  include "modules/" . $route . ".php";
-              } else {
-                  include "modules/404.php";
-              }
-            }else{
-              $route = "sample";
-              include "modules/sample.php"; 
+        include "partials/sidebar.php";
+
+        echo '<div class="layout-page">';
+
+        include "partials/header.php";
+
+        echo '<div class="content-wrapper">';
+        echo '<div class="container-fluid py-4">';
+          if(isset($_GET["route"])){
+            $route = basename($_GET["route"]);
+            $allowedRoutes = [
+                'sample',
+                'employee-reg',
+                'client-reg'
+                // 'home',
+                // 'staffclinic',
+                // 'logout'
+            ];
+
+            if (in_array($route, $allowedRoutes)) {
+                include "modules/" . $route . ".php";
+            } else {
+                include "modules/404.php";
             }
-      //       echo '</div>';
-      //       echo '<div class="layout-overlay layout-menu-toggle"></div>';
-      //       echo '<div class="drag-target"></div>';
-      //     echo '</div>';
-      //   echo '</div>';
-      // echo '</div>';
+          }else{
+            $route = "sample";
+            include "modules/sample.php"; 
+          }
+        echo '</div>'; // container-fluid
+        echo '</div>'; // content-wrapper
+
+        echo '<div class="layout-overlay layout-menu-toggle"></div>';
+        echo '<div class="drag-target"></div>';
+
+        echo '</div>'; // layout-page
+        echo '</div>'; // layout-container
+      echo '</div>'; // layout-wrapper
     }else{
       include "modules/login.php";
     }

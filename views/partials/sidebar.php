@@ -13,32 +13,32 @@
         <div class="d-flex align-items-start flex-column w-100">
             <ul class="pe-main-menu list-unstyled">
                 <!-- Main Menu -->
-                <li class="pe-menu-title">Main</li>
+                <li class="pe-menu-title">Forms</li>
                 <li class="pe-slide pe-has-sub">
                     <a href="#collapseDashboards" class="pe-nav-link" data-bs-toggle="collapse" aria-expanded="false" aria-controls="collapseDashboards">
                         <i class="ri-dashboard-line pe-nav-icon"></i>
-                        <span class="pe-nav-content">Dashboards</span>
+                        <span class="pe-nav-content">Registration</span>
                         <i class="ri-arrow-down-s-line pe-nav-arrow"></i>
                     </a>
                     <ul class="pe-slide-menu collapse" id="collapseDashboards">
                         <li class="pe-slide-item">
-                            <a href="index.html" class="pe-nav-link">
-                                E-Commerece
+                            <a href="employee-reg" class="pe-nav-link">
+                                Employee
                             </a>
                         </li>
                         <li class="pe-slide-item">
-                            <a href="dashboard-school.html" class="pe-nav-link">
-                                School
+                            <a href="client-reg" class="pe-nav-link">
+                                Client
                             </a>
                         </li>
                         <li class="pe-slide-item">
                             <a href="dashboard-analytics.html" class="pe-nav-link">
-                                Sales Analytics
+                                Truck
                             </a>
                         </li>
                         <li class="pe-slide-item">
                             <a href="dashboard-media.html" class="pe-nav-link">
-                                Social Media
+                                Pricing
                             </a>
                         </li>
                     </ul>
