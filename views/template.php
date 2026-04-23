@@ -102,6 +102,23 @@
 <script src="views/assets/js/scroll-top.init.js"></script>
 <script src="views/assets/js/auth/auth.init.js"></script>
 
+<?php
+  if (isset($route)) {
+    $routeScripts = [
+      "client-reg" => ["client-reg.js"]
+    ];
+
+    if (array_key_exists($route, $routeScripts)) {
+      foreach ($routeScripts[$route] as $script) {
+        $scriptPath = "views/js/" . $script;
+        if (file_exists($scriptPath)) {
+          echo '<script src="/almodieltrucking/' . $scriptPath . '"></script>';
+        }
+      }
+    }
+  }
+?>
+
 </body>
 
 </html>
