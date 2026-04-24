@@ -1,16 +1,9 @@
-/*
-Template Name: Urbix - Admin & Dashboard Template
-Author: Pixeleyez
-Website: https://pixeleyez.com/
-File: Stepper init js
-*/
-
 document.querySelectorAll('.stepper, .form-steps-vertical').forEach(stepper => {
     const nextButtons = stepper.querySelectorAll('.nexttab');
     const prevButtons = stepper.querySelectorAll('.previestab');
     const tabs = stepper.querySelectorAll('.tab-pane');
     const progressBar = stepper.querySelector('.progress-bar');
-    const tabButtons = stepper.querySelectorAll('.nav-link'); // Get all tab buttons
+    const tabButtons = stepper.querySelectorAll('.nav-link');
     let currentTab = 0;
 
     function updateTabs() {
@@ -21,46 +14,46 @@ document.querySelectorAll('.stepper, .form-steps-vertical').forEach(stepper => {
             }
         });
 
-        // Determine if the stepper is vertical or horizontal
         const isVertical = stepper.classList.contains('form-steps-vertical');
 
         if (isVertical) {
-            // Update progress bar height based on completed steps for vertical stepper
             const completedSteps = Math.min(currentTab, tabs.length - 1);
-            const totalSteps = tabs.length - 2; // Excluding the last "Thank You" step
+            const totalSteps = tabs.length - 2;
             const progressHeight = (completedSteps / totalSteps) * 100;
             progressBar.style.height = `${progressHeight}%`;
-            progressBar.style.width = '100%'; // Ensure width is full
+            progressBar.style.width = '100%';
         } else {
-            // Update progress bar width based on currentTab for horizontal stepper
-            const progressPercentage = (currentTab / (tabs.length - 2)) * 100; // Excluding last step
+            const visibleTabs = stepper.querySelectorAll('.tab-pane:not([data-hidden="true"])');
+            const progressPercentage = (currentTab / (visibleTabs.length - 1)) * 100;
             progressBar.style.width = `${progressPercentage}%`;
-            progressBar.style.height = '5px'; // Default height for horizontal
+            progressBar.style.height = '5px';
         }
-
         // Update the active tab button
         tabButtons.forEach((button, index) => {
             button.classList.remove('active', 'activeComplete');
             if (index === currentTab) {
                 button.classList.add('active');
+                button.innerHTML = index + 1;
             } else if (index < currentTab) {
                 button.classList.add('activeComplete');
-                button.innerHTML = `<i class="ri-check-line"></i>`; // Add check icon
+                button.innerHTML = `<i class="ri-check-line"></i>`;
+            } else {
+                button.innerHTML = index + 1;
             }
         });
     }
 
-    // Add event listener for each tab button
     tabButtons.forEach((button, index) => {
         button.addEventListener('click', () => {
-            currentTab = index; // Set current tab to the clicked button's index
+            currentTab = index;
             updateTabs();
         });
     });
 
     nextButtons.forEach(button => {
         button.addEventListener('click', () => {
-            if (currentTab < tabs.length - 1) {
+            const visibleTabs = stepper.querySelectorAll('.tab-pane:not([data-hidden="true"])');
+            if (currentTab < visibleTabs.length - 1) {
                 currentTab++;
                 updateTabs();
             }
@@ -76,6 +69,5 @@ document.querySelectorAll('.stepper, .form-steps-vertical').forEach(stepper => {
         });
     });
 
-    // Initial setup
     updateTabs();
 });

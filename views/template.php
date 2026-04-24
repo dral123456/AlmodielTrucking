@@ -26,6 +26,8 @@
   <link href="views/assets/css/icons.min.css" rel="stylesheet" type="text/css">
   <!-- App Css-->
   <link href="views/assets/css/app.min.css" id="app-style" rel="stylesheet" type="text/css">
+  <link rel="stylesheet" href="views/assets/libs/choices.js/public/assets/styles/choices.min.css">
+  <script src="views/assets/js/jquery-4.0.0.min.js"></script>
   <style>
     .layout-container {
       display: flex;
@@ -66,7 +68,7 @@
             $allowedRoutes = [
                 'sample',
                 'employee-reg',
-                'client-reg'
+                'customer-reg'
                 // 'home',
                 // 'staffclinic',
                 // 'logout'
@@ -102,10 +104,31 @@
 <script src="views/assets/js/scroll-top.init.js"></script>
 <script src="views/assets/js/auth/auth.init.js"></script>
 
+<!-- DATE PICKER -->
+<script src="views/assets/libs/air-datepicker/air-datepicker.js"></script>
+
+<!-- LIBS -->
+<script src="views/assets/libs/choices.js/public/assets/scripts/choices.min.js"></script>
+
+<!-- ICONS
+<script src="views/assets/js/icon/icons-remix.init.js"></script> -->
+
+<!-- FORMS -->
+<script src="views/assets/js/form/advanced-form.init.js"></script>
+<script src="views/assets/js/form/file-upload.init.js"></script>
+<script src="views/assets/js/form/form-editor.init.js"></script>
+<!-- <script src="views/assets/js/form/form-layout.init.js"></script> -->
+<script src="views/assets/js/form/form-validation.init.js"></script>
+<script src="views/assets/js/form/forms-select.init.js"></script>
+<script src="views/assets/js/form/stepper.init.js"></script>
+
+
+
+
 <?php
   if (isset($route)) {
     $routeScripts = [
-      "client-reg" => ["client-reg.js"]
+      "customer-reg" => ["customer-reg.js"]
     ];
 
     if (array_key_exists($route, $routeScripts)) {

@@ -27,8 +27,8 @@
                             </a>
                         </li>
                         <li class="pe-slide-item">
-                            <a href="client-reg" class="pe-nav-link">
-                                Client
+                            <a href="customer-reg" class="pe-nav-link">
+                                Customer
                             </a>
                         </li>
                         <li class="pe-slide-item">
@@ -43,7 +43,7 @@
                         </li>
                     </ul>
                 </li>
-                <li class="pe-slide pe-has-sub">
+                <!-- <li class="pe-slide pe-has-sub">
                     <a href="#collapseApplications" class="pe-nav-link" data-bs-toggle="collapse" aria-expanded="false" aria-controls="collapseApplications">
                         <i class="ri-apps-2-line pe-nav-icon"></i>
                         <span class="pe-nav-content">Applications</span>
@@ -194,7 +194,7 @@
                         </li>
                     </ul>
                 </li>
-                <!-- Pages -->
+                Pages
                 <li class="pe-menu-title">Pages</li>
                 <li class="pe-slide pe-has-sub">
                     <a href="#collapseAuth" class="pe-nav-link" data-bs-toggle="collapse" aria-expanded="false" aria-controls="collapseAuth">
@@ -341,7 +341,7 @@
                         </li>
                     </ul>
                 </li>
-                <!-- Components -->
+                Components
                 <li class="pe-menu-title">Components</li>
                 <li class="pe-slide pe-has-sub">
                     <a href="#collapseBaseUI" class="pe-nav-link" data-bs-toggle="collapse" aria-expanded="false" aria-controls="collapseBaseUI">
@@ -618,7 +618,7 @@
                         </li>
                     </ul>
                 </li>
-                <!-- Icons & Maps -->
+                Icons & Maps
                 <li class="pe-menu-title">Icons & Maps</li>
                 <li class="pe-slide pe-has-sub">
                     <a href="#collapseIcons" class="pe-nav-link" data-bs-toggle="collapse" aria-expanded="false" aria-controls="collapseIcons">
@@ -669,7 +669,7 @@
                         </li>
                     </ul>
                 </li>
-                <!-- Other -->
+                Other
                 <li class="pe-menu-title">Other</li>
                 <li class="pe-slide pe-has-sub">
                     <a href="#collapseMenuLavels" class="pe-nav-link" data-bs-toggle="collapse" aria-expanded="false" aria-controls="collapseMenuLavels">
@@ -730,13 +730,13 @@
                         </li>
                     </ul>
                 </li>
-            </ul>
+            </ul> -->
             <!-- Widgets -->
-            <div class="sidebar-widget text-center">
+            <!-- <div class="sidebar-widget text-center">
                 <img src="views/assets/images/sidebar-widget.png" alt="Widget Image">
                 <p class="text-muted fw-semibold">Click here to update the new version</p>
                 <button class="btn btn-primary rounded-pill w-100">Update Now</button>
-            </div>
+            </div> -->
         </div>
     </nav>
 </aside>
