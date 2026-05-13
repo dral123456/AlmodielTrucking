@@ -126,7 +126,9 @@
                 echo '</div>';
               echo '</div>';
             echo '</div>'; // layout-container
-        echo '</div>'; // layout-wrapper
+          echo '</div>'; // layout-wrapper
+      }else{
+        include "modules/login.php"; 
       }
     }
     else if(isset($_SESSION["loggedIn"]) && $_SESSION["loggedIn"] == "ok"){
@@ -171,7 +173,7 @@
         echo '</div>'; // layout-container
       echo '</div>'; // layout-wrapper
     }else{
-      include "modules/login.php"; 
+      include "modules/login.php";
     }
   ?>
 
