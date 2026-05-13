@@ -51,11 +51,6 @@
       transition: margin-left 0.2s ease, width 0.2s ease;
     }
 
-    .layout-page.no-sidebar {
-      margin-left: 0 !important;
-      width: 100% !important;
-    }
-
     .content-wrapper {
       padding-top: 74px !important;
     }
@@ -105,33 +100,7 @@
 <body>
 
   <?php 
-    if(!(isset($_SESSION["loggedIn"]) && $_SESSION["loggedIn"] == "ok") && isset($_GET["route"])){
-      $route = basename($_GET["route"]);
-      if($route == "customer-reg"){
-        echo '<div class="layout-wrapper layout-content-navbar">';
-          echo '<div class="layout-container">';
-            echo '<div class="layout-page no-sidebar">';
-              echo '<div class="content-wrapper">';
-                echo '<div class="container-fluid py-3">';
-                  echo '<div class="row justify-content-center">';
-                    echo '<div class="col-12 col-md-8 col-lg-6">';
-                      include "modules/customer-reg.php"; 
-                    echo '</div>'; // container-fluid
-                  echo '</div>'; // content-wrapper
-                  echo '<div class="layout-overlay layout-menu-toggle">';
-                    echo '<div class="drag-target">';
-                    echo '</div>';
-                  echo '</div>'; // layout-page
-                  echo '</div>';
-                echo '</div>';
-              echo '</div>';
-            echo '</div>'; // layout-container
-          echo '</div>'; // layout-wrapper
-      }else{
-        include "modules/login.php"; 
-      }
-    }
-    else if(isset($_SESSION["loggedIn"]) && $_SESSION["loggedIn"] == "ok"){
+    if(isset($_SESSION["loggedIn"]) && $_SESSION["loggedIn"] == "ok"){
       echo '<div class="layout-wrapper layout-content-navbar">';
         echo '<div class="layout-container">';
 
@@ -149,8 +118,11 @@
                 'sample',
                 'employee-reg',
                 'customer-reg',
+<<<<<<< HEAD
                 'login',
                 'logout',
+=======
+>>>>>>> 054473bf58e7937810f2b4f6a863485296903935
                 'truck-reg',
                 'booking-reg'
                 // 'home',
