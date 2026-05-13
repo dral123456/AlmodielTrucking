@@ -89,6 +89,104 @@ INSERT INTO `employee` (`id`, `empFName`, `empLName`, `empMI`, `empSuffix`, `emp
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `location`
+--
+
+CREATE TABLE `location` (
+  `locationID` int NOT NULL,
+  `province` varchar(100) NOT NULL,
+  `city` varchar(100) NOT NULL,
+  `barangay` varchar(100) NOT NULL,
+  `street` varchar(100) NOT NULL,
+  `description` text,
+  `latitude` double NOT NULL,
+  `longitude` double NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `booking`
+--
+
+CREATE TABLE `booking` (
+  `bookingID` int NOT NULL,
+  `customerID` int NOT NULL,
+  `pickupLocationID` int NOT NULL,
+  `destinationLocationID` int NOT NULL,
+  `tripID` int NOT NULL,
+  `pickupDateTime` datetime NOT NULL,
+  `price` double NOT NULL,
+  `createdBy` int NOT NULL,
+  `dateCreated` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `status` enum('pending','in-transit','completed') NOT NULL DEFAULT 'pending'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `cargo`
+--
+
+CREATE TABLE `cargo` (
+  `cargoID` int NOT NULL,
+  `bookingID` int NOT NULL,
+  `cargoType` varchar(100) NOT NULL,
+  `quantity` int NOT NULL,
+  `condition` varchar(100) DEFAULT NULL,
+  `description` text,
+  `specialHandling` text
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `truck`
+--
+
+CREATE TABLE `truck` (
+  `id` int NOT NULL,
+  `plateNumber` varchar(20) NOT NULL,
+  `type` varchar(20) NOT NULL,
+  `capacity` double NOT NULL,
+  `fuel` int NOT NULL,
+  `mileage` int NOT NULL,
+  `brand` varchar(20) NOT NULL,
+  `status` varchar(20) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `truckemployee`
+--
+
+CREATE TABLE `truckemployee` (
+  `truckEmployeeID` int NOT NULL,
+  `truckID` int NOT NULL,
+  `empID` int NOT NULL,
+  `role` varchar(50) NOT NULL,
+  `dateCreated` varchar(50) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `tripemployee`
+--
+
+CREATE TABLE `tripemployee` (
+  `tripEmployeeID` int NOT NULL,
+  `tripID` int NOT NULL,
+  `truckID` int NOT NULL,
+  `empID` int NOT NULL,
+  `role` varchar(50) NOT NULL,
+  `dateCreated` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `userrights`
 --
 
@@ -130,6 +228,54 @@ ALTER TABLE `userrights`
   ADD PRIMARY KEY (`id`);
 
 --
+-- Indexes for table `truck`
+--
+ALTER TABLE `truck`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `plateNumber` (`plateNumber`);
+
+--
+-- Indexes for table `location`
+--
+ALTER TABLE `location`
+  ADD PRIMARY KEY (`locationID`);
+
+--
+-- Indexes for table `booking`
+--
+ALTER TABLE `booking`
+  ADD PRIMARY KEY (`bookingID`),
+  ADD KEY `customerID` (`customerID`),
+  ADD KEY `pickupLocationID` (`pickupLocationID`),
+  ADD KEY `destinationLocationID` (`destinationLocationID`),
+  ADD KEY `tripID` (`tripID`),
+  ADD KEY `createdBy` (`createdBy`);
+
+--
+-- Indexes for table `cargo`
+--
+ALTER TABLE `cargo`
+  ADD PRIMARY KEY (`cargoID`),
+  ADD KEY `bookingID` (`bookingID`);
+
+--
+-- Indexes for table `truckemployee`
+--
+ALTER TABLE `truckemployee`
+  ADD PRIMARY KEY (`truckEmployeeID`),
+  ADD KEY `truckID` (`truckID`),
+  ADD KEY `empID` (`empID`);
+
+--
+-- Indexes for table `tripemployee`
+--
+ALTER TABLE `tripemployee`
+  ADD PRIMARY KEY (`tripEmployeeID`),
+  ADD KEY `tripID` (`tripID`),
+  ADD KEY `truckID` (`truckID`),
+  ADD KEY `empID` (`empID`);
+
+--
 -- AUTO_INCREMENT for dumped tables
 --
 
@@ -150,6 +296,42 @@ ALTER TABLE `employee`
 --
 ALTER TABLE `userrights`
   MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT for table `truck`
+--
+ALTER TABLE `truck`
+  MODIFY `id` int NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `location`
+--
+ALTER TABLE `location`
+  MODIFY `locationID` int NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `booking`
+--
+ALTER TABLE `booking`
+  MODIFY `bookingID` int NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `cargo`
+--
+ALTER TABLE `cargo`
+  MODIFY `cargoID` int NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `truckemployee`
+--
+ALTER TABLE `truckemployee`
+  MODIFY `truckEmployeeID` int NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `tripemployee`
+--
+ALTER TABLE `tripemployee`
+  MODIFY `tripEmployeeID` int NOT NULL AUTO_INCREMENT;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

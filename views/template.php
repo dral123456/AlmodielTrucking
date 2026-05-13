@@ -34,6 +34,7 @@
 
   <!-- DATE PICKER -->
   <link rel="stylesheet" href="views/assets/libs/air-datepicker/air-datepicker.css">
+  <link rel="stylesheet" href="views/assets/libs/leaflet/leaflet.css">
 
   <script src="views/assets/js/jquery-4.0.0.min.js"></script>
   <style>
@@ -45,8 +46,9 @@
       flex: 1;
       min-width: 0;
       overflow-x: hidden;
-      margin-left: 240px !important; /* replace with actual sidebar width from console */
-      width: calc(100% - 240px) !important;
+      margin-left: var(--pe-app-sidebar-width) !important;
+      width: calc(100% - var(--pe-app-sidebar-width)) !important;
+      transition: margin-left 0.2s ease, width 0.2s ease;
     }
 
     .layout-page.no-sidebar {
@@ -56,6 +58,45 @@
 
     .content-wrapper {
       padding-top: 74px !important;
+    }
+
+    html[data-sidebar="icon"] .layout-page,
+    html[data-sidebar="icon-hover"] .layout-page {
+      margin-left: var(--pe-app-sidebar-sm-width) !important;
+      width: calc(100% - var(--pe-app-sidebar-sm-width)) !important;
+    }
+
+    html[data-sidebar="medium"] .layout-page {
+      margin-left: var(--pe-app-sidebar-medium-width) !important;
+      width: calc(100% - var(--pe-app-sidebar-medium-width)) !important;
+    }
+
+    @media (max-width: 1199.98px) {
+      .layout-page {
+        margin-left: 0 !important;
+        width: 100% !important;
+      }
+
+      .content-wrapper {
+        padding-top: 64px !important;
+      }
+
+      .container-fluid {
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+      }
+    }
+
+    @media (max-width: 575.98px) {
+      .container-fluid {
+        padding-left: 0.75rem !important;
+        padding-right: 0.75rem !important;
+      }
+
+      .card-header,
+      .card-body {
+        padding: 1rem !important;
+      }
     }
 </style>
 
@@ -105,9 +146,10 @@
             $allowedRoutes = [
                 'sample',
                 'employee-reg',
-                'customer-reg',
-                'login',
-                'logout'
+                'customer-reg'
+                // 'home',
+                // 'staffclinic',
+                // 'logout'
             ];
 
             if (in_array($route, $allowedRoutes)) {
@@ -146,6 +188,7 @@
 
 <!-- LIBS -->
 <script src="views/assets/libs/choices.js/public/assets/scripts/choices.min.js"></script>
+<script src="views/assets/libs/leaflet/leaflet.js"></script>
 
 <!-- ICONS
 <script src="views/assets/js/icon/icons-remix.init.js"></script> -->
@@ -171,7 +214,9 @@
   if (isset($route)) {
     $routeScripts = [
       "customer-reg" => ["customer-reg.js"],
-      "employee-reg" => ["employee-reg.js"]
+      "employee-reg" => ["employee-reg.js"],
+      "truck-reg" => ["truck-reg.js"],
+      "booking-reg" => ["booking-reg.js"]
     ];
 
     if (array_key_exists($route, $routeScripts)) {
