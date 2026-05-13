@@ -32,8 +32,13 @@
                             </a>
                         </li>
                         <li class="pe-slide-item">
-                            <a href="dashboard-analytics.html" class="pe-nav-link">
+                            <a href="truck-reg" class="pe-nav-link">
                                 Truck
+                            </a>
+                        </li>
+                        <li class="pe-slide-item">
+                            <a href="booking-reg" class="pe-nav-link">
+                                Booking
                             </a>
                         </li>
                         <li class="pe-slide-item">
