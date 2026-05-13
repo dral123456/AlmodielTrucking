@@ -118,11 +118,8 @@
                 'sample',
                 'employee-reg',
                 'customer-reg',
-<<<<<<< HEAD
                 'login',
                 'logout',
-=======
->>>>>>> 054473bf58e7937810f2b4f6a863485296903935
                 'truck-reg',
                 'booking-reg'
                 // 'home',
