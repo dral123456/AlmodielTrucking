@@ -66,13 +66,36 @@ $(document).ready(function () {
 
   // Register
   $(document).on('click', '#empBtnRegister', function () {
-    const missing = validateInputs();
-    if (missing.length > 0) {
-      showMissingModal(missing);
-      return;
+  const missing = validateInputs();
+  if (missing.length > 0) {
+    showMissingModal(missing);
+    return;
+  }
+
+  // Create FormData for AJAX
+  const formData = new FormData();
+  formData.append('empType', $('#empType').val());
+  formData.append('empFName', $('#empFName').val());
+  formData.append('empLName', $('#empLName').val());
+  formData.append('empMI', $('#empMI').val());
+  formData.append('empSuffix', $('#empSuffix').val());
+  formData.append('empBirthDate', $('#empBirthDate').val());
+  formData.append('empPhoneNumber', $('#empPhoneNumber').val());
+  formData.append('empEmail', $('#empEmail').val());
+  formData.append('empPassword', $('#empPassword').val());
+
+  // Only add license info if type is driver
+  if ($('#empType').val() === 'driver') {
+    formData.append('licenseNumber', $('#licenseNumber').val());
+    formData.append('expire', $('#expire').val());
+    const fileInput = $('#licenseImage')[0];
+    if (fileInput.files.length > 0) {
+      formData.append('licenseImage', fileInput.files[0]);
     }
-    showConfirmModal();
-  });
+  }
+
+  showConfirmModal(formData);
+});
 
   // Init
   applyEmpType();
@@ -80,43 +103,61 @@ $(document).ready(function () {
 
   // ===== Validation =====
   function validateInputs() {
-    const missing = [];
+  const missing = [];
 
-    const check = (id, label) => {
-      const $el = $('#' + id);
-      const el = $el[0];
-      if (!el) return;
-      const ok = String($el.val() || '').trim() !== '';
-      if (!ok) {
-        missing.push(label);
-        $el.addClass('is-invalid');
-      } else {
-        $el.removeClass('is-invalid');
-      }
-    };
-
-    check('empFName',         'First Name');
-    check('empLName',         'Last Name');
-    check('empBirthDate',     'Birth Date');
-    check('empPhoneNumber',   'Phone Number');
-    check('empPassword',      'Password');
-    check('empPasswordConfirm', 'Confirm Password');
-
-    // Extra password rules
-    const pwd     = String($('#empPassword').val() || '');
-    const pwdConf = String($('#empPasswordConfirm').val() || '');
-
-    if (pwd && pwd.length < 6) {
-      missing.push('Password (must be at least 6 characters)');
-      $('#empPassword').addClass('is-invalid');
+  const check = (id, label) => {
+    const $el = $('#' + id);
+    const el = $el[0];
+    if (!el) return;
+    const ok = String($el.val() || '').trim() !== '';
+    if (!ok) {
+      missing.push(label);
+      $el.addClass('is-invalid');
+    } else {
+      $el.removeClass('is-invalid');
     }
-    if (pwd && pwdConf && pwd !== pwdConf) {
-      missing.push('Password and Confirm Password must match');
-      $('#empPassword, #empPasswordConfirm').addClass('is-invalid');
-    }
+  };
 
-    return missing;
+  // Always required fields
+  check('empFName',           'First Name');
+  check('empLName',           'Last Name');
+  check('empBirthDate',       'Birth Date');
+  check('empPhoneNumber',     'Phone Number');
+  check('empPassword',        'Password');
+  check('empPasswordConfirm', 'Confirm Password');
+
+  // Password rules
+  const pwd     = String($('#empPassword').val() || '');
+  const pwdConf = String($('#empPasswordConfirm').val() || '');
+  if (pwd && pwd.length < 6) {
+    missing.push('Password (must be at least 6 characters)');
+    $('#empPassword').addClass('is-invalid');
   }
+  if (pwd && pwdConf && pwd !== pwdConf) {
+    missing.push('Password and Confirm Password must match');
+    $('#empPassword, #empPasswordConfirm').addClass('is-invalid');
+  }
+
+  // Conditional License fields (only for driver)
+  if (getEmpType() === 'driver') {
+    check('licenseNumber', 'License Number');
+    check('expire',        'Expiration Date');
+
+    // Check file input
+    const licenseFile = $('#licenseImage')[0].files[0];
+    if (!licenseFile) {
+      missing.push('License Image');
+      $('#licenseImage').addClass('is-invalid');
+    } else {
+      $('#licenseImage').removeClass('is-invalid');
+    }
+  } else {
+    // If assistant, remove invalid state just in case
+    $('#licenseNumber, #expire, #licenseImage').removeClass('is-invalid');
+  }
+
+  return missing;
+}
 
   function showMissingModal(missing) {
     const listHtml = '<ul class="text-start mb-0 ps-3">' +
@@ -132,90 +173,57 @@ $(document).ready(function () {
     });
   }
 
-  function showConfirmModal() {
-    const type = getEmpType();
-    const typeLabel = type === 'driver' ? 'Driver' : 'Assistant';
-    const name = ($('#empFName').val() + ' ' + $('#empLName').val()).trim();
+  function showConfirmModal(formData) {
+  const type = $('#empType').val();
+  const typeLabel = type === 'driver' ? 'Driver' : 'Assistant';
+  const name = ($('#empFName').val() + ' ' + $('#empLName').val()).trim();
 
-    Swal.fire({
-      icon: 'question',
-      title: 'Confirm Registration',
-      html:
-        '<p class="mb-2">Please review the details before submitting:</p>' +
-        '<div class="text-start bg-light rounded p-3">' +
-          '<div><strong>Role:</strong> ' + typeLabel + '</div>' +
-          '<div><strong>Name:</strong> ' + (name || '—') + '</div>' +
-        '</div>',
-      showCancelButton: true,
-      confirmButtonText: '<i class="ri-check-line"></i> Yes, Register',
-      cancelButtonText: 'Cancel',
-      confirmButtonColor: '#696cff',
-      cancelButtonColor: '#6c757d',
-      reverseButtons: true
-    }).then((result) => {
-      if (result.isConfirmed) saveEmployee();
-    });
-  }
+  Swal.fire({
+    icon: 'question',
+    title: 'Confirm Registration',
+    html:
+      '<p class="mb-2">Please review the details before submitting:</p>' +
+      '<div class="text-start bg-light rounded p-3">' +
+        '<div><strong>Role:</strong> ' + typeLabel + '</div>' +
+        '<div><strong>Name:</strong> ' + (name || '—') + '</div>' +
+      '</div>',
+    showCancelButton: true,
+    confirmButtonText: '<i class="ri-check-line"></i> Yes, Register',
+    cancelButtonText: 'Cancel',
+    confirmButtonColor: '#696cff',
+    cancelButtonColor: '#6c757d',
+    reverseButtons: true
+  }).then((result) => {
+    if (result.isConfirmed) saveEmployee(formData);
+  });
+}
 
 
   // ===== Save =====
-  function saveEmployee() {
-    const formData = new FormData();
-    formData.append('empType',        $('#empType').val());
-    formData.append('empFName',       $('#empFName').val());
-    formData.append('empLName',       $('#empLName').val());
-    formData.append('empMI',          $('#empMI').val());
-    formData.append('empSuffix',      $('#empSuffix').val());
-    formData.append('empBirthDate',   $('#empBirthDate').val());
-    formData.append('empPhoneNumber', $('#empPhoneNumber').val());
-    formData.append('empEmail',       $('#empEmail').val());
-    formData.append('empPassword',    $('#empPassword').val());
-    formData.append('empStatus',      'active');
-
-    $.ajax({
-      url: 'ajax/employee_save_record.ajax.php',
-      method: 'POST',
-      data: formData,
-      cache: false,
-      contentType: false,
-      processData: false,
-      dataType: 'text',
-      success: function (response) {
-        const res = (response || '').trim();
-        if (res === 'existing') {
-          Swal.fire({
-            icon: 'info',
-            title: 'Already Exists',
-            text: 'This employee is already registered.',
-            confirmButtonColor: '#696cff'
-          });
-        } else if (res === '' || res === 'success' || res === '1') {
-          Swal.fire({
-            icon: 'success',
-            title: 'Registered!',
-            text: 'Employee registered successfully.',
-            confirmButtonColor: '#696cff'
-          }).then(() => {
-            window.location = 'employee-reg';
-          });
-        } else {
-          Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'Failed to save employee.',
-            confirmButtonColor: '#696cff'
-          });
-        }
-      },
-      error: function () {
-        Swal.fire({
-          icon: 'error',
-          title: 'Network Error',
-          text: 'Something went wrong while saving.',
-          confirmButtonColor: '#696cff'
-        });
+  function saveEmployee(formData) {
+  $.ajax({
+    url: 'ajax/employee_save_record.ajax.php',
+    method: 'POST',
+    data: formData,
+    cache: false,
+    contentType: false,
+    processData: false,
+    dataType: 'text',
+    success: function (response) {
+      const res = (response || '').trim();
+      if (res === 'existing') {
+        Swal.fire({ icon: 'info', title: 'Already Exists', text: 'This employee is already registered.', confirmButtonColor: '#696cff' });
+      } else if (res === 'success') {
+        Swal.fire({ icon: 'success', title: 'Registered!', text: 'Employee registered successfully.', confirmButtonColor: '#696cff' })
+        .then(() => { window.location = 'employee-reg'; });
+      } else {
+        Swal.fire({ icon: 'error', title: 'Error', text: res, confirmButtonColor: '#696cff' });
       }
-    });
-  }
+    },
+    error: function () {
+      Swal.fire({ icon: 'error', title: 'Network Error', text: 'Something went wrong while saving.', confirmButtonColor: '#696cff' });
+    }
+  });
+}
 
 });

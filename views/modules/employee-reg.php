@@ -96,6 +96,43 @@
           </div>
         </div>
 
+
+       <div class="mb-4">
+          <h6 class="text-uppercase text-muted mb-3">
+            <i class="ri-id-card-line me-1"></i> License Information
+          </h6>
+          <div class="row">
+              
+            <div class="col-12 col-md-6 mb-3">
+              <label class="form-label">License Number<span class="text-danger">*</span></label>
+              <div class="form-icon col">
+                <i class="ri-mail-line text-muted"></i>
+                <input type="text" class="form-control form-control-icon" id="licenseNumber" placeholder="f01-12-00000000">
+              </div>
+            </div>
+
+
+              <div class="col-12 col-md-6 mb-3">
+                <label class="form-label">Expiration Date<span class="text-danger">*</span></label>
+              <div class="form-icon col">
+                <i class="ri-mail-line text-muted"></i>
+                <input type="date" class="form-control form-control-icon" id="expire" placeholder="Expiration Date">
+              </div>
+              </div>
+              
+          </div>
+          <br>
+          <div class="row">
+              <div class="col-12 col-md-6 mb-3">
+                <label class="form-label">License Image<span class="text-danger">*</span></label>
+                <div class="form-icon">
+                <i class="ri-mail-line text-muted"></i>
+                <input type="file" class="form-control form-control-icon" id="licenseImage" placeholder="Upload License Picture">
+              </div>
+              </div>
+          </div>
+       </div>
+
         <!-- ===== CONTACT INFORMATION ===== -->
         <div class="mb-4">
           <h6 class="text-uppercase text-muted mb-3">
