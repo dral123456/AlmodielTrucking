@@ -24,14 +24,14 @@
           <p class="mb-8 text-muted text-center">Create Your Account in Minutes</p>
           <form id="formAuthentication" method="POST" action="">
             <div class="mb-4">
-              <label for="username" class="form-label">Username <span class="text-danger">*</span></label>
+              <label for="phoneNumber" class="form-label">Phone Number <span class="text-danger">*</span></label>
               <input 
                 type="text" 
                 class="form-control" 
-                id="username" 
-                name="username" 
+                id="phoneNumber" 
+                name="phoneNumber" 
                 value="admin" 
-                placeholder="Enter your username" 
+                placeholder="Enter your Phone Number" 
                 autofocus 
                 required>
             </div>
@@ -64,7 +64,7 @@
             <div>
               <button type="submit" name = "loginUser" class="btn btn-primary w-100 mb-4">Sign In</button>
               <?php
-                $login = new ControllerUserRights();
+                $login = new ControllerCustomer();
                 $login -> ctrUserLogin();
               ?>
               <button type="button" class="btn btn-outline-light w-100 d-flex align-items-center gap-2 justify-content-center text-muted">
