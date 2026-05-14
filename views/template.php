@@ -119,7 +119,8 @@
                 'employee-reg',
                 'customer-reg',
                 'truck-reg',
-                'booking-reg'
+                'booking-reg',
+                'logout'
                 // 'home',
                 // 'staffclinic',
                 // 'logout'
