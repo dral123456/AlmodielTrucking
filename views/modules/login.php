@@ -74,7 +74,7 @@
 
             
           </form>
-          <p class="text-center mt-6 mb-0 text-muted fs-13">Don't have an account? <a href="customer-reg" class="link fw-semibold">Sign up here</a></p>
+          <p class="text-center mt-6 mb-0 text-muted fs-13">Don't have an account? <a href="signup" class="link fw-semibold">Sign up here</a></p>
         </div>
       </div>
       <p class="position-relative text-center fs-13 mb-0">©
