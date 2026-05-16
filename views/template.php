@@ -120,54 +120,46 @@
         }
     }
     else if(isset($_SESSION["loggedIn"]) && $_SESSION["loggedIn"] == "ok"){
+      $role = $_SESSION["role"] ?? 'customer';
+      $routeMap   = include "configs/routes.php";
+      $modulePaths = include "configs/module-paths.php";
+
+      $allowedRoutes = $routeMap[$role] ?? [];
       echo '<div class="layout-wrapper layout-content-navbar">';
         echo '<div class="layout-container">';
-
-        include "partials/sidebar.php";
-
-        echo '<div class="layout-page">';
-
-        include "partials/header.php";
-
-        echo '<div class="content-wrapper">';
-        echo '<div class="container-fluid py-4">';
-          if(isset($_GET["route"])){
-            $route = basename($_GET["route"]);
-            $allowedRoutes = [
-                'sample',
-                'employee-reg',
-                'customer-reg',
-                'login',
-                'logout',
-                'truck-reg',
-                'booking-reg',
-                'logout',
-                'customer-individual/signup'
-                // 'home',
-                // 'staffclinic',
-                // 'logout'
-            ];
-
-            if (in_array($route, $allowedRoutes)) {
-                include "modules/" . $route . ".php";
-            } else {
-                include "modules/404.php";
-            }
-          }else{
-            $route = "sample";
-            include "modules/sample.php"; 
+          include "partials/sidebar.php";
+          echo '<div class="layout-page">';
+            include "partials/header.php";
+            echo '<div class="content-wrapper">';
+              echo '<div class="container-fluid py-4">';
+              $route = isset($_GET["route"]) ? basename($_GET["route"]) : 'sample';
+          if (isset($_GET["route"])) {
+              $raw = $_GET["route"];
+              // Allow only alphanumeric, hyphens, and ONE slash
+              if (preg_match('/^[a-zA-Z0-9\-]+(\/[a-zA-Z0-9\-]+)?$/', $raw)) {
+                  $route = $raw;
+              } else {
+                  $route = '404';
+              }
           }
-        echo '</div>'; // container-fluid
-        echo '</div>'; // content-wrapper
+          if (in_array($route, $allowedRoutes) && isset($modulePaths[$route])) {
+              include $modulePaths[$route];
+          } else {
+              // Distinguish "not found" from "forbidden" for better UX
+              $status = isset($modulePaths[$route]) ? '403' : '404';
+              include "modules/{$status}.php";
+          }
+              echo '</div>'; // container-fluid
+            echo '</div>'; // content-wrapper
 
-        echo '<div class="layout-overlay layout-menu-toggle"></div>';
-        echo '<div class="drag-target"></div>';
+          echo '<div class="layout-overlay layout-menu-toggle"></div>';
+          echo '<div class="drag-target"></div>';
 
-        echo '</div>'; // layout-page
+          echo '</div>'; // layout-page
         echo '</div>'; // layout-container
       echo '</div>'; // layout-wrapper
     }else{
-      include "modules/login.php";
+      include "modules/customer-login.php";
     }
   ?>
 

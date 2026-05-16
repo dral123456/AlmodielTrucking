@@ -118,7 +118,7 @@ class ModelCustomer {
       return "error";
     }
   }
-  static public function mdlGetUserCredentials($tableUsers, $item, $value){
+  static public function mdlGetCustomerCredentials($tableUsers, $item, $value){
 		$stmt = (new Connection)->connect()->prepare("SELECT * FROM $tableUsers WHERE $item = :$item");
 		$stmt -> bindParam(":".$item, $value, PDO::PARAM_STR);
 		$stmt -> execute();

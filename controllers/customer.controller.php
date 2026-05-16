@@ -4,20 +4,20 @@ class ControllerCustomer{
 	  $answer = (new ModelCustomer)->mdlSaveCustomer($data);
 		return $answer;
 	}
-  static public function ctrUserLogin(){
+  static public function ctrCustomerLogin(){
 		if (isset($_POST["loginUser"])) {
 				$encryptpass = $_POST["password"];
 				$table = 'customer';
 				$item = 'phoneNumber';
 				$value = $_POST["phoneNumber"];
-				$answer = (new ModelCustomer)->mdlGetUserCredentials($table, $item, $value);
+				$answer = (new ModelCustomer)->mdlGetCustomerCredentials($table, $item, $value);
 
 				if(!empty($answer) && $answer["phoneNumber"] == $_POST["phoneNumber"] && password_verify($encryptpass, $answer["password"])){
 					$_SESSION["loggedIn"] = "ok";
 					$_SESSION["id"] = $answer["id"];
 					
 					$_SESSION["customerType"] = $answer["customerType"];
-					$_SESSION["role"] = "customer";
+					$_SESSION["role"] = "customer" . $_SESSION["customerType"];
 					
 					// $empid = $_SESSION["empid"];
 					//$answer = (new ModelUserRights)->mdlAddLogin($empid);
