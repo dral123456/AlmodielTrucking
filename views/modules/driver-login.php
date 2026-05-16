@@ -62,10 +62,10 @@
               </div>
             </div>
             <div>
-              <button type="submit" name = "loginUser" class="btn btn-primary w-100 mb-4">Sign In</button>
+              <button type="submit" name = "loginDriver" class="btn btn-primary w-100 mb-4">Sign In</button>
               <?php
-                $login = new ControllerCustomer();
-                $login -> ctrCustomerLogin();
+                $login = new ControllerEmployee();
+                $login -> ctrDriverLogin();
               ?>
             </div>
 

@@ -8,4 +8,5 @@ return [
     'customer-individual/profile'  => 'modules/customer-individual/profile.php',
     'customer-individual/bookings' => 'modules/customer-individual/bookings.php',
     'logout'                     => 'modules/logout.php',
+    
 ];

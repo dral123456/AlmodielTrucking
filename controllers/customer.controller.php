@@ -6,30 +6,29 @@ class ControllerCustomer{
 	}
   static public function ctrCustomerLogin(){
 		if (isset($_POST["loginUser"])) {
-				$encryptpass = $_POST["password"];
-				$table = 'customer';
-				$item = 'phoneNumber';
-				$value = $_POST["phoneNumber"];
-				$answer = (new ModelCustomer)->mdlGetCustomerCredentials($table, $item, $value);
+      $encryptpass = $_POST["password"];
+      $table = 'customer';
+      $item = 'phoneNumber';
+      $value = $_POST["phoneNumber"];
+      $answer = (new ModelCustomer)->mdlGetCustomerCredentials($table, $item, $value);
 
-				if(!empty($answer) && $answer["phoneNumber"] == $_POST["phoneNumber"] && password_verify($encryptpass, $answer["password"])){
-					$_SESSION["loggedIn"] = "ok";
-					$_SESSION["id"] = $answer["id"];
-					
-					$_SESSION["customerType"] = $answer["customerType"];
-					$_SESSION["role"] = "customer" . $_SESSION["customerType"];
-					
-					// $empid = $_SESSION["empid"];
-					//$answer = (new ModelUserRights)->mdlAddLogin($empid);
-				    
-                echo '<script>
-									window.location = "sample";
-								</script>';
-				    
-				}else{
-					echo '<br><div style="text-align:center;" class="alert alert-danger">User or password incorrect</div>';
-				}
-			
+      if(!empty($answer) && $answer["phoneNumber"] == $_POST["phoneNumber"] && password_verify($encryptpass, $answer["password"])){
+        $_SESSION["loggedIn"] = "ok";
+        $_SESSION["id"] = $answer["id"];
+        
+        $_SESSION["customerType"] = $answer["customerType"];
+        $_SESSION["role"] = "customer" . $_SESSION["customerType"];
+        
+        // $empid = $_SESSION["empid"];
+        //$answer = (new ModelUserRights)->mdlAddLogin($empid);
+          
+              echo '<script>
+                window.location = "sample";
+              </script>';
+          
+      }else{
+        echo '<br><div style="text-align:center;" class="alert alert-danger">User or password incorrect</div>';
+      }
 		}
 	}
 

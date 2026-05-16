@@ -102,22 +102,23 @@
   <?php 
     if(!(isset($_SESSION["loggedIn"]) && $_SESSION["loggedIn"] == "ok") && isset($_GET["route"])){
       $route = basename($_GET["route"]);
-        $allowedRoutes = [
-            'login',
-            'signup'
-            // 'home',
-            // 'staffclinic',
-            // 'logout'
-        ];
-        if (in_array($route, $allowedRoutes)) {
-          if($route != "login"){
-            include "modules/customer-individual/" . $route . ".php";
-          }else{
-            include "modules/" . $route . ".php";
-          }
-        } else {
-            include "modules/404.php";
+      $allowedRoutes = [
+          'customer-login',
+          'signup',
+          'driver-login'
+          // 'home',
+          // 'staffclinic',
+          // 'logout'
+      ];
+      if (in_array($route, $allowedRoutes)) {
+        if($route == "signup"){
+          include "modules/customer-individual/" . $route . ".php";
+        }else{
+          include "modules/" . $route . ".php";
         }
+      } else {
+          include "modules/404.php";
+      }
     }
     else if(isset($_SESSION["loggedIn"]) && $_SESSION["loggedIn"] == "ok"){
       $role = $_SESSION["role"] ?? 'customer';

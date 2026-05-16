@@ -63,5 +63,11 @@ class ModelEmployee {
       return "error";
     }
   }
-
+  static public function mdlGetEmployeeCredentials($tableUsers, $item, $value, $empType){
+		$stmt = (new Connection)->connect()->prepare("SELECT * FROM $tableUsers WHERE $item = :$item AND empType = :$empType");
+		$stmt -> bindParam(":".$item, $value, PDO::PARAM_STR);
+		$stmt -> bindParam(":".$empType, $empType, PDO::PARAM_STR);
+		$stmt -> execute();
+		return $stmt -> fetch();
+	}
 }

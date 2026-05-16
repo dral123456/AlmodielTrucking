@@ -8,6 +8,11 @@ return [
         'booking-reg',
         'logout',
     ],
+    'driver' => [
+        'truck-reg',
+        'logout',
+        'sample',
+    ],
     'employee' => [
         'sample',
         'booking-reg',
