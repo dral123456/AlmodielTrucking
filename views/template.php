@@ -100,7 +100,26 @@
 <body>
 
   <?php 
-    if(isset($_SESSION["loggedIn"]) && $_SESSION["loggedIn"] == "ok"){
+    if(!(isset($_SESSION["loggedIn"]) && $_SESSION["loggedIn"] == "ok") && isset($_GET["route"])){
+      $route = basename($_GET["route"]);
+        $allowedRoutes = [
+            'login',
+            'signup'
+            // 'home',
+            // 'staffclinic',
+            // 'logout'
+        ];
+        if (in_array($route, $allowedRoutes)) {
+          if($route != "login"){
+            include "modules/customer-individual/" . $route . ".php";
+          }else{
+            include "modules/" . $route . ".php";
+          }
+        } else {
+            include "modules/404.php";
+        }
+    }
+    else if(isset($_SESSION["loggedIn"]) && $_SESSION["loggedIn"] == "ok"){
       echo '<div class="layout-wrapper layout-content-navbar">';
         echo '<div class="layout-container">';
 
@@ -121,7 +140,9 @@
                 'login',
                 'logout',
                 'truck-reg',
-                'booking-reg'
+                'booking-reg',
+                'logout',
+                'customer-individual/signup'
                 // 'home',
                 // 'staffclinic',
                 // 'logout'
@@ -191,7 +212,8 @@
       "customer-reg" => ["customer-reg.js"],
       "employee-reg" => ["employee-reg.js"],
       "truck-reg" => ["truck-reg.js"],
-      "booking-reg" => ["booking-reg.js"]
+      "booking-reg" => ["booking-reg.js"],
+      "signup" => ["customer-individual/signup.js"]
     ];
 
     if (array_key_exists($route, $routeScripts)) {
