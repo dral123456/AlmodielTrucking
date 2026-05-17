@@ -18,6 +18,7 @@
         <input type="hidden" id="customerType" value="individual">
 
         <!-- ===== CUSTOMER TYPE SELECTOR (TILE CARDS) ===== -->
+        <div id="customerTypeChooser">
         <h6 class="text-uppercase text-muted mb-3">Select Customer Type</h6>
         <div class="row g-3 mb-4">
           <div class="col-12 col-md-6">
@@ -49,8 +50,9 @@
             </div>
           </div>
         </div>
+        </div>
 
-        <hr class="my-4">
+        <hr class="my-4" id="customerTypeDivider">
 
         <!-- ===== INDIVIDUAL FORM ===== -->
         <div id="individualForm">
@@ -200,7 +202,7 @@
 
           <div class="mb-4">
             <h6 class="text-uppercase text-muted mb-3">
-              <i class="ri-map-pin-line me-1"></i> Business Address
+              <i class="ri-map-pin-line me-1"></i> Warehouse Address
             </h6>
             <div class="row">
               <div class="col-12 col-md-6 mb-3">
@@ -236,6 +238,31 @@
                 <div class="form-icon">
                   <i class="ri-home-line text-muted"></i>
                   <input type="text" class="form-control form-control-icon" id="houseCorp" placeholder="Bldg / Unit">
+                </div>
+              </div>
+              <div class="col-12 mb-3">
+                <div class="customer-map-panel">
+                  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+                    <div>
+                      <h6 class="text-uppercase text-muted mb-1">
+                        <i class="ri-map-pin-2-line me-1"></i> Warehouse Pin
+                      </h6>
+                      <p class="text-muted small mb-0" id="customerMapStatus">Click the map to pin the company warehouse.</p>
+                    </div>
+                    <span class="badge bg-primary-subtle text-primary" id="customerCoordinateText">Not pinned</span>
+                  </div>
+                  <div class="customer-map-search mb-3">
+                    <div class="input-group">
+                      <span class="input-group-text"><i class="ri-search-line"></i></span>
+                      <input type="text" class="form-control" id="warehouseMapSearch" placeholder="Search warehouse address or place">
+                      <button type="button" class="btn btn-primary" id="warehouseMapSearchBtn">
+                        Search
+                      </button>
+                    </div>
+                  </div>
+                  <div id="customerWarehouseMap"></div>
+                  <input type="hidden" id="warehouseLatitude">
+                  <input type="hidden" id="warehouseLongitude">
                 </div>
               </div>
             </div>
@@ -342,5 +369,36 @@
     justify-content: center;
     font-size: 1.5rem;
     flex-shrink: 0;
+  }
+
+  #customerWarehouseMap {
+    width: 100%;
+    min-height: 380px;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.5rem;
+    overflow: hidden;
+  }
+
+  .customer-map-search .input-group {
+    max-width: 680px;
+  }
+
+  @media (max-width: 575.98px) {
+    .customer-map-search .input-group {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+    }
+
+    .customer-map-search .input-group .btn {
+      grid-column: 1 / -1;
+      width: 100%;
+      margin-left: 0 !important;
+      border-radius: 0.375rem !important;
+      margin-top: 0.5rem;
+    }
+
+    #customerWarehouseMap {
+      min-height: 320px;
+    }
   }
 </style>

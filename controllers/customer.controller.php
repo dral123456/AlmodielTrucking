@@ -1,5 +1,10 @@
 <?php
 class ControllerCustomer{
+	static public function ctrCompanyList(){
+	  $answer = (new ModelCustomer)->mdlCompanyList();
+		return $answer;
+	}
+
 	static public function ctrSaveCustomer($data){
 	  $answer = (new ModelCustomer)->mdlSaveCustomer($data);
 		return $answer;

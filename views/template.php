@@ -121,7 +121,11 @@
                 'login',
                 'logout',
                 'truck-reg',
-                'booking-reg'
+                'booking-reg',
+                'trips',
+                'manage-company',
+                'manage-employee',
+                'manage-truck'
                 // 'home',
                 // 'staffclinic',
                 // 'logout'
@@ -191,14 +195,18 @@
       "customer-reg" => ["customer-reg.js"],
       "employee-reg" => ["employee-reg.js"],
       "truck-reg" => ["truck-reg.js"],
-      "booking-reg" => ["booking-reg.js"]
+      "booking-reg" => ["booking-reg.js"],
+      "trips" => ["trips.js"],
+      "manage-company" => ["manage.js"],
+      "manage-employee" => ["manage.js"],
+      "manage-truck" => ["manage.js"]
     ];
 
     if (array_key_exists($route, $routeScripts)) {
       foreach ($routeScripts[$route] as $script) {
         $scriptPath = "views/js/" . $script;
         if (file_exists($scriptPath)) {
-          echo '<script src="/almodieltrucking/' . $scriptPath . '"></script>';
+          echo '<script src="/almodieltrucking/' . $scriptPath . '?v=' . filemtime($scriptPath) . '"></script>';
         }
       }
     }

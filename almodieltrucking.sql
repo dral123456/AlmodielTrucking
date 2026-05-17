@@ -92,6 +92,8 @@ CREATE TABLE `customer` (
   `barangay` varchar(50) NOT NULL,
   `street` varchar(50) NOT NULL,
   `houseNumber` varchar(50) NOT NULL,
+  `warehouseLatitude` double DEFAULT NULL,
+  `warehouseLongitude` double DEFAULT NULL,
   `companyDocument` varchar(255) NOT NULL,
   `password` varchar(255) NOT NULL,
   `dateRegistered` date NOT NULL,
@@ -102,11 +104,11 @@ CREATE TABLE `customer` (
 -- Dumping data for table `customer`
 --
 
-INSERT INTO `customer` (`id`, `customerType`, `customerFName`, `customerLName`, `customerMI`, `contactPerson`, `email`, `phoneNumber`, `province`, `city`, `barangay`, `street`, `houseNumber`, `companyDocument`, `password`, `dateRegistered`, `status`) VALUES
-(1, 'individual', 'Arldrich', 'Marcelino', 'A', '', 'marcelinoarldrich@gmail.com', '09369430341', 'Negros Occidental', 'Bacolod', 'Mansilingan', 'Teak', 'East Homes 6 Blk 27 Lot 7', '', '', '2026-04-24', 'active'),
-(2, 'company', '', '', '', 'Jethro T. Almodiel', 'almodieljethro16@gmail.com', '09287310860', 'Negros Occidental', 'Bacolod', 'Mansilingan', 'Guanzon', 'Blk 2 Lot 1', '', '', '2026-04-24', 'active'),
-(3, 'company', 'Almodiel Trucking Service', '', '', 'Jethro T. Almodiel', 'almodieljethro16@gmail.com', '09287310860', 'Negros Occidental', 'Bacolod', 'Mansilingan', 'Guanzon', 'Blk 1 Lot 2', '', '', '2026-04-24', 'active'),
-(4, 'company', 'Almodiel Trucking Services', '', '', 'Jethro T. Almodiel', 'almodieljethro16@gmail.com', '09287310860', 'Negros Occidental', 'Bacolod', 'Mansilingan', 'Guanzon', 'Blk 2 Lot 1', '1777000022_barangay_check_in.png', '', '2026-04-24', 'active');
+INSERT INTO `customer` (`id`, `customerType`, `customerFName`, `customerLName`, `customerMI`, `contactPerson`, `email`, `phoneNumber`, `province`, `city`, `barangay`, `street`, `houseNumber`, `warehouseLatitude`, `warehouseLongitude`, `companyDocument`, `password`, `dateRegistered`, `status`) VALUES
+(1, 'individual', 'Arldrich', 'Marcelino', 'A', '', 'marcelinoarldrich@gmail.com', '09369430341', 'Negros Occidental', 'Bacolod', 'Mansilingan', 'Teak', 'East Homes 6 Blk 27 Lot 7', NULL, NULL, '', '', '2026-04-24', 'active'),
+(2, 'company', '', '', '', 'Jethro T. Almodiel', 'almodieljethro16@gmail.com', '09287310860', 'Negros Occidental', 'Bacolod', 'Mansilingan', 'Guanzon', 'Blk 2 Lot 1', NULL, NULL, '', '', '2026-04-24', 'active'),
+(3, 'company', 'Almodiel Trucking Service', '', '', 'Jethro T. Almodiel', 'almodieljethro16@gmail.com', '09287310860', 'Negros Occidental', 'Bacolod', 'Mansilingan', 'Guanzon', 'Blk 1 Lot 2', NULL, NULL, '', '', '2026-04-24', 'active'),
+(4, 'company', 'Almodiel Trucking Services', '', '', 'Jethro T. Almodiel', 'almodieljethro16@gmail.com', '09287310860', 'Negros Occidental', 'Bacolod', 'Mansilingan', 'Guanzon', 'Blk 2 Lot 1', NULL, NULL, '1777000022_barangay_check_in.png', '', '2026-04-24', 'active');
 
 -- --------------------------------------------------------
 
@@ -210,6 +212,8 @@ CREATE TABLE `truck` (
   `fuel` int NOT NULL,
   `mileage` int NOT NULL,
   `brand` varchar(20) NOT NULL,
+  `corDocument` varchar(255) NOT NULL,
+  `otherDocument` varchar(255) DEFAULT NULL,
   `status` varchar(20) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 

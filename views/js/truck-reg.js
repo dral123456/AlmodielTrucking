@@ -2,6 +2,7 @@ $(document).ready(function () {
 
   $(document).on('click', '#truckBtnReset', function () {
     $('#truckPlateNumber, #truckBrand, #truckType, #truckCapacity, #truckFuel, #truckMileage, #truckDriver, #truckAssistant1, #truckAssistant2').val('');
+    $('#truckCorDocument, #truckOtherDocument').val('');
     $('.is-invalid').removeClass('is-invalid');
     syncAssistantOptions();
   });
@@ -42,6 +43,7 @@ $(document).ready(function () {
     check('truckCapacity', 'Capacity');
     check('truckFuel', 'Fuel');
     check('truckMileage', 'Mileage');
+    check('truckCorDocument', 'COR Image');
     check('truckDriver', 'Driver');
     check('truckAssistant1', 'Assistant 1');
     check('truckAssistant2', 'Assistant 2');
@@ -59,6 +61,20 @@ $(document).ready(function () {
     if ($('#truckAssistant1').val() && $('#truckAssistant1').val() === $('#truckAssistant2').val()) {
       missing.push('Assistant 1 and Assistant 2 must be different employees');
       $('#truckAssistant1, #truckAssistant2').addClass('is-invalid');
+    }
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    const corFile = $('#truckCorDocument')[0].files[0];
+    const otherFile = $('#truckOtherDocument')[0].files[0];
+
+    if (corFile && !allowedTypes.includes(corFile.type)) {
+      missing.push('COR Image must be JPG, PNG, or WEBP');
+      $('#truckCorDocument').addClass('is-invalid');
+    }
+
+    if (otherFile && !allowedTypes.includes(otherFile.type)) {
+      missing.push('OR / Other Truck Document must be JPG, PNG, or WEBP');
+      $('#truckOtherDocument').addClass('is-invalid');
     }
 
     return missing;
@@ -102,6 +118,8 @@ $(document).ready(function () {
         '<div class="text-start bg-light rounded p-3">' +
           '<div><strong>Plate Number:</strong> ' + ($('#truckPlateNumber').val() || '-') + '</div>' +
           '<div><strong>Brand / Type:</strong> ' + ($('#truckBrand').val() || '-') + ' / ' + ($('#truckType').val() || '-') + '</div>' +
+          '<div><strong>COR Image:</strong> ' + (($('#truckCorDocument')[0].files[0] || {}).name || '-') + '</div>' +
+          '<div><strong>Other Document:</strong> ' + (($('#truckOtherDocument')[0].files[0] || {}).name || '-') + '</div>' +
           '<div><strong>Driver:</strong> ' + ($('#truckDriver option:selected').text().trim() || '-') + '</div>' +
           '<div><strong>Assistant 1:</strong> ' + ($('#truckAssistant1 option:selected').text().trim() || '-') + '</div>' +
           '<div><strong>Assistant 2:</strong> ' + ($('#truckAssistant2 option:selected').text().trim() || '-') + '</div>' +
@@ -132,6 +150,14 @@ $(document).ready(function () {
     formData.append('assistant1ID', $('#truckAssistant1').val());
     formData.append('assistant2ID', $('#truckAssistant2').val());
 
+    if ($('#truckCorDocument')[0].files[0]) {
+      formData.append('corDocument', $('#truckCorDocument')[0].files[0]);
+    }
+
+    if ($('#truckOtherDocument')[0].files[0]) {
+      formData.append('otherDocument', $('#truckOtherDocument')[0].files[0]);
+    }
+
     $.ajax({
       url: 'ajax/truck_save_record.ajax.php',
       method: 'POST',
@@ -157,6 +183,13 @@ $(document).ready(function () {
             icon: 'info',
             title: 'Already Exists',
             text: 'This truck is already registered.',
+            confirmButtonColor: '#696cff'
+          });
+        } else if (res === 'invalid_file') {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Invalid File',
+            text: 'Please upload JPG, PNG, or WEBP images only.',
             confirmButtonColor: '#696cff'
           });
         } else {

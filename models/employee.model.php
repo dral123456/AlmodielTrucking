@@ -3,6 +3,36 @@ require_once "connection.php";
 
 class ModelEmployee {
 
+    static public function mdlEmployeeList() {
+        $pdo = (new Connection)->connect();
+        $licenseSelect = self::columnExists($pdo, "employee", "licenseNumber") &&
+            self::columnExists($pdo, "employee", "licenseExpire") &&
+            self::columnExists($pdo, "employee", "licenseImage")
+            ? "licenseNumber, licenseExpire, licenseImage"
+            : "NULL AS licenseNumber, NULL AS licenseExpire, NULL AS licenseImage";
+
+        $stmt = $pdo->prepare("
+            SELECT
+                id,
+                empFName,
+                empLName,
+                empMI,
+                empSuffix,
+                empBirthDate,
+                empPhoneNumber,
+                empEmail,
+                empType,
+                empStatus,
+                dateCreated,
+                {$licenseSelect}
+            FROM employee
+            ORDER BY empStatus DESC, empFName, empLName
+        ");
+
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
     static public function mdlSaveEmployee($data) {
         $db = new Connection();
         $pdo = $db->connect();
@@ -71,5 +101,21 @@ class ModelEmployee {
 
             return "error: " . $e->getMessage();
         }
+    }
+
+    static private function columnExists($pdo, $tableName, $columnName) {
+        $stmt = $pdo->prepare("
+            SELECT COUNT(*)
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = :tableName
+              AND COLUMN_NAME = :columnName
+        ");
+
+        $stmt->bindParam(":tableName", $tableName, PDO::PARAM_STR);
+        $stmt->bindParam(":columnName", $columnName, PDO::PARAM_STR);
+        $stmt->execute();
+
+        return (int) $stmt->fetchColumn() > 0;
     }
 }
