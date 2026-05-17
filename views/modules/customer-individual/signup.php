@@ -6,6 +6,13 @@
         <div class="card-header border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
           <div>
             <h5 class="mb-0">Customer Registration</h5>
+          </div>
+          <a href="customer-login" class="btn btn-outline-secondary btn-sm">
+            <i class="ri-arrow-left-line me-1"></i> Back to Login
+          </a>
+        </div>
+
+        <div class="card-body">
 
           <hr class="my-4">
 
@@ -108,7 +115,7 @@
           </div>
 
 
-          <!-- ===== ACCOUNT CREDENTIALS (shared) ===== -->
+           <!-- ===== ACCOUNT CREDENTIALS ===== -->
           <hr class="my-4">
           <div class="mb-2">
             <h6 class="text-uppercase text-muted mb-3">
@@ -138,7 +145,6 @@
           </div>
 
           <!-- Submit -->
-          <!-- <hr class="my-4"> -->
           <div class="d-flex justify-content-end gap-2">
             <button class="btn btn-light" type="button" id="btnResetCustomer">
               <i class="ri-refresh-line me-1"></i> Reset

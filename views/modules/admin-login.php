@@ -62,15 +62,16 @@
               </div>
             </div>
             <div>
-              <button type="submit" name = "loginUser" class="btn btn-primary w-100 mb-4">Sign In</button>
+              <button type="submit" name = "loginAdmin" class="btn btn-primary w-100 mb-4">Sign In</button>
               <?php
-                $login = new ControllerCustomer();
-                $login -> ctrCustomerLogin();
+                $login = new ControllerEmployee();
+                $login -> ctrAdminLogin();
               ?>
             </div>
 
             
           </form>
+          <p class="text-center mt-6 mb-0 text-muted fs-13">Don't have an account? <a href="customer-reg" class="link fw-semibold">Sign up here</a></p>
           <p class="text-center mt-6 mb-0 text-muted fs-13">Don't have an account? <a href="signup" class="link fw-semibold">Sign up here</a></p>
         </div>
       </div>

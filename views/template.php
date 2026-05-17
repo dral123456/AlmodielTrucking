@@ -137,7 +137,8 @@
       $allowedRoutes = [
           'customer-login',
           'signup',
-          'driver-login'
+          'driver-login',
+          'admin-login'
           // 'home',
           // 'staffclinic',
           // 'logout'
