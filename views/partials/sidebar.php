@@ -36,11 +36,6 @@
                                 Trips
                             </a>
                         </li>
-                        <li class="pe-slide-item">
-                            <a href="dashboard-media.html" class="pe-nav-link">
-                                Pricing
-                            </a>
-                        </li>
                     </ul>
                 </li>
                 <li class="pe-menu-title">Management</li>

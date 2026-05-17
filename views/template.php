@@ -155,6 +155,9 @@
     }
     else if(isset($_SESSION["loggedIn"]) && $_SESSION["loggedIn"] == "ok"){
       $role = $_SESSION["role"] ?? 'customer';
+      if (in_array($role, ['customerindividual', 'customercompany'], true)) {
+        $role = 'customer';
+      }
       $routeMap   = include "configs/routes.php";
       $modulePaths = include "configs/module-paths.php";
 
@@ -176,12 +179,10 @@
                   $route = '404';
               }
           }
-          if (in_array($route, $allowedRoutes) && isset($modulePaths[$route])) {
+          if (isset($modulePaths[$route])) {
               include $modulePaths[$route];
           } else {
-              // Distinguish "not found" from "forbidden" for better UX
-              $status = isset($modulePaths[$route]) ? '403' : '404';
-              include "modules/{$status}.php";
+              include "modules/404.php";
           }
               echo '</div>'; // container-fluid
             echo '</div>'; // content-wrapper
