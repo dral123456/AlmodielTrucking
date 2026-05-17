@@ -3,5 +3,5 @@ session_unset();
 session_destroy();
 
 echo '<script>
-	    window.location = "login";
+	    window.location = "customer-login";
     </script>'; 

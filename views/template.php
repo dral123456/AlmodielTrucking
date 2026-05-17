@@ -5,6 +5,21 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
+  <script>
+    (function() {
+      var theme = localStorage.getItem('data-bs-theme') || 'light';
+      var sidebar = localStorage.getItem('data-sidebar') || 'default';
+      var sidebarColor = localStorage.getItem('data-sidebar-color') || 'light';
+      var layout = localStorage.getItem('data-layout') || 'vertical';
+      var themeColor = localStorage.getItem('data-theme-colors') || 'default';
+
+      document.documentElement.setAttribute('data-bs-theme', theme);
+      document.documentElement.setAttribute('data-sidebar', sidebar);
+      document.documentElement.setAttribute('data-sidebar-color', sidebarColor);
+      document.documentElement.setAttribute('data-layout', layout);
+      document.documentElement.setAttribute('data-theme-colors', themeColor);
+    })();
+  </script>
   <title>Almodiel Trucking Service </title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <meta content="Admin & Dashboards Template" name="description" />
@@ -12,6 +27,23 @@
   
   <!-- layout setup -->
   <script type="module" src="views/assets/js/layout-setup.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      var theme = localStorage.getItem('data-bs-theme') || 'light';
+      var lightBtn = document.getElementById('lightModeBtn');
+      var darkBtn  = document.getElementById('darkModeBtn');
+
+      if (!lightBtn || !darkBtn) return;
+
+      if (theme === 'dark') {
+        lightBtn.classList.remove('active');
+        darkBtn.classList.add('active');
+      } else {
+        lightBtn.classList.add('active');
+        darkBtn.classList.remove('active');
+      }
+    });
+  </script>
   
   <!-- App favicon -->
   <link rel="shortcut icon" href="views/assets/images/favicon.png">  <!-- Simplebar Css -->
@@ -100,53 +132,68 @@
 <body>
 
   <?php 
-    if(isset($_SESSION["loggedIn"]) && $_SESSION["loggedIn"] == "ok"){
+    if(!(isset($_SESSION["loggedIn"]) && $_SESSION["loggedIn"] == "ok") && isset($_GET["route"])){
+      $route = basename($_GET["route"]);
+      $allowedRoutes = [
+          'customer-login',
+          'signup',
+          'driver-login',
+          'admin-login'
+          // 'home',
+          // 'staffclinic',
+          // 'logout'
+      ];
+      if (in_array($route, $allowedRoutes)) {
+        if($route == "signup"){
+          include "modules/customer-individual/" . $route . ".php";
+        }else{
+          include "modules/" . $route . ".php";
+        }
+      } else {
+          include "modules/404.php";
+      }
+    }
+    else if(isset($_SESSION["loggedIn"]) && $_SESSION["loggedIn"] == "ok"){
+      $role = $_SESSION["role"] ?? 'customer';
+      $routeMap   = include "configs/routes.php";
+      $modulePaths = include "configs/module-paths.php";
+
+      $allowedRoutes = $routeMap[$role] ?? [];
       echo '<div class="layout-wrapper layout-content-navbar">';
         echo '<div class="layout-container">';
-
-        include "partials/sidebar.php";
-
-        echo '<div class="layout-page">';
-
-        include "partials/header.php";
-
-        echo '<div class="content-wrapper">';
-        echo '<div class="container-fluid py-4">';
-          if(isset($_GET["route"])){
-            $route = basename($_GET["route"]);
-            $allowedRoutes = [
-                'sample',
-                'employee-reg',
-                'customer-reg',
-                'login',
-                'logout',
-                'truck-reg',
-                'booking-reg'
-                // 'home',
-                // 'staffclinic',
-                // 'logout'
-            ];
-
-            if (in_array($route, $allowedRoutes)) {
-                include "modules/" . $route . ".php";
-            } else {
-                include "modules/404.php";
-            }
-          }else{
-            $route = "sample";
-            include "modules/sample.php"; 
+          include "partials/sidebar.php";
+          echo '<div class="layout-page">';
+            include "partials/header.php";
+            echo '<div class="content-wrapper">';
+              echo '<div class="container-fluid py-4">';
+              $route = isset($_GET["route"]) ? basename($_GET["route"]) : 'sample';
+          if (isset($_GET["route"])) {
+              $raw = $_GET["route"];
+              // Allow only alphanumeric, hyphens, and ONE slash
+              if (preg_match('/^[a-zA-Z0-9\-]+(\/[a-zA-Z0-9\-]+)?$/', $raw)) {
+                  $route = $raw;
+              } else {
+                  $route = '404';
+              }
           }
-        echo '</div>'; // container-fluid
-        echo '</div>'; // content-wrapper
+          if (in_array($route, $allowedRoutes) && isset($modulePaths[$route])) {
+              include $modulePaths[$route];
+          } else {
+              // Distinguish "not found" from "forbidden" for better UX
+              $status = isset($modulePaths[$route]) ? '403' : '404';
+              include "modules/{$status}.php";
+          }
+              echo '</div>'; // container-fluid
+            echo '</div>'; // content-wrapper
 
-        echo '<div class="layout-overlay layout-menu-toggle"></div>';
-        echo '<div class="drag-target"></div>';
+          echo '<div class="layout-overlay layout-menu-toggle"></div>';
+          echo '<div class="drag-target"></div>';
 
-        echo '</div>'; // layout-page
+          echo '</div>'; // layout-page
         echo '</div>'; // layout-container
       echo '</div>'; // layout-wrapper
     }else{
-      include "modules/login.php";
+      include "modules/customer-login.php";
     }
   ?>
 
@@ -191,7 +238,8 @@
       "customer-reg" => ["customer-reg.js"],
       "employee-reg" => ["employee-reg.js"],
       "truck-reg" => ["truck-reg.js"],
-      "booking-reg" => ["booking-reg.js"]
+      "booking-reg" => ["booking-reg.js"],
+      "signup" => ["customer-individual/signup.js"]
     ];
 
     if (array_key_exists($route, $routeScripts)) {

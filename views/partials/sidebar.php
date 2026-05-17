@@ -1,7 +1,7 @@
 <aside class="pe-app-sidebar" id="sidebar">
     <div class="pe-app-sidebar-logo px-6 d-flex align-items-center position-relative">
         <!--begin::Brand Image-->
-        <a href="index.html" class="d-flex align-items-end logo-main">
+        <a href="sample" class="d-flex align-items-end logo-main">
             <img height="35" width="34" class="logo-dark" alt="Dark Logo" src="views/assets/images/logo-md.png">
             <img height="35" width="34" class="logo-light" alt="Light Logo" src="views/assets/images/logo-md-light.png">
             <h3 class="text-body-emphasis fw-bolder mb-0 ms-1">Urbix</h3>
