@@ -239,14 +239,18 @@
       "employee-reg" => ["employee-reg.js"],
       "truck-reg" => ["truck-reg.js"],
       "booking-reg" => ["booking-reg.js"],
-      "signup" => ["customer-individual/signup.js"]
+      "signup" => ["customer-individual/signup.js"],
+      "trips" => ["trips.js"],
+      "manage-company" => ["manage.js"],
+      "manage-employee" => ["manage.js"],
+      "manage-truck" => ["manage.js"]
     ];
 
     if (array_key_exists($route, $routeScripts)) {
       foreach ($routeScripts[$route] as $script) {
         $scriptPath = "views/js/" . $script;
         if (file_exists($scriptPath)) {
-          echo '<script src="/almodieltrucking/' . $scriptPath . '"></script>';
+          echo '<script src="/almodieltrucking/' . $scriptPath . '?v=' . filemtime($scriptPath) . '"></script>';
         }
       }
     }

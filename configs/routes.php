@@ -6,6 +6,10 @@ return [
         'customer-reg',
         'truck-reg',
         'booking-reg',
+        'trips',
+        'manage-company',
+        'manage-employee',
+        'manage-truck',
         'logout',
     ],
     'driver' => [

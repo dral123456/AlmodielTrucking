@@ -67,7 +67,17 @@ foreach ($trucks as $truck) {
                         $customerName = $customer["contactPerson"];
                       }
                     ?>
-                    <option value="<?php echo htmlspecialchars($customer["id"]); ?>">
+                    <option
+                      value="<?php echo htmlspecialchars($customer["id"]); ?>"
+                      data-type="<?php echo htmlspecialchars($customer["customerType"]); ?>"
+                      data-province="<?php echo htmlspecialchars($customer["province"] ?? ""); ?>"
+                      data-city="<?php echo htmlspecialchars($customer["city"] ?? ""); ?>"
+                      data-barangay="<?php echo htmlspecialchars($customer["barangay"] ?? ""); ?>"
+                      data-street="<?php echo htmlspecialchars($customer["street"] ?? ""); ?>"
+                      data-house="<?php echo htmlspecialchars($customer["houseNumber"] ?? ""); ?>"
+                      data-latitude="<?php echo htmlspecialchars($customer["warehouseLatitude"] ?? ""); ?>"
+                      data-longitude="<?php echo htmlspecialchars($customer["warehouseLongitude"] ?? ""); ?>"
+                    >
                       <?php echo htmlspecialchars($customerName); ?>
                     </option>
                   <?php endforeach; ?>

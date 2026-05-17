@@ -4,8 +4,25 @@ require_once "connection.php";
 class ModelBooking {
 
   static public function mdlCustomerList() {
-    $stmt = (new Connection)->connect()->prepare("
-      SELECT id, customerType, customerFName, customerLName, contactPerson
+    $pdo = (new Connection)->connect();
+    $warehouseSelect = self::columnExists($pdo, "customer", "warehouseLatitude") &&
+      self::columnExists($pdo, "customer", "warehouseLongitude")
+      ? "warehouseLatitude, warehouseLongitude"
+      : "NULL AS warehouseLatitude, NULL AS warehouseLongitude";
+
+    $stmt = $pdo->prepare("
+      SELECT
+        id,
+        customerType,
+        customerFName,
+        customerLName,
+        contactPerson,
+        province,
+        city,
+        barangay,
+        street,
+        houseNumber,
+        {$warehouseSelect}
       FROM customer
       WHERE status = 'active'
       ORDER BY customerFName, customerLName, contactPerson
@@ -86,6 +103,153 @@ class ModelBooking {
     return $crew;
   }
 
+  static public function mdlTripOverviewList() {
+    $pdo = (new Connection)->connect();
+
+    $stmt = $pdo->prepare("
+      SELECT
+        b.bookingID,
+        b.tripID,
+        b.customerID,
+        b.pickupDateTime,
+        b.price,
+        b.status,
+        c.customerType,
+        c.customerFName,
+        c.customerLName,
+        c.contactPerson,
+        pickup.locationID AS pickupLocationID,
+        pickup.province AS pickupProvince,
+        pickup.city AS pickupCity,
+        pickup.barangay AS pickupBarangay,
+        pickup.street AS pickupStreet,
+        pickup.description AS pickupDescription,
+        pickup.latitude AS pickupLatitude,
+        pickup.longitude AS pickupLongitude,
+        destination.locationID AS destinationLocationID,
+        destination.province AS destinationProvince,
+        destination.city AS destinationCity,
+        destination.barangay AS destinationBarangay,
+        destination.street AS destinationStreet,
+        destination.description AS destinationDescription,
+        destination.latitude AS destinationLatitude,
+        destination.longitude AS destinationLongitude
+      FROM booking b
+      INNER JOIN customer c ON c.id = b.customerID
+      INNER JOIN location pickup ON pickup.locationID = b.pickupLocationID
+      INNER JOIN location destination ON destination.locationID = b.destinationLocationID
+      ORDER BY b.pickupDateTime DESC, b.tripID DESC, b.bookingID ASC
+    ");
+
+    $stmt->execute();
+    $trips = array();
+
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+      $tripID = (string) $row["tripID"];
+
+      if (!isset($trips[$tripID])) {
+        $trips[$tripID] = array(
+          "tripID" => (int) $row["tripID"],
+          "firstPickupDateTime" => $row["pickupDateTime"],
+          "lastPickupDateTime" => $row["pickupDateTime"],
+          "status" => $row["status"],
+          "bookingCount" => 0,
+          "totalPrice" => 0,
+          "customers" => array(),
+          "crew" => array(),
+          "bookings" => array()
+        );
+      }
+
+      if (strtotime($row["pickupDateTime"]) < strtotime($trips[$tripID]["firstPickupDateTime"])) {
+        $trips[$tripID]["firstPickupDateTime"] = $row["pickupDateTime"];
+      }
+
+      if (strtotime($row["pickupDateTime"]) > strtotime($trips[$tripID]["lastPickupDateTime"])) {
+        $trips[$tripID]["lastPickupDateTime"] = $row["pickupDateTime"];
+      }
+
+      $customerName = trim($row["customerFName"] . " " . $row["customerLName"]);
+      if ($customerName === "") {
+        $customerName = $row["contactPerson"];
+      }
+
+      $trips[$tripID]["bookingCount"]++;
+      $trips[$tripID]["totalPrice"] += (float) $row["price"];
+      $trips[$tripID]["customers"][$row["customerID"]] = $customerName;
+      $trips[$tripID]["bookings"][] = array(
+        "bookingID" => (int) $row["bookingID"],
+        "customerName" => $customerName,
+        "customerType" => $row["customerType"],
+        "pickupDateTime" => $row["pickupDateTime"],
+        "status" => $row["status"],
+        "price" => (float) $row["price"],
+        "pickup" => array(
+          "address" => self::formatAddress($row["pickupStreet"], $row["pickupBarangay"], $row["pickupCity"], $row["pickupProvince"]),
+          "description" => $row["pickupDescription"],
+          "latitude" => (float) $row["pickupLatitude"],
+          "longitude" => (float) $row["pickupLongitude"]
+        ),
+        "destination" => array(
+          "address" => self::formatAddress($row["destinationStreet"], $row["destinationBarangay"], $row["destinationCity"], $row["destinationProvince"]),
+          "description" => $row["destinationDescription"],
+          "latitude" => (float) $row["destinationLatitude"],
+          "longitude" => (float) $row["destinationLongitude"]
+        )
+      );
+    }
+
+    foreach ($trips as $tripID => $trip) {
+      $trips[$tripID]["customers"] = array_values($trip["customers"]);
+      $trips[$tripID]["status"] = self::deriveTripStatus($trip["bookings"]);
+      $trips[$tripID]["crew"] = self::getTripCrew($pdo, $tripID);
+    }
+
+    return array_values($trips);
+  }
+
+  static private function formatAddress($street, $barangay, $city, $province) {
+    return implode(", ", array_filter(array($street, $barangay, $city, $province)));
+  }
+
+  static private function deriveTripStatus($bookings) {
+    $statuses = array_column($bookings, "status");
+
+    if (in_array("in-transit", $statuses, true)) {
+      return "in-transit";
+    }
+
+    if (!empty($statuses) && count(array_unique($statuses)) === 1 && $statuses[0] === "completed") {
+      return "completed";
+    }
+
+    return "pending";
+  }
+
+  static private function getTripCrew($pdo, $tripID) {
+    if (!self::tableExists($pdo, "tripemployee")) {
+      return array();
+    }
+
+    $stmt = $pdo->prepare("
+      SELECT
+        te.role,
+        e.empFName,
+        e.empLName,
+        t.plateNumber
+      FROM tripemployee te
+      INNER JOIN employee e ON e.id = te.empID
+      LEFT JOIN truck t ON t.id = te.truckID
+      WHERE te.tripID = :tripID
+      ORDER BY FIELD(te.role, 'driver', 'assistant'), e.empFName, e.empLName
+    ");
+
+    $stmt->bindParam(":tripID", $tripID, PDO::PARAM_INT);
+    $stmt->execute();
+
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+  }
+
   static public function mdlSaveBooking($data) {
     $db = new Connection();
     $pdo = $db->connect();
@@ -96,7 +260,7 @@ class ModelBooking {
 
       $pickupLocationID = self::insertLocation($pdo, $data["pickup"]);
       $destinationLocationID = self::insertLocation($pdo, $data["destination"]);
-      $tripID = self::generateTripID($pdo);
+      $tripID = self::assignTripID($pdo, $data, $pickupLocationID, $destinationLocationID);
 
       $stmt = $pdo->prepare("
         INSERT INTO booking (
@@ -134,7 +298,7 @@ class ModelBooking {
       $bookingID = $pdo->lastInsertId();
       self::insertCargo($pdo, $bookingID, $data["cargo"]);
 
-      if (isset($data["truckID"], $data["crew"])) {
+      if (isset($data["truckID"], $data["crew"]) && !self::tripHasEmployees($pdo, $tripID)) {
         self::insertTripEmployees($pdo, $tripID, $data["truckID"], $data["crew"]);
       }
 
@@ -181,6 +345,278 @@ class ModelBooking {
     $stmt->execute();
 
     return $pdo->lastInsertId();
+  }
+
+  static private function assignTripID($pdo, $data, $pickupLocationID, $destinationLocationID) {
+    $customer = self::getCustomer($pdo, $data["customerID"]);
+
+    if ($customer) {
+      $existingTripID = self::findNearestExistingTrip($pdo, $customer, $data["pickupDateTime"], $pickupLocationID, $destinationLocationID);
+
+      if ($existingTripID) {
+        return $existingTripID;
+      }
+    }
+
+    return self::generateTripID($pdo);
+  }
+
+  static private function getCustomer($pdo, $customerID) {
+    $stmt = $pdo->prepare("
+      SELECT id, customerType
+      FROM customer
+      WHERE id = :customerID
+      LIMIT 1
+    ");
+
+    $stmt->bindParam(":customerID", $customerID, PDO::PARAM_INT);
+    $stmt->execute();
+
+    return $stmt->fetch(PDO::FETCH_ASSOC);
+  }
+
+  static private function findNearestExistingTrip($pdo, $customer, $pickupDateTime, $pickupLocationID, $destinationLocationID) {
+    $pickup = self::getLocationByID($pdo, $pickupLocationID);
+    $destination = self::getLocationByID($pdo, $destinationLocationID);
+
+    if (!$pickup || !$destination) {
+      return null;
+    }
+
+    if ($customer["customerType"] === "company") {
+      return self::findCompanyRouteTrip($pdo, $customer["id"], $pickupDateTime, $pickup, $destination);
+    }
+
+    $where = "
+      DATE(b.pickupDateTime) = DATE(:pickupDateTime)
+      AND b.status = 'pending'
+    ";
+
+    $where .= "
+      AND c.customerType = 'individual'
+      AND b.pickupDateTime <> :pickupDateTimeExact
+    ";
+
+    $stmt = $pdo->prepare("
+      SELECT
+        b.tripID,
+        destination.latitude AS destinationLatitude,
+        destination.longitude AS destinationLongitude
+      FROM booking b
+      INNER JOIN customer c ON c.id = b.customerID
+      INNER JOIN location destination ON destination.locationID = b.destinationLocationID
+      WHERE {$where}
+      ORDER BY b.pickupDateTime ASC, b.bookingID ASC
+    ");
+
+    $stmt->bindParam(":pickupDateTime", $pickupDateTime, PDO::PARAM_STR);
+
+    $stmt->bindParam(":pickupDateTimeExact", $pickupDateTime, PDO::PARAM_STR);
+
+    $stmt->execute();
+
+    $nearestTripID = null;
+    $nearestDistance = null;
+
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $booking) {
+      $distance = self::distanceInKilometers(
+        $pickup["latitude"],
+        $pickup["longitude"],
+        $booking["destinationLatitude"],
+        $booking["destinationLongitude"]
+      );
+
+      if ($nearestDistance === null || $distance < $nearestDistance) {
+        $nearestDistance = $distance;
+        $nearestTripID = (int) $booking["tripID"];
+      }
+    }
+
+    return $nearestTripID;
+  }
+
+  static private function findCompanyRouteTrip($pdo, $customerID, $pickupDateTime, $pickup, $destination) {
+    $stmt = $pdo->prepare("
+      SELECT
+        b.tripID,
+        b.bookingID,
+        pickup.latitude AS pickupLatitude,
+        pickup.longitude AS pickupLongitude,
+        destination.latitude AS destinationLatitude,
+        destination.longitude AS destinationLongitude
+      FROM booking b
+      INNER JOIN location pickup ON pickup.locationID = b.pickupLocationID
+      INNER JOIN location destination ON destination.locationID = b.destinationLocationID
+      WHERE DATE(b.pickupDateTime) = DATE(:pickupDateTime)
+        AND b.customerID = :customerID
+        AND b.status = 'pending'
+      ORDER BY b.pickupDateTime ASC, b.bookingID ASC
+    ");
+
+    $stmt->bindParam(":pickupDateTime", $pickupDateTime, PDO::PARAM_STR);
+    $stmt->bindParam(":customerID", $customerID, PDO::PARAM_INT);
+    $stmt->execute();
+
+    $bestTripID = null;
+    $bestScore = null;
+
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $booking) {
+      $existingPickup = array(
+        "latitude" => $booking["pickupLatitude"],
+        "longitude" => $booking["pickupLongitude"]
+      );
+      $existingDestination = array(
+        "latitude" => $booking["destinationLatitude"],
+        "longitude" => $booking["destinationLongitude"]
+      );
+
+      if (!self::isOneWayRouteCompatible($existingPickup, $existingDestination, $pickup, $destination)) {
+        continue;
+      }
+
+      $score = min(
+        self::distanceInKilometers($pickup["latitude"], $pickup["longitude"], $existingDestination["latitude"], $existingDestination["longitude"]),
+        self::distanceInKilometers($pickup["latitude"], $pickup["longitude"], $existingPickup["latitude"], $existingPickup["longitude"]),
+        self::distanceInKilometers($destination["latitude"], $destination["longitude"], $existingDestination["latitude"], $existingDestination["longitude"])
+      );
+
+      if ($bestScore === null || $score < $bestScore) {
+        $bestScore = $score;
+        $bestTripID = (int) $booking["tripID"];
+      }
+    }
+
+    return $bestTripID;
+  }
+
+  static private function isOneWayRouteCompatible($existingPickup, $existingDestination, $pickup, $destination) {
+    $stopRadiusKm = 8;
+    $routeCorridorKm = 12;
+    $minimumDirectionCosine = 0.25;
+
+    $direction = self::routeDirectionCosine($existingPickup, $existingDestination, $pickup, $destination);
+    if ($direction < $minimumDirectionCosine) {
+      return false;
+    }
+
+    $existingDestinationToPickup = self::distanceInKilometers(
+      $existingDestination["latitude"],
+      $existingDestination["longitude"],
+      $pickup["latitude"],
+      $pickup["longitude"]
+    );
+
+    if ($existingDestinationToPickup <= $stopRadiusKm) {
+      return true;
+    }
+
+    $sameStart = self::distanceInKilometers(
+      $existingPickup["latitude"],
+      $existingPickup["longitude"],
+      $pickup["latitude"],
+      $pickup["longitude"]
+    ) <= $stopRadiusKm;
+
+    if ($sameStart && self::isPointOnForwardSegment($destination, $existingPickup, $existingDestination, $routeCorridorKm)) {
+      return true;
+    }
+
+    if ($sameStart && self::isPointOnForwardSegment($existingDestination, $pickup, $destination, $routeCorridorKm)) {
+      return true;
+    }
+
+    if (self::isPointOnForwardSegment($pickup, $existingPickup, $existingDestination, $routeCorridorKm) &&
+        self::isPointOnForwardSegment($destination, $existingPickup, $destination, $routeCorridorKm)) {
+      return true;
+    }
+
+    return false;
+  }
+
+  static private function routeDirectionCosine($aStart, $aEnd, $bStart, $bEnd) {
+    $aStartPoint = self::locationToPoint($aStart, $aStart["latitude"]);
+    $aEndPoint = self::locationToPoint($aEnd, $aStart["latitude"]);
+    $bStartPoint = self::locationToPoint($bStart, $aStart["latitude"]);
+    $bEndPoint = self::locationToPoint($bEnd, $aStart["latitude"]);
+
+    $aVector = array("x" => $aEndPoint["x"] - $aStartPoint["x"], "y" => $aEndPoint["y"] - $aStartPoint["y"]);
+    $bVector = array("x" => $bEndPoint["x"] - $bStartPoint["x"], "y" => $bEndPoint["y"] - $bStartPoint["y"]);
+    $aLength = sqrt(($aVector["x"] * $aVector["x"]) + ($aVector["y"] * $aVector["y"]));
+    $bLength = sqrt(($bVector["x"] * $bVector["x"]) + ($bVector["y"] * $bVector["y"]));
+
+    if ($aLength <= 0 || $bLength <= 0) {
+      return -1;
+    }
+
+    return (($aVector["x"] * $bVector["x"]) + ($aVector["y"] * $bVector["y"])) / ($aLength * $bLength);
+  }
+
+  static private function isPointOnForwardSegment($point, $segmentStart, $segmentEnd, $corridorKm) {
+    $originLatitude = $segmentStart["latitude"];
+    $start = self::locationToPoint($segmentStart, $originLatitude);
+    $end = self::locationToPoint($segmentEnd, $originLatitude);
+    $target = self::locationToPoint($point, $originLatitude);
+    $segmentX = $end["x"] - $start["x"];
+    $segmentY = $end["y"] - $start["y"];
+    $segmentLengthSquared = ($segmentX * $segmentX) + ($segmentY * $segmentY);
+
+    if ($segmentLengthSquared <= 0) {
+      return false;
+    }
+
+    $projection = ((($target["x"] - $start["x"]) * $segmentX) + (($target["y"] - $start["y"]) * $segmentY)) / $segmentLengthSquared;
+
+    if ($projection < 0 || $projection > 1) {
+      return false;
+    }
+
+    $closest = array(
+      "x" => $start["x"] + ($projection * $segmentX),
+      "y" => $start["y"] + ($projection * $segmentY)
+    );
+    $distanceFromRoute = sqrt(pow($target["x"] - $closest["x"], 2) + pow($target["y"] - $closest["y"], 2));
+
+    return $distanceFromRoute <= $corridorKm;
+  }
+
+  static private function locationToPoint($location, $originLatitude) {
+    $earthRadius = 6371;
+    $latitude = deg2rad((float) $location["latitude"]);
+    $longitude = deg2rad((float) $location["longitude"]);
+    $origin = deg2rad((float) $originLatitude);
+
+    return array(
+      "x" => $earthRadius * $longitude * cos($origin),
+      "y" => $earthRadius * $latitude
+    );
+  }
+
+  static private function getLocationByID($pdo, $locationID) {
+    $stmt = $pdo->prepare("
+      SELECT locationID, latitude, longitude
+      FROM location
+      WHERE locationID = :locationID
+      LIMIT 1
+    ");
+
+    $stmt->bindParam(":locationID", $locationID, PDO::PARAM_INT);
+    $stmt->execute();
+
+    return $stmt->fetch(PDO::FETCH_ASSOC);
+  }
+
+  static private function distanceInKilometers($lat1, $lng1, $lat2, $lng2) {
+    $earthRadius = 6371;
+    $latDelta = deg2rad((float) $lat2 - (float) $lat1);
+    $lngDelta = deg2rad((float) $lng2 - (float) $lng1);
+    $startLat = deg2rad((float) $lat1);
+    $endLat = deg2rad((float) $lat2);
+
+    $a = sin($latDelta / 2) * sin($latDelta / 2) +
+      cos($startLat) * cos($endLat) *
+      sin($lngDelta / 2) * sin($lngDelta / 2);
+
+    return $earthRadius * 2 * atan2(sqrt($a), sqrt(1 - $a));
   }
 
   static private function generateTripID($pdo) {
@@ -257,11 +693,44 @@ class ModelBooking {
     $stmt->execute();
   }
 
+  static private function tripHasEmployees($pdo, $tripID) {
+    if (!self::tableExists($pdo, "tripemployee")) {
+      return false;
+    }
+
+    $stmt = $pdo->prepare("
+      SELECT COUNT(*)
+      FROM tripemployee
+      WHERE tripID = :tripID
+    ");
+
+    $stmt->bindParam(":tripID", $tripID, PDO::PARAM_INT);
+    $stmt->execute();
+
+    return (int) $stmt->fetchColumn() > 0;
+  }
+
   static private function tableExists($pdo, $tableName) {
     $stmt = $pdo->prepare("SHOW TABLES LIKE :tableName");
     $stmt->bindParam(":tableName", $tableName, PDO::PARAM_STR);
     $stmt->execute();
 
     return (bool) $stmt->fetchColumn();
+  }
+
+  static private function columnExists($pdo, $tableName, $columnName) {
+    $stmt = $pdo->prepare("
+      SELECT COUNT(*)
+      FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = :tableName
+        AND COLUMN_NAME = :columnName
+    ");
+
+    $stmt->bindParam(":tableName", $tableName, PDO::PARAM_STR);
+    $stmt->bindParam(":columnName", $columnName, PDO::PARAM_STR);
+    $stmt->execute();
+
+    return (int) $stmt->fetchColumn() > 0;
   }
 }
