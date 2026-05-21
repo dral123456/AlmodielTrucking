@@ -162,10 +162,24 @@ class ModelCustomer {
     }
   }
   static public function mdlGetCustomerCredentials($tableUsers, $item, $value){
-		$stmt = (new Connection)->connect()->prepare("SELECT * FROM $tableUsers WHERE $item = :$item");
-		$stmt -> bindParam(":".$item, $value, PDO::PARAM_STR);
-		$stmt -> execute();
-		return $stmt -> fetch();
+    $allowedTables = array("customer");
+    $allowedColumns = array("phoneNumber");
+
+    if (!in_array($tableUsers, $allowedTables, true) || !in_array($item, $allowedColumns, true)) {
+      return false;
+    }
+
+		$stmt = (new Connection)->connect()->prepare("
+      SELECT *
+      FROM {$tableUsers}
+      WHERE {$item} = :value
+      ORDER BY (password <> '') DESC, id DESC
+      LIMIT 1
+    ");
+		$stmt->bindParam(":value", $value, PDO::PARAM_STR);
+		$stmt->execute();
+
+		return $stmt->fetch(PDO::FETCH_ASSOC);
 	}
 
   static private function columnExists($pdo, $tableName, $columnName) {

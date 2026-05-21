@@ -63,6 +63,13 @@
                         </li>
                     </ul>
                 </li>
+                <li class="pe-menu-title">Reports</li>
+                <li class="pe-slide-item">
+                    <a href="reports" class="pe-nav-link">
+                        <i class="ri-file-chart-line pe-nav-icon"></i>
+                        <span class="pe-nav-content">Reports</span>
+                    </a>
+                </li>
                 <!-- <li class="pe-slide pe-has-sub">
                     <a href="#collapseApplications" class="pe-nav-link" data-bs-toggle="collapse" aria-expanded="false" aria-controls="collapseApplications">
                         <i class="ri-apps-2-line pe-nav-icon"></i>
