@@ -15,7 +15,7 @@
     <div class="row position-relative justify-content-center align-items-center min-vh-100 position-relative">
       <div class="col-xl-8">
         <div class="text-center py-20 py-md-16">
-          <img src="views/assets/images/vector/404.png" alt="Error" class="img-fluid mb-10">
+          <h1 class="mb-4 fs-55 text-primary">403 ERROR!</h1>
           <h1 class="mb-4 fs-55 text-primary">Well, this is awkward...</h1>
           <p class="max-w-600px mx-auto fs-15 text-muted"> Oops! You don't have permission to view this page. Please make sure you're logged in with the right account or contact the admin for access.</p>
           <div class="mt-8 d-flex justify-content-center gap-2 fs-20">
