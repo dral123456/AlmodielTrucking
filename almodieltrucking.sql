@@ -4,7 +4,6 @@
 --
 -- Host: localhost:3306
 -- Generation Time: May 21, 2026 at 05:29 AM
--- Generation Time: May 20, 2026 at 02:41 PM
 -- Server version: 8.4.3
 -- PHP Version: 8.3.30
 
@@ -118,9 +117,6 @@ INSERT INTO `customer` (`id`, `customerType`, `customerFName`, `customerLName`, 
 (2, 'company', 'Jethro T. Almodiel', '', '', 'Jethro T. Almodiel', 'almodieljethro16@gmail.com', '09287310860', 'Negros Occidental', 'Bacolod', 'Mansilingan', 'Guanzon', 'Blk 2 Lot 1', NULL, NULL, '', '', '2026-04-24', 'active'),
 (3, 'company', 'Almodiel Trucking Service', '', '', 'Jethro T. Almodiel', 'almodieljethro16@gmail.com', '09287310860', 'Negros Occidental', 'Bacolod', 'Mansilingan', 'Guanzon', 'Blk 1 Lot 2', NULL, NULL, '', '', '2026-04-24', 'active'),
 (4, 'company', 'Almodiel Trucking Services', '', '', 'Jethro T. Almodiel', 'almodieljethro16@gmail.com', '09287310860', 'Negros Occidental', 'Bacolod', 'Mansilingan', 'Guanzon', 'Blk 2 Lot 1', 10.65038966, 122.94679642, '1777000022_barangay_check_in.png', '', '2026-04-24', 'active');
-(2, 'company', '', '', '', 'Jethro T. Almodiel', 'almodieljethro16@gmail.com', '09287310860', 'Negros Occidental', 'Bacolod', 'Mansilingan', 'Guanzon', 'Blk 2 Lot 1', NULL, NULL, '', '', '2026-04-24', 'active'),
-(3, 'company', 'Almodiel Trucking Service', '', '', 'Jethro T. Almodiel', 'almodieljethro16@gmail.com', '09287310860', 'Negros Occidental', 'Bacolod', 'Mansilingan', 'Guanzon', 'Blk 1 Lot 2', NULL, NULL, '', '', '2026-04-24', 'active'),
-(4, 'company', 'Almodiel Trucking Services', '', '', 'Jethro T. Almodiel', 'almodieljethro16@gmail.com', '09287310860', 'Negros Occidental', 'Bacolod', 'Mansilingan', 'Guanzon', 'Blk 2 Lot 1', NULL, NULL, '1777000022_barangay_check_in.png', '', '2026-04-24', 'active');
 
 -- --------------------------------------------------------
 
@@ -150,15 +146,16 @@ CREATE TABLE `employee` (
 -- Dumping data for table `employee`
 --
 
-INSERT INTO `employee` (`id`, `empFName`, `empLName`, `empMI`, `empSuffix`, `empBirthDate`, `empPhoneNumber`, `empEmail`, `empType`, `empStatus`, `dateCreated`, `empPassword`) VALUES
-(1, 'Arldrich', 'Marcelino', 'A', '', '2006-09-21', '09369430341', 'marcelinoarldrich@gmail.com', 'driver', 'active', '2026-05-06 10:05:30', '$2y$10$XU7Pa5Lj08Yo2DSzqNAcXeGxQTEqXznL4RvYSrX.cbcMl3D4RIJzW'),
-(2, 'Arldrich', 'Marcelino', 'A', '', '2006-09-21', '09369430341', 'marcelinoarldrich@gmail.com', 'admin', 'active', '2026-05-06 10:05:32', '$2y$10$XU7Pa5Lj08Yo2DSzqNAcXeGxQTEqXznL4RvYSrX.cbcMl3D4RIJzW'),
-(3, 'John Marion', 'Joniega', 'G', '', '2006-09-04', '09123495867', 'jonhmarionjoniega@gmail.com', 'assistant', 'active', '2026-05-06 10:14:00', ''),
-(4, 'A', 'A', 'A', '', '2026-05-01', '09876543212', 'a@gmail.com', 'driver', 'active', '2026-05-06 10:14:48', ''),
-(5, 'Jethro', 'Almodiel', 'T', 'Jr.', '2006-04-30', '09321312321', 'almodieljethro16@gmail.com', 'driver', 'active', '2026-05-11 18:03:05', ''),
-(6, 'Mika', 'Zkie', '', '', '2026-05-12', '0932131235', 'almodieljethro@gmail.com', 'driver', 'active', '2026-05-11 18:10:51', '$2y$10$IMwtT2.zq9WvllzVOD/zpeRFXuDATGvOV9EKON1sKOkLHtfejLPAW'),
-(7, 'Alex', 'Almodiel', 'T', 'jr.', '2026-05-13', '09321312321', 'almodieljetro16@gmail.com', 'assistant', 'active', '2026-05-13 20:42:43', '$2y$10$26pTtY/NzDcxQPsroovAWOJEg5sb2F9jc29kgv48BFNMr0gUrauvq'),
-(8, 'Euan', 'Jaranilla', 'A', '', '1999-02-17', '09123456789', 'euan@gmail.com', 'assistant', 'active', '2026-05-13 22:36:07', '$2y$10$MtYCzZYN1YCJ.toyzb1a5OdbtrwNnC8BFl0WX8pJ8LivsXdMKswIK');
+INSERT INTO `employee` (`id`, `empFName`, `empLName`, `empMI`, `empSuffix`, `empBirthDate`, `empPhoneNumber`, `empEmail`, `empType`, `empStatus`, `dateCreated`, `empPassword`, `licenseNumber`, `licenseExpire`, `licenseImage`) VALUES
+(1, 'Arldrich', 'Marcelino', 'A', '', '2006-09-21', '09369430341', 'marcelinoarldrich@gmail.com', 'driver', 'active', '2026-05-06 10:05:30', '', '', '', ''),
+(2, 'Arldrich', 'Marcelino', 'A', '', '2006-09-21', '09369430341', 'marcelinoarldrich@gmail.com', 'driver', 'active', '2026-05-06 10:05:32', '', '', '', ''),
+(3, 'John Marion', 'Joniega', 'G', '', '2006-09-04', '09123495867', 'jonhmarionjoniega@gmail.com', 'assistant', 'active', '2026-05-06 10:14:00', '', '', '', ''),
+(4, 'A', 'A', 'A', '', '2026-05-01', '09876543212', 'a@gmail.com', 'driver', 'active', '2026-05-06 10:14:48', '', '', '', ''),
+(5, 'Jethro', 'Almodiel', 'T', 'Jr.', '2006-04-30', '09321312321', 'almodieljethro16@gmail.com', 'driver', 'active', '2026-05-11 18:03:05', '', '', '', ''),
+(6, 'Mika', 'Zkie', '', '', '2026-05-12', '0932131235', 'almodieljethro@gmail.com', 'driver', 'active', '2026-05-11 18:10:51', '$2y$10$IMwtT2.zq9WvllzVOD/zpeRFXuDATGvOV9EKON1sKOkLHtfejLPAW', '', '', ''),
+(7, 'Alex', 'Almodiel', 'T', 'jr.', '2026-05-13', '09321312321', 'almodieljetro16@gmail.com', 'assistant', 'active', '2026-05-13 20:42:43', '$2y$10$26pTtY/NzDcxQPsroovAWOJEg5sb2F9jc29kgv48BFNMr0gUrauvq', '', '', ''),
+(8, 'Guanzon', 'Miguel', 'T', 'jr', '2020-06-23', '09320312321', 'jeth@gmail.com', 'driver', 'active', '2026-05-17 19:40:04', '$2y$10$FH1QdXJ/uuzY3OG60jUxJe/FcczvyTgTneiBqv0cbYI.6xn0RhESa', 'f01-01-111111', '2030-06-27', 'uploads/licenses/license_6a09a914c3cb62.11101954.png'),
+(9, 'Jethro', 'Almodiel', 'T', 'Jr', '2006-12-21', '09123456789', 'jethro@gmail.com', 'driver', 'active', '2026-05-21 01:06:00', '$2y$10$m23sexlvAJAnI6wHKh/5E.y35D4.DqPizlMaQOp9qeeEonFGYht1K', 'f01-01-111112', '2030-12-28', 'uploads/licenses/license_6a0de9f89cba48.64775178.jpg');
 
 -- --------------------------------------------------------
 
@@ -254,9 +251,8 @@ CREATE TABLE `truck` (
 -- Dumping data for table `truck`
 --
 
-INSERT INTO `truck` (`id`, `plateNumber`, `type`, `capacity`, `fuel`, `mileage`, `brand`, `status`) VALUES
-(1, 'COC123', '6w', 5000, 50, 1200, 'isuzu', 'active'),
-(2, '123456', '10', 5000, 50, 12000, 'Mitsubishi', 'active');
+INSERT INTO `truck` (`id`, `plateNumber`, `type`, `capacity`, `fuel`, `mileage`, `brand`, `corDocument`, `otherDocument`, `status`) VALUES
+(1, 'COC123', '6w', 5000, 50, 1200, 'isuzu', '', NULL, 'active');
 
 -- --------------------------------------------------------
 
@@ -277,12 +273,9 @@ CREATE TABLE `truckemployee` (
 --
 
 INSERT INTO `truckemployee` (`truckEmployeeID`, `truckID`, `empID`, `role`, `dateCreated`) VALUES
-(1, 1, 2, 'driver', '2026-05-13 12:43:11'),
-(2, 1, 3, 'assistant', '2026-05-13 12:43:11'),
-(3, 1, 7, 'assistant', '2026-05-13 12:43:11'),
-(4, 2, 1, 'driver', '2026-05-13 14:37:11'),
-(5, 2, 3, 'assistant', '2026-05-13 14:37:11'),
-(6, 2, 7, 'assistant', '2026-05-13 14:37:11');
+(4, 1, 2, 'driver', '2026-05-17 23:24:40'),
+(5, 1, 3, 'assistant', '2026-05-17 23:24:40'),
+(6, 1, 7, 'assistant', '2026-05-17 23:24:40');
 
 -- --------------------------------------------------------
 
@@ -400,7 +393,7 @@ ALTER TABLE `customer`
 -- AUTO_INCREMENT for table `employee`
 --
 ALTER TABLE `employee`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 --
 -- AUTO_INCREMENT for table `location`
@@ -418,7 +411,7 @@ ALTER TABLE `tripemployee`
 -- AUTO_INCREMENT for table `truck`
 --
 ALTER TABLE `truck`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `truckemployee`
