@@ -42,6 +42,8 @@ class CustomerRegistration {
       "barangay"      => $this->barangay,
       "street"        => $this->street,
       "houseNumber"   => $this->houseNumber,
+      "warehouseLatitude"  => $_POST["warehouseLatitude"] ?? null,
+      "warehouseLongitude" => $_POST["warehouseLongitude"] ?? null,
       "password"      => password_hash($this->password, PASSWORD_DEFAULT),
     );
 

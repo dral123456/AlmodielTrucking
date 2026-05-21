@@ -22,18 +22,8 @@
                     </a>
                     <ul class="pe-slide-menu collapse" id="collapseDashboards">
                         <li class="pe-slide-item">
-                            <a href="employee-reg" class="pe-nav-link">
-                                Employee
-                            </a>
-                        </li>
-                        <li class="pe-slide-item">
-                            <a href="customer-reg" class="pe-nav-link">
-                                Customer
-                            </a>
-                        </li>
-                        <li class="pe-slide-item">
-                            <a href="truck-reg" class="pe-nav-link">
-                                Truck
+                            <a href="customer-reg?type=individual" class="pe-nav-link">
+                                Individual Customer
                             </a>
                         </li>
                         <li class="pe-slide-item">
@@ -42,11 +32,43 @@
                             </a>
                         </li>
                         <li class="pe-slide-item">
-                            <a href="dashboard-media.html" class="pe-nav-link">
-                                Pricing
+                            <a href="trips" class="pe-nav-link">
+                                Trips
                             </a>
                         </li>
                     </ul>
+                </li>
+                <li class="pe-menu-title">Management</li>
+                <li class="pe-slide pe-has-sub">
+                    <a href="#collapseManagement" class="pe-nav-link" data-bs-toggle="collapse" aria-expanded="false" aria-controls="collapseManagement">
+                        <i class="ri-settings-3-line pe-nav-icon"></i>
+                        <span class="pe-nav-content">Manage Records</span>
+                        <i class="ri-arrow-down-s-line pe-nav-arrow"></i>
+                    </a>
+                    <ul class="pe-slide-menu collapse" id="collapseManagement">
+                        <li class="pe-slide-item">
+                            <a href="manage-company" class="pe-nav-link">
+                                Company
+                            </a>
+                        </li>
+                        <li class="pe-slide-item">
+                            <a href="manage-employee" class="pe-nav-link">
+                                Employee
+                            </a>
+                        </li>
+                        <li class="pe-slide-item">
+                            <a href="manage-truck" class="pe-nav-link">
+                                Truck
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+                <li class="pe-menu-title">Reports</li>
+                <li class="pe-slide-item">
+                    <a href="reports" class="pe-nav-link">
+                        <i class="ri-file-chart-line pe-nav-icon"></i>
+                        <span class="pe-nav-content">Reports</span>
+                    </a>
                 </li>
                 <!-- <li class="pe-slide pe-has-sub">
                     <a href="#collapseApplications" class="pe-nav-link" data-bs-toggle="collapse" aria-expanded="false" aria-controls="collapseApplications">

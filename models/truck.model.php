@@ -3,6 +3,48 @@ require_once "connection.php";
 
 class ModelTruck {
 
+  static public function mdlTruckManageList() {
+    $pdo = (new Connection)->connect();
+    $truckEmployeeTable = self::resolveTruckEmployeeTable($pdo);
+    $safeTruckEmployeeTable = "`" . str_replace("`", "``", $truckEmployeeTable) . "`";
+    $documentSelect = self::columnExists($pdo, "truck", "corDocument") &&
+      self::columnExists($pdo, "truck", "otherDocument")
+      ? "t.corDocument, t.otherDocument"
+      : "NULL AS corDocument, NULL AS otherDocument";
+
+    $stmt = $pdo->prepare("
+      SELECT
+        t.id,
+        t.plateNumber,
+        t.type,
+        t.capacity,
+        t.fuel,
+        t.mileage,
+        t.brand,
+        t.status,
+        {$documentSelect},
+        GROUP_CONCAT(
+          CONCAT(te.role, ': ', e.empFName, ' ', e.empLName)
+          ORDER BY FIELD(te.role, 'driver', 'assistant'), e.empFName, e.empLName
+          SEPARATOR '||'
+        ) AS crew,
+        MAX(CASE WHEN te.role = 'driver' THEN te.empID END) AS driverID,
+        GROUP_CONCAT(
+          CASE WHEN te.role = 'assistant' THEN te.empID END
+          ORDER BY te.truckEmployeeID
+          SEPARATOR ','
+        ) AS assistantIDs
+      FROM truck t
+      LEFT JOIN {$safeTruckEmployeeTable} te ON te.truckID = t.id
+      LEFT JOIN employee e ON e.id = te.empID
+      GROUP BY t.id, t.plateNumber, t.type, t.capacity, t.fuel, t.mileage, t.brand, t.status, t.corDocument, t.otherDocument
+      ORDER BY t.status DESC, t.plateNumber
+    ");
+
+    $stmt->execute();
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+  }
+
   static public function mdlEmployeeListByType($type) {
     $stmt = (new Connection)->connect()->prepare("
       SELECT id, empFName, empLName
@@ -33,6 +75,8 @@ class ModelTruck {
           fuel,
           mileage,
           brand,
+          corDocument,
+          otherDocument,
           status
         ) VALUES (
           :plateNumber,
@@ -41,6 +85,8 @@ class ModelTruck {
           :fuel,
           :mileage,
           :brand,
+          :corDocument,
+          :otherDocument,
           'active'
         )
       ");
@@ -51,6 +97,8 @@ class ModelTruck {
       $stmt->bindParam(":fuel", $data["fuel"], PDO::PARAM_INT);
       $stmt->bindParam(":mileage", $data["mileage"], PDO::PARAM_INT);
       $stmt->bindParam(":brand", $data["brand"], PDO::PARAM_STR);
+      $stmt->bindParam(":corDocument", $data["corDocument"], PDO::PARAM_STR);
+      $stmt->bindParam(":otherDocument", $data["otherDocument"], PDO::PARAM_STR);
       $stmt->execute();
 
       $truckId = $pdo->lastInsertId();
@@ -90,6 +138,22 @@ class ModelTruck {
     }
 
     return "truckemployee";
+  }
+
+  static private function columnExists($pdo, $tableName, $columnName) {
+    $stmt = $pdo->prepare("
+      SELECT COUNT(*)
+      FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = :tableName
+        AND COLUMN_NAME = :columnName
+    ");
+
+    $stmt->bindParam(":tableName", $tableName, PDO::PARAM_STR);
+    $stmt->bindParam(":columnName", $columnName, PDO::PARAM_STR);
+    $stmt->execute();
+
+    return (int) $stmt->fetchColumn() > 0;
   }
 
   static private function insertTruckEmployee($pdo, $table, $truckId, $empId, $role) {

@@ -73,6 +73,26 @@ $assistants = ControllerTruck::ctrEmployeeListByType("assistant");
 
         <hr class="my-4">
 
+        <div class="mb-4">
+          <h6 class="text-uppercase text-muted mb-3">
+            <i class="ri-file-image-line me-1"></i> Truck Documents
+          </h6>
+          <div class="row">
+            <div class="col-12 col-md-6 mb-3">
+              <label class="form-label">COR Image <span class="text-danger">*</span></label>
+              <input type="file" class="form-control" id="truckCorDocument" accept="image/png,image/jpeg,image/webp">
+              <div class="form-text">Certificate of Registration image. Accepted: JPG, PNG, WEBP.</div>
+            </div>
+            <div class="col-12 col-md-6 mb-3">
+              <label class="form-label">OR / Other Truck Document</label>
+              <input type="file" class="form-control" id="truckOtherDocument" accept="image/png,image/jpeg,image/webp">
+              <div class="form-text">Optional image, such as Official Receipt, insurance, permit, or emission test.</div>
+            </div>
+          </div>
+        </div>
+
+        <hr class="my-4">
+
         <div class="mb-2">
           <h6 class="text-uppercase text-muted mb-3">
             <i class="ri-team-line me-1"></i> Employee Assignment

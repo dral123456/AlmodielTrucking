@@ -18,6 +18,10 @@ $(document).ready(function () {
     applyTruckDefaultCrew($(this).val());
   });
 
+  $(document).on('change', '#bookingCustomer', function () {
+    applyCompanyWarehousePickup();
+  });
+
   $(document).on('change', '#bookingDriver, .booking-assistant', function () {
     syncAssistantOptions();
   });
@@ -99,6 +103,7 @@ $(document).ready(function () {
     $('#cargoType, #cargoQuantity, #cargoCondition, #cargoDescription, #cargoSpecialHandling').val('');
     $('#pickupProvince, #pickupCity, #pickupBarangay, #pickupStreet, #pickupDescription, #pickupLatitude, #pickupLongitude').val('');
     $('#destinationProvince, #destinationCity, #destinationBarangay, #destinationStreet, #destinationDescription, #destinationLatitude, #destinationLongitude').val('');
+    setPickupLocked(false);
     $('.is-invalid').removeClass('is-invalid');
 
     if (pickupMarker) {
@@ -152,6 +157,70 @@ $(document).ready(function () {
     }, 300);
 
     updateMapStatus();
+  }
+
+  function getSelectedCustomerOption() {
+    const $option = $('#bookingCustomer option:selected');
+    return $option.length && $option.val() ? $option : $();
+  }
+
+  function applyCompanyWarehousePickup() {
+    const $option = getSelectedCustomerOption();
+    const isCompany = $option.data('type') === 'company';
+
+    setPickupLocked(isCompany);
+
+    if (!isCompany) {
+      if (pickupMarker && map) {
+        map.removeLayer(pickupMarker);
+        pickupMarker = null;
+      }
+      $('#pickupProvince, #pickupCity, #pickupBarangay, #pickupStreet, #pickupDescription, #pickupLatitude, #pickupLongitude').val('');
+      $('#pickupCoordinateText').text('Not pinned');
+      return;
+    }
+
+    const latitude = Number($option.data('latitude'));
+    const longitude = Number($option.data('longitude'));
+
+    $('#pickupProvince').val($option.data('province') || '');
+    $('#pickupCity').val($option.data('city') || '');
+    $('#pickupBarangay').val($option.data('barangay') || '');
+    $('#pickupStreet').val($option.data('street') || '');
+    $('#pickupDescription').val('Company warehouse pickup point');
+
+    if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+      if (map && typeof L !== 'undefined') {
+        const latlng = L.latLng(latitude, longitude);
+        if (!pickupMarker) {
+          pickupMarker = L.marker(latlng, { draggable: false, icon: pickupIcon }).addTo(map);
+        } else {
+          pickupMarker.setLatLng(latlng);
+          if (pickupMarker.dragging) {
+            pickupMarker.dragging.disable();
+          }
+        }
+
+        map.setView(latlng, Math.max(map.getZoom(), 13));
+      }
+
+      setPickupCoordinates(latitude, longitude);
+    }
+
+    $('#mapModeDestination').prop('checked', true);
+    updateMapStatus();
+  }
+
+  function setPickupLocked(locked) {
+    $('#pickupProvince, #pickupCity, #pickupBarangay, #pickupStreet, #pickupDescription')
+      .prop('readonly', locked)
+      .toggleClass('bg-light', locked);
+    $('#mapModePickup').prop('disabled', locked);
+    $('label[for="mapModePickup"]').toggleClass('disabled', locked);
+
+    if (locked && $('#mapModePickup').is(':checked')) {
+      $('#mapModeDestination').prop('checked', true);
+    }
   }
 
   function updateStepper() {
@@ -265,6 +334,13 @@ $(document).ready(function () {
 
   function updateMapStatus() {
     const mode = getMapMode();
+    const customerIsCompany = getSelectedCustomerOption().data('type') === 'company';
+
+    if (customerIsCompany) {
+      $('#bookingMapStatus').text('Company warehouse is fixed as pickup. Click the map to place the destination pin.');
+      return;
+    }
+
     $('#bookingMapStatus').text(
       mode === 'pickup'
         ? 'Click the map to place the pickup pin.'
@@ -274,6 +350,14 @@ $(document).ready(function () {
 
   function setActiveMarker(latlng) {
     const mode = getMapMode();
+    const customerIsCompany = getSelectedCustomerOption().data('type') === 'company';
+
+    if (customerIsCompany && mode === 'pickup') {
+      $('#mapModeDestination').prop('checked', true);
+      updateMapStatus();
+      return;
+    }
+
     const lat = latlng.lat.toFixed(8);
     const lng = latlng.lng.toFixed(8);
 

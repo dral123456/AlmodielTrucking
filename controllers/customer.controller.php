@@ -1,5 +1,10 @@
 <?php
 class ControllerCustomer{
+	static public function ctrCompanyList(){
+	  $answer = (new ModelCustomer)->mdlCompanyList();
+		return $answer;
+	}
+
 	static public function ctrSaveCustomer($data){
 	  $answer = (new ModelCustomer)->mdlSaveCustomer($data);
 		return $answer;
@@ -12,7 +17,7 @@ class ControllerCustomer{
       $value = $_POST["phoneNumber"];
       $answer = (new ModelCustomer)->mdlGetCustomerCredentials($table, $item, $value);
 
-      if(!empty($answer) && $answer["phoneNumber"] == $_POST["phoneNumber"] && password_verify($encryptpass, $answer["password"])){
+      if(!empty($answer) && $answer["phoneNumber"] == $_POST["phoneNumber"] && self::verifyPassword($encryptpass, $answer["password"])){
         $_SESSION["loggedIn"] = "ok";
         $_SESSION["id"] = $answer["id"];
         
@@ -31,6 +36,20 @@ class ControllerCustomer{
       }
 		}
 	}
+
+  static private function verifyPassword($plainPassword, $storedPassword) {
+    $storedPassword = (string) $storedPassword;
+
+    if ($storedPassword === "") {
+      return false;
+    }
+
+    if (password_get_info($storedPassword)["algo"] !== 0) {
+      return password_verify($plainPassword, $storedPassword);
+    }
+
+    return hash_equals($storedPassword, $plainPassword);
+  }
 
 	// static public function ctrEditClinicStaff($data){
 	//   $answer = (new ModelClinicStaff)->mdlEditClinicStaff($data);
