@@ -20,7 +20,7 @@
         <!-- ===== ROLE SELECTOR (TILE CARDS) ===== -->
         <h6 class="text-uppercase text-muted mb-3">Select Role</h6>
         <div class="row g-3 mb-4">
-          <div class="col-12 col-md-6">
+          <div class="col-12 col-md-4">
             <div class="emp-type-tile active" data-type="driver">
               <div class="d-flex align-items-center">
                 <div class="emp-type-icon bg-primary-subtle text-primary">
@@ -34,7 +34,7 @@
               </div>
             </div>
           </div>
-          <div class="col-12 col-md-6">
+          <div class="col-12 col-md-4">
             <div class="emp-type-tile" data-type="assistant">
               <div class="d-flex align-items-center">
                 <div class="emp-type-icon bg-info-subtle text-info">
@@ -43,6 +43,20 @@
                 <div class="ms-3">
                   <h6 class="mb-1">Assistant</h6>
                   <p class="text-muted small mb-0">Supports loading, unloading and field operations</p>
+                </div>
+                <i class="ri-checkbox-circle-fill text-primary ms-auto emp-type-check"></i>
+              </div>
+            </div>
+          </div>
+          <div class="col-12 col-md-4">
+            <div class="emp-type-tile" data-type="admin">
+              <div class="d-flex align-items-center">
+                <div class="emp-type-icon bg-warning-subtle text-warning">
+                  <i class="ri-shield-user-line"></i>
+                </div>
+                <div class="ms-3">
+                  <h6 class="mb-1">Admin</h6>
+                  <p class="text-muted small mb-0">Manages records, bookings, trips, and system operations</p>
                 </div>
                 <i class="ri-checkbox-circle-fill text-primary ms-auto emp-type-check"></i>
               </div>
@@ -97,7 +111,7 @@
         </div>
 
 
-       <div class="mb-4">
+       <div class="mb-4" id="licenseInfoSection">
           <h6 class="text-uppercase text-muted mb-3">
             <i class="ri-id-card-line me-1"></i> License Information
           </h6>

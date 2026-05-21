@@ -35,11 +35,17 @@ $(document).ready(function () {
     $('.emp-type-tile').removeClass('active');
     $('.emp-type-tile[data-type="' + type + '"]').addClass('active');
 
-    $('#empTypeBadge').html(
-      type === 'driver'
-        ? '<i class="ri-steering-2-line me-1"></i> Driver'
-        : '<i class="ri-user-2-line me-1"></i> Assistant'
-    );
+    const labels = {
+      driver: '<i class="ri-steering-2-line me-1"></i> Driver',
+      assistant: '<i class="ri-user-2-line me-1"></i> Assistant',
+      admin: '<i class="ri-shield-user-line me-1"></i> Admin'
+    };
+
+    $('#empTypeBadge').html(labels[type] || labels.driver);
+    $('#licenseInfoSection').toggleClass('d-none', type !== 'driver');
+    if (type !== 'driver') {
+      $('#licenseNumber, #expire, #licenseImage').val('').removeClass('is-invalid');
+    }
   }
 
   // Tile click
@@ -175,7 +181,12 @@ $(document).ready(function () {
 
   function showConfirmModal(formData) {
   const type = $('#empType').val();
-  const typeLabel = type === 'driver' ? 'Driver' : 'Assistant';
+  const roleLabels = {
+    driver: 'Driver',
+    assistant: 'Assistant',
+    admin: 'Admin'
+  };
+  const typeLabel = roleLabels[type] || 'Employee';
   const name = ($('#empFName').val() + ' ' + $('#empLName').val()).trim();
 
   Swal.fire({

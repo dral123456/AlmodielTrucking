@@ -102,13 +102,45 @@ class ModelEmployee {
             return "error: " . $e->getMessage();
         }
     }
-    static public function mdlGetEmployeeCredentials($tableUsers, $item, $value, $empType){
-		$stmt = (new Connection)->connect()->prepare("SELECT * FROM $tableUsers WHERE $item = :$item AND empType = :$empType");
-		$stmt -> bindParam(":".$item, $value, PDO::PARAM_STR);
-		$stmt -> bindParam(":".$empType, $empType, PDO::PARAM_STR);
-		$stmt -> execute();
-		return $stmt -> fetch();
+    static public function mdlGetEmployeeCredentials($tableUsers, $item, $value, $empType = null){
+        $allowedTables = array("employee");
+        $allowedColumns = array("empPhoneNumber");
+
+        if (!in_array($tableUsers, $allowedTables, true) || !in_array($item, $allowedColumns, true)) {
+            return false;
+        }
+
+        $typeFilter = $empType !== null && $empType !== "" ? "AND empType = :empType" : "";
+
+        $stmt = (new Connection)->connect()->prepare("
+            SELECT *
+            FROM {$tableUsers}
+            WHERE {$item} = :value
+              {$typeFilter}
+            ORDER BY (empPassword <> '') DESC, id DESC
+            LIMIT 1
+        ");
+        $stmt->bindParam(":value", $value, PDO::PARAM_STR);
+        if ($typeFilter !== "") {
+            $stmt->bindParam(":empType", $empType, PDO::PARAM_STR);
+        }
+        $stmt->execute();
+
+        return $stmt->fetch(PDO::FETCH_ASSOC);
 	}
+
+    static public function mdlGetAdminUserRightsCredentials($username) {
+        $stmt = (new Connection)->connect()->prepare("
+            SELECT *
+            FROM userrights
+            WHERE username = :username
+            LIMIT 1
+        ");
+        $stmt->bindParam(":username", $username, PDO::PARAM_STR);
+        $stmt->execute();
+
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
 
     static private function columnExists($pdo, $tableName, $columnName) {
         $stmt = $pdo->prepare("
