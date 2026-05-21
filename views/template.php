@@ -138,7 +138,8 @@
           'customer-login',
           'signup',
           'driver-login',
-          'admin-login'
+          'admin-login',
+          'map',  
           // 'home',
           // 'staffclinic',
           // 'logout'
@@ -159,6 +160,7 @@
       $modulePaths = include "configs/module-paths.php";
 
       $allowedRoutes = $routeMap[$role] ?? [];
+      echo "<script>console.log('Role: " . $role . "');</script>";
       echo '<div class="layout-wrapper layout-content-navbar">';
         echo '<div class="layout-container">';
           include "partials/sidebar.php";
@@ -225,8 +227,8 @@
 <script src="views/assets/js/form/stepper.init.js"></script>
 
 <!-- SWEET ALERT -->
- <script src="views/assets/libs/sweetalert2/sweetalert2.all.min.js"></script>
- <script src="views/assets/js/ui/sweetalert.init.js"></script>
+<script src="views/assets/libs/sweetalert2/sweetalert2.all.min.js"></script>
+<script src="views/assets/js/ui/sweetalert.init.js"></script>
 
 
 

@@ -18,7 +18,7 @@ return [
         'booking-reg',
         'logout',
     ],
-    'customer' => [
+    'customer-individual' => [
         'customer-individual/profile',
         'customer-individual/bookings',
         'logout',
