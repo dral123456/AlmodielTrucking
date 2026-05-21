@@ -11,6 +11,7 @@ $staffRoutes = [
     'manage-employee',
     'manage-truck',
     'logout',
+    'signup',
 ];
 
 $customerRoutes = [
@@ -27,6 +28,6 @@ return [
     'assistant' => $staffRoutes,
     'driver' => $staffRoutes,
     'customer' => $customerRoutes,
-    'customer-individual' => $customerRoutes,
-    'customer-company' => $customerRoutes,
+    'customerindividual' => $customerRoutes,
+    'customercompany' => $customerRoutes,
 ];

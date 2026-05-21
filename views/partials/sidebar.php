@@ -22,7 +22,7 @@
                     </a>
                     <ul class="pe-slide-menu collapse" id="collapseDashboards">
                         <li class="pe-slide-item">
-                            <a href="customer-reg?type=individual" class="pe-nav-link">
+                            <a href="signup" class="pe-nav-link">
                                 Individual Customer
                             </a>
                         </li>
