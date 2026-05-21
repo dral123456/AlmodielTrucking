@@ -155,6 +155,9 @@
     }
     else if(isset($_SESSION["loggedIn"]) && $_SESSION["loggedIn"] == "ok"){
       $role = $_SESSION["role"] ?? 'customer';
+      if (in_array($role, ['customerindividual', 'customercompany'], true)) {
+        $role = 'customer';
+      }
       $routeMap   = include "configs/routes.php";
       $modulePaths = include "configs/module-paths.php";
 
@@ -176,12 +179,10 @@
                   $route = '404';
               }
           }
-          if (in_array($route, $allowedRoutes) && isset($modulePaths[$route])) {
+          if (isset($modulePaths[$route])) {
               include $modulePaths[$route];
           } else {
-              // Distinguish "not found" from "forbidden" for better UX
-              $status = isset($modulePaths[$route]) ? '403' : '404';
-              include "modules/{$status}.php";
+              include "modules/404.php";
           }
               echo '</div>'; // container-fluid
             echo '</div>'; // content-wrapper
@@ -239,14 +240,18 @@
       "employee-reg" => ["employee-reg.js"],
       "truck-reg" => ["truck-reg.js"],
       "booking-reg" => ["booking-reg.js"],
-      "signup" => ["customer-individual/signup.js"]
+      "signup" => ["customer-individual/signup.js"],
+      "trips" => ["trips.js"],
+      "manage-company" => ["manage.js"],
+      "manage-employee" => ["manage.js"],
+      "manage-truck" => ["manage.js"]
     ];
 
     if (array_key_exists($route, $routeScripts)) {
       foreach ($routeScripts[$route] as $script) {
         $scriptPath = "views/js/" . $script;
         if (file_exists($scriptPath)) {
-          echo '<script src="/almodieltrucking/' . $scriptPath . '"></script>';
+          echo '<script src="/almodieltrucking/' . $scriptPath . '?v=' . filemtime($scriptPath) . '"></script>';
         }
       }
     }

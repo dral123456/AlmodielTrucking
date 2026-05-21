@@ -1,4 +1,9 @@
 $(document).ready(function () {
+  let warehouseMap = null;
+  let warehouseMarker = null;
+  const customerTypeFromUrl = new URLSearchParams(window.location.search).get('type');
+  const singleTypeMode = customerTypeFromUrl === 'company' || customerTypeFromUrl === 'individual';
+  const companyOnlyMode = customerTypeFromUrl === 'company';
 
   function getCustomerType() {
     return $('#customerType').val();
@@ -19,10 +24,25 @@ $(document).ready(function () {
 
     $('#individualForm').toggleClass('d-none', isCompany);
     $('#companyForm').toggleClass('d-none', !isCompany);
+    $('#customerTypeChooser, #customerTypeDivider').toggleClass('d-none', singleTypeMode);
+    $('.card-header h5').text(singleTypeMode ? (isCompany ? 'Company Registration' : 'Individual Registration') : 'Customer Registration');
+    $('.card-header p').text(singleTypeMode
+      ? (isCompany ? 'Register a new company customer and pin the warehouse location.' : 'Register a new individual customer.')
+      : 'Register a new customer. Choose customer type to begin.');
+
+    if (isCompany) {
+      setTimeout(function () {
+        initWarehouseMap();
+        refreshWarehouseMap();
+      }, 50);
+    }
   }
 
   // Tile click → set hidden value + repaint
   $(document).on('click', '.cust-type-tile', function () {
+    if (singleTypeMode) {
+      return;
+    }
     $('#customerType').val($(this).data('type'));
     applyCustomerType();
   });
@@ -31,8 +51,13 @@ $(document).ready(function () {
   $(document).on('click', '#btnResetCustomer', function () {
     $('#individualForm input, #companyForm input').val('');
     $('#custPassword, #custPasswordConfirm').val('');
+    $('#customerCoordinateText').text('Not pinned');
     $('.is-invalid').removeClass('is-invalid');
-    $('#customerType').val('individual');
+    $('#customerType').val(companyOnlyMode ? 'company' : 'individual');
+    if (warehouseMarker && warehouseMap) {
+      warehouseMap.removeLayer(warehouseMarker);
+      warehouseMarker = null;
+    }
     applyCustomerType();
   });
 
@@ -42,6 +67,17 @@ $(document).ready(function () {
     const isHidden = $pwd.attr('type') === 'password';
     $pwd.attr('type', isHidden ? 'text' : 'password');
     $(this).find('i').toggleClass('ri-eye-line', !isHidden).toggleClass('ri-eye-off-line', isHidden);
+  });
+
+  $(document).on('click', '#warehouseMapSearchBtn', function () {
+    searchWarehouseAddress();
+  });
+
+  $(document).on('keydown', '#warehouseMapSearch', function (event) {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      searchWarehouseAddress();
+    }
   });
 
   // Register
@@ -84,7 +120,163 @@ $(document).ready(function () {
   }
 
   // Init
+  if (singleTypeMode) {
+    $('#customerType').val(customerTypeFromUrl);
+  }
   applyCustomerType();
+
+  function initWarehouseMap() {
+    if (warehouseMap || typeof L === 'undefined' || !document.getElementById('customerWarehouseMap')) {
+      if (warehouseMap) {
+        refreshWarehouseMap();
+      }
+      return;
+    }
+
+    warehouseMap = L.map('customerWarehouseMap').setView([10.6765, 122.9509], 12);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(warehouseMap);
+
+    warehouseMap.on('click', function (event) {
+      setWarehousePin(event.latlng);
+    });
+
+    refreshWarehouseMap();
+  }
+
+  function refreshWarehouseMap() {
+    if (!warehouseMap) {
+      return;
+    }
+
+    setTimeout(function () {
+      warehouseMap.invalidateSize();
+    }, 150);
+
+    setTimeout(function () {
+      warehouseMap.invalidateSize();
+    }, 350);
+  }
+
+  function setWarehousePin(latlng) {
+    const lat = Number(latlng.lat).toFixed(8);
+    const lng = Number(latlng.lng).toFixed(8);
+
+    if (!warehouseMarker) {
+      warehouseMarker = L.marker(latlng, { draggable: true }).addTo(warehouseMap);
+      warehouseMarker.on('dragend', function () {
+        const position = warehouseMarker.getLatLng();
+        setWarehouseCoordinates(position.lat, position.lng);
+        fillWarehouseAddress(position.lat, position.lng);
+      });
+    } else {
+      warehouseMarker.setLatLng(latlng);
+    }
+
+    setWarehouseCoordinates(lat, lng);
+    fillWarehouseAddress(lat, lng);
+  }
+
+  function setWarehouseCoordinates(lat, lng) {
+    const formattedLat = Number(lat).toFixed(8);
+    const formattedLng = Number(lng).toFixed(8);
+
+    $('#warehouseLatitude').val(formattedLat);
+    $('#warehouseLongitude').val(formattedLng);
+    $('#customerCoordinateText').text(formattedLat + ', ' + formattedLng);
+    $('#warehouseLatitude, #warehouseLongitude').removeClass('is-invalid');
+  }
+
+  function searchWarehouseAddress() {
+    const query = String($('#warehouseMapSearch').val() || '').trim();
+
+    if (!query) {
+      $('#warehouseMapSearch').addClass('is-invalid');
+      $('#customerMapStatus').text('Enter an address or place to search.');
+      return;
+    }
+
+    initWarehouseMap();
+    $('#warehouseMapSearch').removeClass('is-invalid');
+    $('#warehouseMapSearchBtn').prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Searching');
+    $('#customerMapStatus').text('Searching warehouse location...');
+
+    const url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&addressdetails=1&q=' +
+      encodeURIComponent(query);
+
+    fetch(url, {
+      headers: {
+        'Accept': 'application/json'
+      }
+    })
+      .then(function (response) {
+        return response.ok ? response.json() : [];
+      })
+      .then(function (results) {
+        if (!Array.isArray(results) || !results.length) {
+          $('#customerMapStatus').text('No location found. Try a more specific address.');
+          return;
+        }
+
+        const result = results[0];
+        const latlng = {
+          lat: Number(result.lat),
+          lng: Number(result.lon)
+        };
+
+        if (!Number.isFinite(latlng.lat) || !Number.isFinite(latlng.lng)) {
+          $('#customerMapStatus').text('Search result has no usable coordinates.');
+          return;
+        }
+
+        setWarehousePin(latlng);
+        warehouseMap.setView(latlng, 16);
+        fillWarehouseAddress(latlng.lat, latlng.lng);
+      })
+      .catch(function () {
+        $('#customerMapStatus').text('Search failed. Check your connection or enter the address manually.');
+      })
+      .finally(function () {
+        $('#warehouseMapSearchBtn').prop('disabled', false).html('Search');
+      });
+  }
+
+  function fillWarehouseAddress(lat, lng) {
+    const previousStatus = $('#customerMapStatus').text();
+    const url = 'https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=' +
+      encodeURIComponent(lat) + '&lon=' + encodeURIComponent(lng) + '&addressdetails=1';
+
+    $('#customerMapStatus').text('Looking up warehouse address...');
+
+    fetch(url, {
+      headers: {
+        'Accept': 'application/json'
+      }
+    })
+      .then(function (response) {
+        return response.ok ? response.json() : null;
+      })
+      .then(function (data) {
+        if (!data || !data.address) {
+          $('#customerMapStatus').text(previousStatus || 'Address lookup failed. You can enter the address manually.');
+          return;
+        }
+
+        const address = data.address;
+        $('#provinceCorp').val(address.state || address.region || address.province || '');
+        $('#cityCorp').val(address.city || address.town || address.municipality || address.village || '');
+        $('#barangayCorp').val(address.suburb || address.neighbourhood || address.quarter || address.barangay || '');
+        $('#streetCorp').val(address.road || address.pedestrian || address.footway || '');
+        $('#houseCorp').val(address.house_number || '');
+        $('#customerMapStatus').text('Warehouse address filled from the map pin.');
+      })
+      .catch(function () {
+        $('#customerMapStatus').text(previousStatus || 'Address lookup failed. You can enter the address manually.');
+      });
+  }
 
 
   // ===== Validation =====
@@ -114,6 +306,8 @@ $(document).ready(function () {
       check('provinceCorp',  'Province');
       check('cityCorp',      'City / Municipality');
       check('barangayCorp',  'Barangay');
+      check('warehouseLatitude',  'Warehouse Map Pin');
+      check('warehouseLongitude', 'Warehouse Map Pin');
       check('businessDoc',   'Business Registration Document');
     } else {
       check('firstName',     'First Name');
@@ -175,6 +369,8 @@ $(document).ready(function () {
       formData.append('barangay',      $('#barangayCorp').val());
       formData.append('street',        $('#streetCorp').val());
       formData.append('houseNumber',   $('#houseCorp').val());
+      formData.append('warehouseLatitude',  $('#warehouseLatitude').val());
+      formData.append('warehouseLongitude', $('#warehouseLongitude').val());
 
       const bizDoc = $('#businessDoc')[0].files[0];
       const otherDocs = $('#otherDocs')[0].files;
