@@ -157,7 +157,6 @@
     }
     else if(isset($_SESSION["loggedIn"]) && $_SESSION["loggedIn"] == "ok"){
       $role = $_SESSION["role"] ?? 'customer';
-      echo "<script> console.log('User role: " . $role . "');</script>";
       if (in_array($role, ['customer-individual', 'customer-company'], true)) {
         $role = 'customer';
       }
@@ -165,7 +164,6 @@
       $modulePaths = include "configs/module-paths.php";
 
       $allowedRoutes = $routeMap[$role] ?? [];
-      echo "<script> console.log('Allowed routes for role " . $role . ": " . implode(', ', $allowedRoutes) . "');</script>";
       echo '<div class="layout-wrapper layout-content-navbar">';
         echo '<div class="layout-container">';
           include "partials/sidebar.php";

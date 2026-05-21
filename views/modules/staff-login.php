@@ -10,7 +10,7 @@
     <h3 class="text-body-emphasis fw-bolder mb-0 ms-1">Urbix</h3>
   </a>
   <ul class="list-inline mb-0">
-    <li class="list-inline-item pe-4 border-end"><a href="customer-login" class="link-body-emphasis">Client Login</a></li>
+    <li class="list-inline-item pe-4 border-end"><a href="customer-login" class="link-body-emphasis">Staff Login</a></li>
   </ul>
 </header>
 <div class="container">
