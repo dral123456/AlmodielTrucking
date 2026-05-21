@@ -6,8 +6,9 @@ class ModelReport {
     static public function mdlSummary() {
         $pdo = (new Connection)->connect();
 
-        $billingTotal = self::scalar($pdo, "SELECT COALESCE(SUM(price), 0) FROM booking");
-        $bookingCount = self::scalar($pdo, "SELECT COUNT(*) FROM booking");
+        $successfulStatusSql = self::successfulStatusSql();
+        $billingTotal = self::scalar($pdo, "SELECT COALESCE(SUM(price), 0) FROM booking WHERE {$successfulStatusSql}");
+        $bookingCount = self::scalar($pdo, "SELECT COUNT(*) FROM booking WHERE {$successfulStatusSql}");
         $pendingCount = self::bookingStatusCount($pdo, "pending");
         $inTransitCount = self::bookingStatusCount($pdo, "in-transit");
         $completedCount = self::bookingStatusCount($pdo, "completed");
@@ -42,6 +43,7 @@ class ModelReport {
                 c.customerType
             FROM booking b
             LEFT JOIN customer c ON c.id = b.customerID
+            WHERE " . self::successfulStatusSql("b") . "
             ORDER BY b.pickupDateTime DESC, b.bookingID DESC
             LIMIT 50
         ");
@@ -145,6 +147,11 @@ class ModelReport {
         $stmt->execute();
 
         return $stmt->fetchColumn();
+    }
+
+    static private function successfulStatusSql($alias = null) {
+        $prefix = $alias ? self::quoteIdentifier($alias) . "." : "";
+        return $prefix . "`status` IN ('completed', 'delivered', 'success', 'successful')";
     }
 
     static private function scalar($pdo, $sql) {
