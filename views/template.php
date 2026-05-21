@@ -243,6 +243,7 @@
       "booking-reg" => ["booking-reg.js"],
       "signup" => ["customer-individual/signup.js"],
       "trips" => ["trips.js"],
+      "reports" => ["reports.js"],
       "manage-company" => ["manage.js"],
       "manage-employee" => ["manage.js"],
       "manage-truck" => ["manage.js"]

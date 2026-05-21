@@ -26,6 +26,15 @@ function reportDate($value) {
     return $timestamp ? date("M d, Y h:i A", $timestamp) : $value;
 }
 
+function reportDateValue($value) {
+    if (!$value) {
+        return "";
+    }
+
+    $timestamp = strtotime($value);
+    return $timestamp ? date("Y-m-d", $timestamp) : "";
+}
+
 function reportStaffName($employee) {
     return trim($employee["empFName"] . " " . $employee["empMI"] . " " . $employee["empLName"] . " " . $employee["empSuffix"]);
 }
@@ -79,23 +88,43 @@ function reportStaffName($employee) {
         </div>
       </div>
 
-      <ul class="nav nav-tabs report-tabs" id="reportTabs" role="tablist">
-        <li class="nav-item" role="presentation">
-          <button class="nav-link active" id="billing-tab" data-bs-toggle="tab" data-bs-target="#billingReport" type="button" role="tab">Billing</button>
-        </li>
-        <li class="nav-item" role="presentation">
-          <button class="nav-link" id="expenses-tab" data-bs-toggle="tab" data-bs-target="#expensesReport" type="button" role="tab">Expenses</button>
-        </li>
-        <li class="nav-item" role="presentation">
-          <button class="nav-link" id="staff-tab" data-bs-toggle="tab" data-bs-target="#staffReport" type="button" role="tab">Staff List</button>
-        </li>
-        <li class="nav-item" role="presentation">
-          <button class="nav-link" id="salary-tab" data-bs-toggle="tab" data-bs-target="#salaryReport" type="button" role="tab">Staff Salary</button>
-        </li>
-      </ul>
+      <div class="report-toolbar mb-4">
+        <div>
+          <label class="form-label">Report Category</label>
+          <select class="form-select" id="reportCategory">
+            <option value="billing" selected>Billing</option>
+            <option value="expenses">Expenses</option>
+            <option value="staff">Staff List</option>
+            <option value="salary">Staff Salary</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Specific Report</label>
+          <select class="form-select" id="reportSpecific"></select>
+        </div>
+        <div>
+          <label class="form-label">Report Date Range</label>
+          <div class="form-icon">
+            <i class="ri-calendar-line text-muted"></i>
+            <input type="text" class="form-control form-control-icon" id="reportDateRangeFilter" placeholder="Select date range" autocomplete="off" readonly>
+          </div>
+          <div class="form-text" id="reportDateHint">Filter the active reports by record date.</div>
+        </div>
+        <div class="report-toolbar-actions">
+          <button type="button" class="btn btn-light" id="reportClearDate">
+            <i class="ri-refresh-line me-1"></i> Clear
+          </button>
+          <button type="button" class="btn btn-success" id="reportExportCsv">
+            <i class="ri-file-excel-2-line me-1"></i> CSV
+          </button>
+          <button type="button" class="btn btn-primary" id="reportExportPdf">
+            <i class="ri-file-pdf-2-line me-1"></i> PDF
+          </button>
+        </div>
+      </div>
 
-      <div class="tab-content report-tab-content">
-        <div class="tab-pane fade show active" id="billingReport" role="tabpanel" aria-labelledby="billing-tab">
+      <div class="report-tab-content">
+        <div class="report-pane" id="billingReport" data-report-pane="billing">
           <div class="report-section-heading">
             <div>
               <h6 class="mb-0">Billing Report</h6>
@@ -121,7 +150,7 @@ function reportStaffName($employee) {
               </thead>
               <tbody>
                 <?php foreach ($billingRows as $row): ?>
-                  <tr>
+                  <tr class="report-data-row" data-report-date="<?php echo htmlspecialchars(reportDateValue($row["pickupDateTime"])); ?>" data-report-specific="<?php echo htmlspecialchars(strtolower($row["customerType"])); ?>">
                     <td>#<?php echo (int) $row["bookingID"]; ?></td>
                     <td>
                       <strong><?php echo reportText($row["customerName"], "Customer"); ?></strong>
@@ -138,7 +167,7 @@ function reportStaffName($employee) {
           </div>
         </div>
 
-        <div class="tab-pane fade" id="expensesReport" role="tabpanel" aria-labelledby="expenses-tab">
+        <div class="report-pane d-none" id="expensesReport" data-report-pane="expenses">
           <div class="report-section-heading">
             <div>
               <h6 class="mb-0">Expenses Report</h6>
@@ -162,7 +191,7 @@ function reportStaffName($employee) {
                 </thead>
                 <tbody>
                   <?php foreach ($expenseRows as $row): ?>
-                    <tr>
+                    <tr class="report-data-row" data-report-date="<?php echo htmlspecialchars(reportDateValue($row["recordDate"])); ?>" data-report-specific="<?php echo htmlspecialchars(strtolower($row["category"] ?: "uncategorized")); ?>">
                       <td>#<?php echo reportText($row["recordID"]); ?></td>
                       <td><?php echo htmlspecialchars(reportDate($row["recordDate"])); ?></td>
                       <td><?php echo reportText($row["category"]); ?></td>
@@ -177,7 +206,7 @@ function reportStaffName($employee) {
           <?php endif; ?>
         </div>
 
-        <div class="tab-pane fade" id="staffReport" role="tabpanel" aria-labelledby="staff-tab">
+        <div class="report-pane d-none" id="staffReport" data-report-pane="staff">
           <div class="report-section-heading">
             <div>
               <h6 class="mb-0">Staff List</h6>
@@ -197,7 +226,7 @@ function reportStaffName($employee) {
               </thead>
               <tbody>
                 <?php foreach ($staffRows as $employee): ?>
-                  <tr>
+                  <tr class="report-data-row" data-report-date="<?php echo htmlspecialchars(reportDateValue($employee["dateCreated"])); ?>" data-report-specific="<?php echo htmlspecialchars(strtolower($employee["empType"])); ?>">
                     <td>
                       <strong><?php echo reportText(reportStaffName($employee), "Employee"); ?></strong>
                       <div class="small text-muted">ID #<?php echo (int) $employee["id"]; ?></div>
@@ -220,7 +249,7 @@ function reportStaffName($employee) {
           </div>
         </div>
 
-        <div class="tab-pane fade" id="salaryReport" role="tabpanel" aria-labelledby="salary-tab">
+        <div class="report-pane d-none" id="salaryReport" data-report-pane="salary">
           <div class="report-section-heading">
             <div>
               <h6 class="mb-0">Staff Salary Report</h6>
@@ -243,7 +272,7 @@ function reportStaffName($employee) {
                 </thead>
                 <tbody>
                   <?php foreach ($salaryRows as $row): ?>
-                    <tr>
+                    <tr class="report-data-row" data-report-date="<?php echo htmlspecialchars(reportDateValue($row["recordDate"])); ?>" data-report-specific="<?php echo htmlspecialchars(strtolower($row["status"] ?: "recorded")); ?>">
                       <td>#<?php echo reportText($row["recordID"]); ?></td>
                       <td><?php echo reportText($row["employeeName"]); ?></td>
                       <td><?php echo htmlspecialchars(reportDate($row["recordDate"])); ?></td>
@@ -295,13 +324,25 @@ function reportStaffName($employee) {
     font-size: 1.35rem;
   }
 
-  .report-tabs {
-    gap: 0.25rem;
+  .report-toolbar {
+    display: grid;
+    grid-template-columns: minmax(170px, 0.8fr) minmax(170px, 0.8fr) minmax(260px, 1.4fr) minmax(280px, auto);
+    align-items: start;
+    gap: 1rem;
+  }
+
+  .report-toolbar-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding-top: 1.85rem;
   }
 
   .report-tab-content {
     border: 1px solid var(--bs-border-color);
-    border-top: 0;
+    border-radius: 0.5rem;
     padding: 1rem;
   }
 
@@ -333,9 +374,26 @@ function reportStaffName($employee) {
     background: var(--bs-tertiary-bg);
   }
 
+  .report-filter-empty {
+    border: 1px dashed var(--bs-border-color);
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    color: var(--bs-secondary-color);
+    text-align: center;
+    background: var(--bs-tertiary-bg);
+  }
+
   @media (max-width: 1199.98px) {
     .reports-summary-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .report-toolbar {
+      grid-template-columns: 1fr;
+    }
+
+    .report-toolbar-actions {
+      justify-content: flex-start;
     }
   }
 
@@ -345,6 +403,10 @@ function reportStaffName($employee) {
     }
 
     .reports-summary-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .report-toolbar {
       grid-template-columns: 1fr;
     }
 
