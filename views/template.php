@@ -157,14 +157,15 @@
     }
     else if(isset($_SESSION["loggedIn"]) && $_SESSION["loggedIn"] == "ok"){
       $role = $_SESSION["role"] ?? 'customer';
-      if (in_array($role, ['customerindividual', 'customercompany'], true)) {
+      echo "<script> console.log('User role: " . $role . "');</script>";
+      if (in_array($role, ['customer-individual', 'customer-company'], true)) {
         $role = 'customer';
       }
       $routeMap   = include "configs/routes.php";
       $modulePaths = include "configs/module-paths.php";
 
       $allowedRoutes = $routeMap[$role] ?? [];
-      echo "<script>console.log('Role: " . $role . "');</script>";
+      echo "<script> console.log('Allowed routes for role " . $role . ": " . implode(', ', $allowedRoutes) . "');</script>";
       echo '<div class="layout-wrapper layout-content-navbar">';
         echo '<div class="layout-container">';
           include "partials/sidebar.php";
@@ -173,7 +174,7 @@
             echo '<div class="content-wrapper">';
               echo '<div class="container-fluid py-4">';
               $route = isset($_GET["route"]) ? basename($_GET["route"]) : 'sample';
-          if (isset($_GET["route"])) {
+            if (isset($_GET["route"])) {
               $raw = $_GET["route"];
               // Allow only alphanumeric, hyphens, and ONE slash
               if (preg_match('/^[a-zA-Z0-9\-]+(\/[a-zA-Z0-9\-]+)?$/', $raw)) {
@@ -181,11 +182,14 @@
               } else {
                   $route = '404';
               }
-          }
-          if (isset($modulePaths[$route])) {
-              include $modulePaths[$route];
+            }
+          if (in_array($route, $allowedRoutes) && isset($modulePaths[$route])) {
+            include $modulePaths[$route];
+          } elseif (isset($modulePaths[$route])) {
+            // Route exists but user doesn't have access
+            include "modules/403.php";
           } else {
-              include "modules/404.php";
+            include "modules/404.php";
           }
               echo '</div>'; // container-fluid
             echo '</div>'; // content-wrapper

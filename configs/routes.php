@@ -27,6 +27,6 @@ return [
     'assistant' => $staffRoutes,
     'driver' => $staffRoutes,
     'customer' => $customerRoutes,
-    'customerindividual' => $customerRoutes,
-    'customercompany' => $customerRoutes,
+    'customer-individual' => $customerRoutes,
+    'customer-company' => $customerRoutes,
 ];
