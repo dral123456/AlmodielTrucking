@@ -70,6 +70,12 @@
                 </li>
                 <li class="pe-menu-title">Reports</li>
                 <li class="pe-slide-item">
+                    <a href="sales" class="pe-nav-link">
+                        <i class="ri-line-chart-line pe-nav-icon"></i>
+                        <span class="pe-nav-content">Sales</span>
+                    </a>
+                </li>
+                <li class="pe-slide-item">
                     <a href="reports" class="pe-nav-link">
                         <i class="ri-file-chart-line pe-nav-icon"></i>
                         <span class="pe-nav-content">Reports</span>

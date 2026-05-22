@@ -8,6 +8,7 @@ $staffRoutes = [
     'trips',
     'driver-trips',
     'reports',
+    'sales',
     'manage-company',
     'manage-employee',
     'manage-truck',

@@ -1,5 +1,6 @@
 <?php
 require_once "connection.php";
+require_once __DIR__ . "/sales.model.php";
 
 class ModelBooking {
 
@@ -345,7 +346,15 @@ class ModelBooking {
       $stmt->bindParam(":driverID", $driverID, PDO::PARAM_INT);
     }
 
-    return $stmt->execute() ? "success" : "error";
+    if (!$stmt->execute()) {
+      return "error";
+    }
+
+    if ($status === "completed") {
+      ModelSales::mdlSyncSalesForTrip($pdo, $tripID);
+    }
+
+    return "success";
   }
 
   static private function formatAddress($street, $barangay, $city, $province) {

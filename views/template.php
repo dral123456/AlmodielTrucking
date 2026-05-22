@@ -249,6 +249,7 @@
       "trips" => ["trips.js"],
       "driver-trips" => ["driver-trips.js"],
       "reports" => ["reports.js"],
+      "sales" => ["sales.js"],
       "manage-company" => ["manage.js"],
       "manage-employee" => ["manage.js"],
       "manage-truck" => ["manage.js"]
