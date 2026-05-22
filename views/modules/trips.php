@@ -33,6 +33,7 @@ $trips = ControllerBooking::ctrTripOverviewList();
           <select class="form-select" id="tripStatusFilter">
             <option value="all">All trips</option>
             <option value="pending">Pending</option>
+            <option value="stopover">Stopover</option>
             <option value="in-transit">On Transit</option>
             <option value="completed">Delivered</option>
           </select>

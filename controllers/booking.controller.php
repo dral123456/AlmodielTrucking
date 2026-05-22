@@ -24,6 +24,14 @@ class ControllerBooking {
     return (new ModelBooking)->mdlTripOverviewList();
   }
 
+  static public function ctrDriverTripList($driverID, $showAll = false) {
+    return (new ModelBooking)->mdlDriverTripList($driverID, $showAll);
+  }
+
+  static public function ctrUpdateTripDeliveryStatus($tripID, $status, $driverID, $showAll = false) {
+    return (new ModelBooking)->mdlUpdateTripDeliveryStatus($tripID, $status, $driverID, $showAll);
+  }
+
   static public function ctrSaveBooking($data) {
     return (new ModelBooking)->mdlSaveBooking($data);
   }

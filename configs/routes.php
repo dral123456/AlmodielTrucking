@@ -6,6 +6,7 @@ $staffRoutes = [
     'truck-reg',
     'booking-reg',
     'trips',
+    'driver-trips',
     'reports',
     'manage-company',
     'manage-employee',

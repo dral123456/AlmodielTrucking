@@ -315,6 +315,10 @@ $(document).ready(function () {
       return { label: 'On Transit', className: 'bg-info-subtle text-info' };
     }
 
+    if (status === 'stopover') {
+      return { label: 'Stopover', className: 'bg-primary-subtle text-primary' };
+    }
+
     return { label: 'Pending', className: 'bg-warning-subtle text-warning' };
   }
 
