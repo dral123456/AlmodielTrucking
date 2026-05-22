@@ -31,6 +31,7 @@ foreach ($trips as $trip) {
     </div>
 
     <div class="card-body p-4">
+<<<<<<< HEAD
       <div class="trip-stat-grid mb-4">
         <button type="button" class="trip-stat-card active" data-status-shortcut="all">
           <span class="trip-stat-icon bg-primary-subtle text-primary"><i class="ri-route-line"></i></span>
@@ -87,6 +88,33 @@ foreach ($trips as $trip) {
             <button type="button" class="btn btn-light w-100" id="tripClearFilters">
               <i class="ri-refresh-line me-1"></i> Clear Filters
             </button>
+=======
+      <div class="trip-filter-grid mb-4">
+        <div>
+          <label class="form-label">Sort by Date & Time</label>
+          <select class="form-select" id="tripSort">
+            <option value="date_desc">Newest first</option>
+            <option value="date_asc">Oldest first</option>
+            <option value="time_asc">Earliest time first</option>
+            <option value="time_desc">Latest time first</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Status</label>
+          <select class="form-select" id="tripStatusFilter">
+            <option value="all">All trips</option>
+            <option value="pending">Pending</option>
+            <option value="stopover">Stopover</option>
+            <option value="in-transit">On Transit</option>
+            <option value="completed">Delivered</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Trip Date Range</label>
+          <div class="form-icon">
+            <i class="ri-calendar-line text-muted"></i>
+            <input type="text" class="form-control form-control-icon" id="tripDateRangeFilter" placeholder="Select date range" autocomplete="off" readonly>
+>>>>>>> tripActive
           </div>
         </div>
       </div>
