@@ -5,7 +5,7 @@ class ManageRecordAjax {
   public function handle() {
     $entity = $_POST["entity"] ?? "";
     $action = $_POST["action"] ?? "";
-    $id = (int) ($_POST["id"] ?? 0);
+    $id     = (int) ($_POST["id"] ?? 0);
 
     if ($id <= 0 || !in_array($entity, ["company", "employee", "truck"], true) || !in_array($action, ["edit", "archive", "crew"], true)) {
       echo "error";
@@ -51,83 +51,130 @@ class ManageRecordAjax {
 
   private function edit($pdo, $entity, $id) {
     if ($entity === "company") {
-      $setFields = array(
-        "customerFName = :companyName",
-        "contactPerson = :contactPerson",
-        "email = :email",
-        "phoneNumber = :phoneNumber",
-        "province = :province",
-        "city = :city",
-        "barangay = :barangay",
-        "street = :street",
-        "houseNumber = :houseNumber",
-        "status = :status"
-      );
-      $hasWarehouseColumns = $this->columnExists($pdo, "customer", "warehouseLatitude") &&
-        $this->columnExists($pdo, "customer", "warehouseLongitude");
+      $pdo->beginTransaction();
 
-      if ($hasWarehouseColumns) {
-        $setFields[] = "warehouseLatitude = :warehouseLatitude";
-        $setFields[] = "warehouseLongitude = :warehouseLongitude";
-      }
-
+      // 1. Update customer fields
       $stmt = $pdo->prepare("
         UPDATE customer
-        SET " . implode(", ", $setFields) . "
+        SET customerFName = :companyName,
+            contactPerson = :contactPerson,
+            email         = :email,
+            phoneNumber   = :phoneNumber,
+            status        = :status
         WHERE id = :id AND customerType = 'company'
       ");
-      $stmt->bindValue(":companyName", $_POST["companyName"] ?? "", PDO::PARAM_STR);
+      $stmt->bindValue(":companyName",   $_POST["companyName"]   ?? "", PDO::PARAM_STR);
       $stmt->bindValue(":contactPerson", $_POST["contactPerson"] ?? "", PDO::PARAM_STR);
-      $stmt->bindValue(":email", $_POST["email"] ?? "", PDO::PARAM_STR);
-      $stmt->bindValue(":phoneNumber", $_POST["phoneNumber"] ?? "", PDO::PARAM_STR);
-      $stmt->bindValue(":province", $_POST["province"] ?? "", PDO::PARAM_STR);
-      $stmt->bindValue(":city", $_POST["city"] ?? "", PDO::PARAM_STR);
-      $stmt->bindValue(":barangay", $_POST["barangay"] ?? "", PDO::PARAM_STR);
-      $stmt->bindValue(":street", $_POST["street"] ?? "", PDO::PARAM_STR);
-      $stmt->bindValue(":houseNumber", $_POST["houseNumber"] ?? "", PDO::PARAM_STR);
-      $stmt->bindValue(":status", $_POST["status"] ?? "active", PDO::PARAM_STR);
-      if ($hasWarehouseColumns) {
-        $warehouseLatitude = $_POST["warehouseLatitude"] ?? "";
-        $warehouseLongitude = $_POST["warehouseLongitude"] ?? "";
-        $stmt->bindValue(":warehouseLatitude", $warehouseLatitude !== "" ? $warehouseLatitude : null);
-        $stmt->bindValue(":warehouseLongitude", $warehouseLongitude !== "" ? $warehouseLongitude : null);
+      $stmt->bindValue(":email",         $_POST["email"]         ?? "", PDO::PARAM_STR);
+      $stmt->bindValue(":phoneNumber",   $_POST["phoneNumber"]   ?? "", PDO::PARAM_STR);
+      $stmt->bindValue(":status",        $_POST["status"]        ?? "active", PDO::PARAM_STR);
+      $stmt->bindParam(":id", $id, PDO::PARAM_INT);
+      $stmt->execute();
+
+      // 2. Get the locationID for this customer
+      $locStmt = $pdo->prepare("SELECT locationID FROM customer WHERE id = :id");
+      $locStmt->bindParam(":id", $id, PDO::PARAM_INT);
+      $locStmt->execute();
+      $locationID = (int) $locStmt->fetchColumn();
+
+      if ($locationID > 0) {
+        // 3. Update the existing location row
+        $lat = $_POST["latitude"]  ?? "";
+        $lng = $_POST["longitude"] ?? "";
+
+        $locUpdate = $pdo->prepare("
+          UPDATE location
+          SET province    = :province,
+              city        = :city,
+              barangay    = :barangay,
+              street      = :street,
+              description = :description,
+              latitude    = :latitude,
+              longitude   = :longitude
+          WHERE locationID = :locationID
+        ");
+        $locUpdate->bindValue(":province",    $_POST["province"]    ?? "", PDO::PARAM_STR);
+        $locUpdate->bindValue(":city",        $_POST["city"]        ?? "", PDO::PARAM_STR);
+        $locUpdate->bindValue(":barangay",    $_POST["barangay"]    ?? "", PDO::PARAM_STR);
+        $locUpdate->bindValue(":street",      $_POST["street"]      ?? "", PDO::PARAM_STR);
+        $locUpdate->bindValue(":description", $_POST["description"] ?? "", PDO::PARAM_STR);
+        $locUpdate->bindValue(":latitude",    $lat !== "" ? (float) $lat : null);
+        $locUpdate->bindValue(":longitude",   $lng !== "" ? (float) $lng : null);
+        $locUpdate->bindParam(":locationID",  $locationID, PDO::PARAM_INT);
+        $locUpdate->execute();
+      } else {
+        // 4. No location yet — insert one and link it
+        $lat = $_POST["latitude"]  ?? "";
+        $lng = $_POST["longitude"] ?? "";
+
+        $province = $_POST["province"] ?? "";
+        $city     = $_POST["city"]     ?? "";
+        $barangay = $_POST["barangay"] ?? "";
+        $street   = $_POST["street"]   ?? "";
+
+        $parts = array_filter([$street, $barangay, $city, $province, "Philippines"]);
+        $description = $_POST["description"] ?? implode(", ", $parts);
+
+        $locInsert = $pdo->prepare("
+          INSERT INTO location (province, city, barangay, street, description, latitude, longitude)
+          VALUES (:province, :city, :barangay, :street, :description, :latitude, :longitude)
+        ");
+        $locInsert->bindValue(":province",    $province,   PDO::PARAM_STR);
+        $locInsert->bindValue(":city",        $city,       PDO::PARAM_STR);
+        $locInsert->bindValue(":barangay",    $barangay,   PDO::PARAM_STR);
+        $locInsert->bindValue(":street",      $street,     PDO::PARAM_STR);
+        $locInsert->bindValue(":description", $description, PDO::PARAM_STR);
+        $locInsert->bindValue(":latitude",    $lat !== "" ? (float) $lat : null);
+        $locInsert->bindValue(":longitude",   $lng !== "" ? (float) $lng : null);
+        $locInsert->execute();
+
+        $newLocationID = (int) $pdo->lastInsertId();
+
+        $linkStmt = $pdo->prepare("UPDATE customer SET locationID = :locationID WHERE id = :id");
+        $linkStmt->bindParam(":locationID", $newLocationID, PDO::PARAM_INT);
+        $linkStmt->bindParam(":id",         $id,            PDO::PARAM_INT);
+        $linkStmt->execute();
       }
+
+      $pdo->commit();
+      return "success";
+
     } elseif ($entity === "employee") {
       $stmt = $pdo->prepare("
         UPDATE employee
-        SET empFName = :firstName,
-            empLName = :lastName,
+        SET empFName       = :firstName,
+            empLName       = :lastName,
             empPhoneNumber = :phoneNumber,
-            empEmail = :email,
-            empType = :empType,
-            empStatus = :status
+            empEmail       = :email,
+            empType        = :empType,
+            empStatus      = :status
         WHERE id = :id
       ");
-      $stmt->bindValue(":firstName", $_POST["firstName"] ?? "", PDO::PARAM_STR);
-      $stmt->bindValue(":lastName", $_POST["lastName"] ?? "", PDO::PARAM_STR);
+      $stmt->bindValue(":firstName",   $_POST["firstName"]   ?? "", PDO::PARAM_STR);
+      $stmt->bindValue(":lastName",    $_POST["lastName"]    ?? "", PDO::PARAM_STR);
       $stmt->bindValue(":phoneNumber", $_POST["phoneNumber"] ?? "", PDO::PARAM_STR);
-      $stmt->bindValue(":email", $_POST["email"] ?? "", PDO::PARAM_STR);
-      $stmt->bindValue(":empType", $_POST["empType"] ?? "driver", PDO::PARAM_STR);
-      $stmt->bindValue(":status", $_POST["status"] ?? "active", PDO::PARAM_STR);
+      $stmt->bindValue(":email",       $_POST["email"]       ?? "", PDO::PARAM_STR);
+      $stmt->bindValue(":empType",     $_POST["empType"]     ?? "driver", PDO::PARAM_STR);
+      $stmt->bindValue(":status",      $_POST["status"]      ?? "active", PDO::PARAM_STR);
     } else {
       $stmt = $pdo->prepare("
         UPDATE truck
         SET plateNumber = :plateNumber,
-            brand = :brand,
-            type = :type,
-            capacity = :capacity,
-            fuel = :fuel,
-            mileage = :mileage,
-            status = :status
+            brand       = :brand,
+            type        = :type,
+            capacity    = :capacity,
+            fuel        = :fuel,
+            mileage     = :mileage,
+            status      = :status
         WHERE id = :id
       ");
       $stmt->bindValue(":plateNumber", $_POST["plateNumber"] ?? "", PDO::PARAM_STR);
-      $stmt->bindValue(":brand", $_POST["brand"] ?? "", PDO::PARAM_STR);
-      $stmt->bindValue(":type", $_POST["type"] ?? "", PDO::PARAM_STR);
-      $stmt->bindValue(":capacity", $_POST["capacity"] ?? 0);
-      $stmt->bindValue(":fuel", $_POST["fuel"] ?? 0, PDO::PARAM_INT);
-      $stmt->bindValue(":mileage", $_POST["mileage"] ?? 0, PDO::PARAM_INT);
-      $stmt->bindValue(":status", $_POST["status"] ?? "active", PDO::PARAM_STR);
+      $stmt->bindValue(":brand",       $_POST["brand"]       ?? "", PDO::PARAM_STR);
+      $stmt->bindValue(":type",        $_POST["type"]        ?? "", PDO::PARAM_STR);
+      $stmt->bindValue(":capacity",    $_POST["capacity"]    ?? 0);
+      $stmt->bindValue(":fuel",        $_POST["fuel"]        ?? 0,  PDO::PARAM_INT);
+      $stmt->bindValue(":mileage",     $_POST["mileage"]     ?? 0,  PDO::PARAM_INT);
+      $stmt->bindValue(":status",      $_POST["status"]      ?? "active", PDO::PARAM_STR);
     }
 
     $stmt->bindParam(":id", $id, PDO::PARAM_INT);
@@ -140,7 +187,7 @@ class ManageRecordAjax {
       return "error";
     }
 
-    $driverID = (int) ($_POST["driverID"] ?? 0);
+    $driverID     = (int) ($_POST["driverID"] ?? 0);
     $assistantIDs = json_decode($_POST["assistantIDs"] ?? "[]", true);
 
     if ($driverID <= 0 || !is_array($assistantIDs)) {
@@ -156,7 +203,7 @@ class ManageRecordAjax {
       return "error";
     }
 
-    $table = $this->resolveTruckEmployeeTable($pdo);
+    $table     = $this->resolveTruckEmployeeTable($pdo);
     $safeTable = "`" . str_replace("`", "``", $table) . "`";
 
     $pdo->beginTransaction();
@@ -181,8 +228,8 @@ class ManageRecordAjax {
 
   private function insertTruckEmployee($stmt, $truckID, $empID, $role) {
     $stmt->bindValue(":truckID", $truckID, PDO::PARAM_INT);
-    $stmt->bindValue(":empID", $empID, PDO::PARAM_INT);
-    $stmt->bindValue(":role", $role, PDO::PARAM_STR);
+    $stmt->bindValue(":empID",   $empID,   PDO::PARAM_INT);
+    $stmt->bindValue(":role",    $role,    PDO::PARAM_STR);
     $stmt->execute();
   }
 
@@ -196,24 +243,7 @@ class ManageRecordAjax {
         return $tableName;
       }
     }
-
     return "truckemployee";
-  }
-
-  private function columnExists($pdo, $tableName, $columnName) {
-    $stmt = $pdo->prepare("
-      SELECT COUNT(*)
-      FROM INFORMATION_SCHEMA.COLUMNS
-      WHERE TABLE_SCHEMA = DATABASE()
-        AND TABLE_NAME = :tableName
-        AND COLUMN_NAME = :columnName
-    ");
-
-    $stmt->bindParam(":tableName", $tableName, PDO::PARAM_STR);
-    $stmt->bindParam(":columnName", $columnName, PDO::PARAM_STR);
-    $stmt->execute();
-
-    return (int) $stmt->fetchColumn() > 0;
   }
 }
 

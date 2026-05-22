@@ -180,6 +180,16 @@
                   <input type="text" class="form-control form-control-icon" id="houseIndiv" placeholder="House No.">
                 </div>
               </div>
+              <div class="col-12 mb-3">
+                <label class="form-label">Description / Landmark</label>
+                <div class="desc-field-wrap">
+                  <i class="ri-sticky-note-line text-muted desc-icon"></i>
+                  <textarea class="form-control desc-textarea" id="locationDescription" rows="2"
+                    placeholder="e.g. Near the church, blue gate, beside 7-Eleven…"
+                    style="resize:none;"></textarea>
+                </div>
+                <div class="form-text">Optional — helps identify your location more precisely.</div>
+              </div>
             </div>
 
             <div class="d-flex justify-content-between gap-2 mt-3">
@@ -214,9 +224,13 @@
                 </div>
                 <div class="col-12 col-md-6 mb-3">
                   <label class="form-label">Confirm Password <span class="text-danger">*</span></label>
-                  <div class="form-icon">
+                  <div class="form-icon position-relative">
                     <i class="ri-lock-2-line text-muted"></i>
-                    <input type="password" class="form-control form-control-icon" id="custPasswordConfirm" placeholder="Re-enter password" autocomplete="new-password">
+                    <input type="password" class="form-control form-control-icon pe-5" id="custPasswordConfirm" placeholder="Re-enter password" autocomplete="new-password">
+                    <button type="button" class="btn btn-link p-0 text-muted position-absolute" id="toggleCustPasswordConfirm"
+                            style="right:.75rem; top:50%; transform:translateY(-50%); text-decoration:none;">
+                      <i class="ri-eye-line"></i>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -301,5 +315,38 @@
   }
   .card-header {
     border-bottom: none;
+  }
+
+  /* Description / Landmark field */
+  .desc-field-wrap {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.375rem;
+    background: var(--bs-body-bg);
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  }
+  .desc-field-wrap:focus-within {
+    border-color: #696cff;
+    box-shadow: 0 0 0 0.2rem rgba(105, 108, 255, 0.25);
+  }
+  .desc-icon {
+    padding: 0.5rem 0.65rem 0;
+    font-size: 1rem;
+    pointer-events: none;
+    flex-shrink: 0;
+  }
+  .desc-textarea {
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    padding-left: 0;
+    border-radius: 0 0.375rem 0.375rem 0;
+    flex: 1;
+  }
+  .desc-textarea:focus {
+    outline: none;
+    box-shadow: none !important;
   }
 </style>
