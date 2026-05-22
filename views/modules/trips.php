@@ -3,6 +3,19 @@ require_once "controllers/booking.controller.php";
 require_once "models/booking.model.php";
 
 $trips = ControllerBooking::ctrTripOverviewList();
+$tripStats = array(
+  "total" => count($trips),
+  "pending" => 0,
+  "stopover" => 0,
+  "in-transit" => 0,
+  "completed" => 0
+);
+
+foreach ($trips as $trip) {
+  if (isset($tripStats[$trip["status"]])) {
+    $tripStats[$trip["status"]]++;
+  }
+}
 ?>
 
 <div class="trip-page">
@@ -10,7 +23,7 @@ $trips = ControllerBooking::ctrTripOverviewList();
     <div class="card-header border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
       <div>
         <h5 class="mb-0">Trips</h5>
-        <p class="text-muted small mb-0">View generated trips, connected bookings, delivery status, and route points.</p>
+        <p class="text-muted small mb-0">Monitor generated trips, route points, booking groups, and delivery status.</p>
       </div>
       <span class="badge bg-primary-subtle text-primary fs-6">
         <i class="ri-route-line me-1"></i> Trip Monitoring
@@ -18,51 +31,81 @@ $trips = ControllerBooking::ctrTripOverviewList();
     </div>
 
     <div class="card-body p-4">
-      <div class="trip-filter-grid mb-4">
-        <div>
-          <label class="form-label">Sort by Date & Time</label>
-          <select class="form-select" id="tripSort">
-            <option value="date_desc">Newest first</option>
-            <option value="date_asc">Oldest first</option>
-            <option value="time_asc">Earliest time first</option>
-            <option value="time_desc">Latest time first</option>
-          </select>
-        </div>
-        <div>
-          <label class="form-label">Status</label>
-          <select class="form-select" id="tripStatusFilter">
-            <option value="all">All trips</option>
-            <option value="pending">Pending</option>
-            <option value="in-transit">On Transit</option>
-            <option value="completed">Delivered</option>
-          </select>
-        </div>
-        <div>
-          <label class="form-label">Trip Date Range</label>
-          <div class="form-icon">
-            <i class="ri-calendar-line text-muted"></i>
-            <input type="text" class="form-control form-control-icon" id="tripDateRangeFilter" placeholder="Select date range" autocomplete="off" readonly>
+      <div class="trip-stat-grid mb-4">
+        <button type="button" class="trip-stat-card active" data-status-shortcut="all">
+          <span class="trip-stat-icon bg-primary-subtle text-primary"><i class="ri-route-line"></i></span>
+          <span><small>Total Trips</small><strong><?php echo (int) $tripStats["total"]; ?></strong></span>
+        </button>
+        <button type="button" class="trip-stat-card" data-status-shortcut="pending">
+          <span class="trip-stat-icon bg-warning-subtle text-warning"><i class="ri-time-line"></i></span>
+          <span><small>Pending</small><strong><?php echo (int) $tripStats["pending"]; ?></strong></span>
+        </button>
+        <button type="button" class="trip-stat-card" data-status-shortcut="stopover">
+          <span class="trip-stat-icon bg-info-subtle text-info"><i class="ri-map-pin-time-line"></i></span>
+          <span><small>Stopover</small><strong><?php echo (int) $tripStats["stopover"]; ?></strong></span>
+        </button>
+        <button type="button" class="trip-stat-card" data-status-shortcut="in-transit">
+          <span class="trip-stat-icon bg-primary-subtle text-primary"><i class="ri-truck-line"></i></span>
+          <span><small>On Transit</small><strong><?php echo (int) $tripStats["in-transit"]; ?></strong></span>
+        </button>
+        <button type="button" class="trip-stat-card" data-status-shortcut="completed">
+          <span class="trip-stat-icon bg-success-subtle text-success"><i class="ri-check-double-line"></i></span>
+          <span><small>Delivered</small><strong><?php echo (int) $tripStats["completed"]; ?></strong></span>
+        </button>
+      </div>
+
+      <div class="trip-filter-panel mb-4">
+        <div class="trip-filter-grid">
+          <div>
+            <label class="form-label">Sort by Date & Time</label>
+            <select class="form-select" id="tripSort">
+              <option value="date_desc">Newest first</option>
+              <option value="date_asc">Oldest first</option>
+              <option value="time_asc">Earliest time first</option>
+              <option value="time_desc">Latest time first</option>
+            </select>
           </div>
-          <div class="form-text" id="tripDateHint">Dates with bookings are marked in the calendar.</div>
-        </div>
-        <div class="trip-filter-action">
-          <button type="button" class="btn btn-light w-100" id="tripClearFilters">
-            <i class="ri-refresh-line me-1"></i> Clear Filters
-          </button>
+          <div>
+            <label class="form-label">Status</label>
+            <select class="form-select" id="tripStatusFilter">
+              <option value="all">All trips</option>
+              <option value="pending">Pending</option>
+              <option value="stopover">Stopover</option>
+              <option value="in-transit">On Transit</option>
+              <option value="completed">Delivered</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Trip Date Range</label>
+            <div class="form-icon">
+              <i class="ri-calendar-line text-muted"></i>
+              <input type="text" class="form-control form-control-icon" id="tripDateRangeFilter" placeholder="Select date range" autocomplete="off" readonly>
+            </div>
+            <div class="form-text" id="tripDateHint">Dates with bookings are marked in the calendar.</div>
+          </div>
+          <div class="trip-filter-action">
+            <button type="button" class="btn btn-light w-100" id="tripClearFilters">
+              <i class="ri-refresh-line me-1"></i> Clear Filters
+            </button>
+          </div>
         </div>
       </div>
 
       <div class="trip-workspace">
         <section class="trip-list-panel">
+          <div class="trip-panel-heading">
+            <div>
+              <h6 class="mb-0">Trip Queue</h6>
+              <p class="text-muted small mb-0" id="tripListSummary">Select a trip to inspect its route.</p>
+            </div>
+          </div>
           <div id="tripList" class="trip-list"></div>
         </section>
         <section class="trip-map-panel">
           <div class="trip-map-shell">
-            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+            <div class="trip-panel-heading mb-3">
               <div>
-                <h6 class="text-uppercase text-muted mb-1">
-                  <i class="ri-road-map-line me-1"></i> Leaflet Map
-                </h6>
+                <h6 class="mb-0"><i class="ri-road-map-line me-1"></i> Route Map</h6>
                 <p class="text-muted small mb-0" id="tripMapStatus">Select a trip to view pickup and destination pins.</p>
               </div>
               <span class="badge bg-secondary-subtle text-secondary" id="tripMapBadge">No trip selected</span>
@@ -81,13 +124,76 @@ $trips = ControllerBooking::ctrTripOverviewList();
 
 <style>
   .trip-page {
-    max-width: 1440px;
+    max-width: 1480px;
     margin: 0 auto;
+  }
+
+  .trip-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+
+  .trip-stat-card {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 0;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.5rem;
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+    padding: 0.875rem;
+    text-align: left;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .trip-stat-card.active,
+  .trip-stat-card:hover {
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 3px rgba(105, 108, 255, 0.10);
+  }
+
+  .trip-stat-icon {
+    width: 40px;
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 40px;
+    border-radius: 0.5rem;
+    font-size: 1.2rem;
+  }
+
+  .trip-stat-card small {
+    display: block;
+    color: var(--bs-secondary-color);
+    line-height: 1.2;
+  }
+
+  .trip-stat-card strong {
+    display: block;
+    font-size: 1.25rem;
+    line-height: 1.15;
+  }
+
+  .trip-filter-panel,
+  .trip-list-panel,
+  .trip-map-shell {
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.5rem;
+    background: var(--bs-body-bg);
+  }
+
+  .trip-filter-panel,
+  .trip-list-panel,
+  .trip-map-shell {
+    padding: 1rem;
   }
 
   .trip-filter-grid {
     display: grid;
-    grid-template-columns: minmax(190px, 1fr) minmax(170px, 0.8fr) minmax(280px, 1.35fr) minmax(150px, 180px);
+    grid-template-columns: minmax(180px, 0.9fr) minmax(160px, 0.75fr) minmax(280px, 1.3fr) minmax(150px, 180px);
     align-items: start;
     gap: 1rem;
   }
@@ -99,9 +205,9 @@ $trips = ControllerBooking::ctrTripOverviewList();
 
   .trip-workspace {
     display: grid;
-    grid-template-columns: 420px minmax(0, 1fr);
+    grid-template-columns: minmax(360px, 440px) minmax(0, 1fr);
     align-items: start;
-    gap: 1.25rem;
+    gap: 1rem;
   }
 
   .trip-list-panel,
@@ -109,12 +215,21 @@ $trips = ControllerBooking::ctrTripOverviewList();
     min-width: 0;
   }
 
+  .trip-panel-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
   .trip-list {
     display: grid;
     gap: 0.75rem;
-    max-height: 560px;
+    max-height: 640px;
     overflow: auto;
     padding-right: 0.25rem;
+    margin-top: 1rem;
   }
 
   .trip-item {
@@ -125,6 +240,12 @@ $trips = ControllerBooking::ctrTripOverviewList();
     text-align: left;
     width: 100%;
     min-width: 0;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+  }
+
+  .trip-item:hover {
+    transform: translateY(-1px);
+    border-color: rgba(105, 108, 255, 0.45);
   }
 
   .trip-item.active {
@@ -132,7 +253,19 @@ $trips = ControllerBooking::ctrTripOverviewList();
     box-shadow: 0 0 0 3px rgba(105, 108, 255, 0.12);
   }
 
-  .trip-meta {
+  .trip-item-title {
+    min-width: 0;
+  }
+
+  .trip-item-title h6 {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .trip-meta,
+  .trip-route-meta {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
@@ -141,10 +274,20 @@ $trips = ControllerBooking::ctrTripOverviewList();
     font-size: 0.8125rem;
   }
 
+  .trip-route-meta {
+    margin-top: 0.625rem;
+  }
+
   .trip-booking-row {
     border-top: 1px solid var(--bs-border-color);
     padding-top: 0.75rem;
     margin-top: 0.75rem;
+  }
+
+  .trip-booking-locations {
+    display: grid;
+    gap: 0.25rem;
+    margin-top: 0.375rem;
   }
 
   .air-datepicker-cell.-trip-has-booking- {
@@ -184,22 +327,32 @@ $trips = ControllerBooking::ctrTripOverviewList();
 
   #tripMap {
     width: 100%;
-    height: 560px;
-    min-height: 480px;
+    height: min(64vh, 660px);
+    min-height: 520px;
     border: 1px solid var(--bs-border-color);
     border-radius: 0.5rem;
     overflow: hidden;
+    background: #dbeafe;
   }
 
   @media (max-width: 1399.98px) {
+    .trip-stat-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
     .trip-workspace {
-      grid-template-columns: 400px minmax(0, 1fr);
+      grid-template-columns: minmax(340px, 410px) minmax(0, 1fr);
     }
   }
 
   @media (max-width: 1199.98px) {
     .trip-filter-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .trip-filter-action {
+      padding-top: 0;
+      align-self: end;
     }
 
     .trip-workspace {
@@ -221,14 +374,31 @@ $trips = ControllerBooking::ctrTripOverviewList();
     }
   }
 
-  @media (max-width: 575.98px) {
+  @media (max-width: 767.98px) {
+    .trip-stat-grid,
     .trip-filter-grid {
       grid-template-columns: 1fr;
     }
 
+    .trip-filter-action {
+      align-self: stretch;
+    }
+
+    .trip-map-panel {
+      order: -1;
+    }
+
     #tripMap {
-      height: 340px;
-      min-height: 340px;
+      height: 360px;
+      min-height: 360px;
+    }
+  }
+
+  @media (max-width: 575.98px) {
+    .trip-list-panel,
+    .trip-map-shell,
+    .trip-filter-panel {
+      padding: 0.875rem;
     }
 
     .trip-item {

@@ -15,6 +15,26 @@ class BookingRegistration {
       }
     }
 
+    $cargoItems = array();
+
+    if (isset($_POST["cargoItems"])) {
+      $decodedCargo = json_decode($_POST["cargoItems"], true);
+      if (is_array($decodedCargo)) {
+        $cargoItems = $decodedCargo;
+      }
+    }
+
+    $cargoItems = array_values(array_filter($cargoItems, function ($item) {
+      return isset($item["cargoType"], $item["quantity"]) &&
+        trim((string) $item["cargoType"]) !== "" &&
+        (int) $item["quantity"] > 0;
+    }));
+
+    if (empty($cargoItems)) {
+      echo "error";
+      return;
+    }
+
     $data = array(
       "customerID" => $_POST["customerID"],
       "truckID" => $_POST["truckID"],
@@ -26,8 +46,7 @@ class BookingRegistration {
         "assistantIDs" => $assistantIDs
       ),
       "cargo" => array(
-        "cargoType" => $_POST["cargoType"],
-        "quantity" => $_POST["cargoQuantity"],
+        "items" => $cargoItems,
         "condition" => $_POST["cargoCondition"],
         "description" => $_POST["cargoDescription"],
         "specialHandling" => $_POST["cargoSpecialHandling"]

@@ -645,13 +645,24 @@ class ModelBooking {
       )
     ");
 
-    $stmt->bindParam(":bookingID", $bookingID, PDO::PARAM_INT);
-    $stmt->bindParam(":cargoType", $cargo["cargoType"], PDO::PARAM_STR);
-    $stmt->bindParam(":quantity", $cargo["quantity"], PDO::PARAM_INT);
-    $stmt->bindParam(":condition", $cargo["condition"], PDO::PARAM_STR);
-    $stmt->bindParam(":description", $cargo["description"], PDO::PARAM_STR);
-    $stmt->bindParam(":specialHandling", $cargo["specialHandling"], PDO::PARAM_STR);
-    $stmt->execute();
+    $items = isset($cargo["items"]) && is_array($cargo["items"]) ? $cargo["items"] : array();
+
+    foreach ($items as $item) {
+      $cargoType = trim((string) ($item["cargoType"] ?? ""));
+      $quantity = (int) ($item["quantity"] ?? 0);
+
+      if ($cargoType === "" || $quantity < 1) {
+        continue;
+      }
+
+      $stmt->bindValue(":bookingID", $bookingID, PDO::PARAM_INT);
+      $stmt->bindValue(":cargoType", $cargoType, PDO::PARAM_STR);
+      $stmt->bindValue(":quantity", $quantity, PDO::PARAM_INT);
+      $stmt->bindValue(":condition", $cargo["condition"], PDO::PARAM_STR);
+      $stmt->bindValue(":description", $cargo["description"], PDO::PARAM_STR);
+      $stmt->bindValue(":specialHandling", $cargo["specialHandling"], PDO::PARAM_STR);
+      $stmt->execute();
+    }
   }
 
   static private function insertTripEmployees($pdo, $tripID, $truckID, $crew) {

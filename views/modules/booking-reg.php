@@ -165,15 +165,32 @@ foreach ($trucks as $truck) {
             <h6 class="text-uppercase text-muted mb-3">
               <i class="ri-box-3-line me-1"></i> Cargo Details
             </h6>
-            <div class="row">
-              <div class="col-12 col-md-6 mb-3">
-                <label class="form-label">Cargo Type <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" id="cargoType" maxlength="100" placeholder="e.g. Construction materials">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+              <label class="form-label mb-0">Cargo Items <span class="text-danger">*</span></label>
+              <button class="btn btn-sm btn-outline-primary" type="button" id="bookingAddCargo">
+                <i class="ri-add-line me-1"></i> Add Cargo
+              </button>
+            </div>
+            <div id="bookingCargoList" class="booking-cargo-list">
+              <div class="booking-cargo-item">
+                <div class="row g-2 align-items-end">
+                  <div class="col-12 col-md-7">
+                    <label class="form-label">Cargo Type <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control cargo-type" maxlength="100" placeholder="e.g. Construction materials">
+                  </div>
+                  <div class="col-12 col-md-4">
+                    <label class="form-label">Quantity <span class="text-danger">*</span></label>
+                    <input type="number" class="form-control cargo-quantity" min="1" step="1" placeholder="Quantity">
+                  </div>
+                  <div class="col-12 col-md-1 d-grid">
+                    <button class="btn btn-outline-danger booking-remove-cargo" type="button" aria-label="Remove cargo" disabled>
+                      <i class="ri-close-line"></i>
+                    </button>
+                  </div>
+                </div>
               </div>
-              <div class="col-12 col-md-6 mb-3">
-                <label class="form-label">Quantity <span class="text-danger">*</span></label>
-                <input type="number" class="form-control" id="cargoQuantity" min="1" step="1" placeholder="Quantity">
-              </div>
+            </div>
+            <div class="row mt-3">
               <div class="col-12 mb-3">
                 <label class="form-label">Condition</label>
                 <input type="text" class="form-control" id="cargoCondition" maxlength="100" placeholder="e.g. Fragile, sealed, dry">
@@ -423,6 +440,18 @@ foreach ($trucks as $truck) {
 
   .booking-step-pill.complete {
     border-color: var(--bs-primary);
+  }
+
+  .booking-cargo-list {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .booking-cargo-item {
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    background: var(--bs-body-bg);
   }
 
   #bookingMap {

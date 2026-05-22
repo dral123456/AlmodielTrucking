@@ -31,6 +31,16 @@ $(document).ready(function () {
     syncAssistantOptions();
   });
 
+  $(document).on('click', '#bookingAddCargo', function () {
+    addCargoItem();
+    updateCargoRemoveButtons();
+  });
+
+  $(document).on('click', '.booking-remove-cargo', function () {
+    $(this).closest('.booking-cargo-item').remove();
+    updateCargoRemoveButtons();
+  });
+
   $(document).on('click', '.booking-remove-assistant', function () {
     $(this).closest('.booking-assistant-item').remove();
     syncAssistantOptions();
@@ -100,7 +110,8 @@ $(document).ready(function () {
     $('#bookingCustomer, #bookingPickupDateTime, #bookingPrice, #bookingTruck, #bookingDriver').val('');
     $('#bookingAssistantList .booking-assistant-item').slice(2).remove();
     $('.booking-assistant').val('');
-    $('#cargoType, #cargoQuantity, #cargoCondition, #cargoDescription, #cargoSpecialHandling').val('');
+    $('#bookingCargoList .booking-cargo-item').slice(1).remove();
+    $('#bookingCargoList .cargo-type, #bookingCargoList .cargo-quantity, #cargoCondition, #cargoDescription, #cargoSpecialHandling').val('');
     $('#pickupProvince, #pickupCity, #pickupBarangay, #pickupStreet, #pickupDescription, #pickupLatitude, #pickupLongitude').val('');
     $('#destinationProvince, #destinationCity, #destinationBarangay, #destinationStreet, #destinationDescription, #destinationLatitude, #destinationLongitude').val('');
     setPickupLocked(false);
@@ -123,6 +134,7 @@ $(document).ready(function () {
     updateStepper();
     updateMapStatus();
     syncAssistantOptions();
+    updateCargoRemoveButtons();
   });
 
   $(document).on('click', '#bookingBtnRegister', function () {
@@ -304,6 +316,41 @@ $(document).ready(function () {
     );
     $item.append($group);
     $('#bookingAssistantList').append($item);
+  }
+
+  function addCargoItem() {
+    const $item = $('<div class="booking-cargo-item"></div>');
+    $item.append(
+      '<div class="row g-2 align-items-end">' +
+        '<div class="col-12 col-md-7">' +
+          '<label class="form-label">Cargo Type <span class="text-danger">*</span></label>' +
+          '<input type="text" class="form-control cargo-type" maxlength="100" placeholder="e.g. Construction materials">' +
+        '</div>' +
+        '<div class="col-12 col-md-4">' +
+          '<label class="form-label">Quantity <span class="text-danger">*</span></label>' +
+          '<input type="number" class="form-control cargo-quantity" min="1" step="1" placeholder="Quantity">' +
+        '</div>' +
+        '<div class="col-12 col-md-1 d-grid">' +
+          '<button class="btn btn-outline-danger booking-remove-cargo" type="button" aria-label="Remove cargo">' +
+            '<i class="ri-close-line"></i>' +
+          '</button>' +
+        '</div>' +
+      '</div>'
+    );
+    $('#bookingCargoList').append($item);
+  }
+
+  function updateCargoRemoveButtons() {
+    $('.booking-remove-cargo').prop('disabled', $('.booking-cargo-item').length <= 1);
+  }
+
+  function getCargoItems() {
+    return $('.booking-cargo-item').map(function () {
+      return {
+        cargoType: String($(this).find('.cargo-type').val() || '').trim(),
+        quantity: String($(this).find('.cargo-quantity').val() || '').trim()
+      };
+    }).get();
   }
 
   function getAssistantIDs() {
@@ -528,13 +575,30 @@ $(document).ready(function () {
     }
 
     if (step === 1) {
-      check('cargoType', 'Cargo Type');
-      check('cargoQuantity', 'Cargo Quantity');
+      const cargoItems = getCargoItems();
+      let hasCompleteCargo = false;
 
-      const quantity = Number($('#cargoQuantity').val());
-      if ($('#cargoQuantity').val() !== '' && (!Number.isInteger(quantity) || quantity < 1)) {
-        missing.push('Cargo Quantity must be a whole number greater than 0');
-        $('#cargoQuantity').addClass('is-invalid');
+      $('.booking-cargo-item').each(function (index) {
+        const $type = $(this).find('.cargo-type');
+        const $quantity = $(this).find('.cargo-quantity');
+        const type = cargoItems[index].cargoType;
+        const quantity = Number(cargoItems[index].quantity);
+        const quantityIsValid = cargoItems[index].quantity !== '' && Number.isInteger(quantity) && quantity >= 1;
+
+        $type.toggleClass('is-invalid', type === '');
+        $quantity.toggleClass('is-invalid', !quantityIsValid);
+
+        if (type !== '' && quantityIsValid) {
+          hasCompleteCargo = true;
+        }
+      });
+
+      if (!hasCompleteCargo) {
+        missing.push('At least 1 cargo item with type and quantity');
+      }
+
+      if ($('.booking-cargo-item .is-invalid').length) {
+        missing.push('Each cargo quantity must be a whole number greater than 0');
       }
     }
 
@@ -563,6 +627,10 @@ $(document).ready(function () {
     const assistantNames = $('.booking-assistant').map(function () {
       return $(this).find('option:selected').text().trim();
     }).get().filter(Boolean).join(', ');
+    const cargoSummary = getCargoItems()
+      .filter(item => item.cargoType && item.quantity)
+      .map(item => item.cargoType + ' x ' + item.quantity)
+      .join(', ');
 
     $('#reviewCustomer').text($('#bookingCustomer option:selected').text().trim() || '-');
     $('#reviewTripSchedule').text('Generated on save / ' + ($('#bookingPickupDateTime').val() || '-'));
@@ -571,7 +639,7 @@ $(document).ready(function () {
       ' / Driver: ' + ($('#bookingDriver option:selected').text().trim() || '-') +
       ' / Assistants: ' + (assistantNames || '-')
     );
-    $('#reviewCargo').text(($('#cargoType').val() || '-') + ' x ' + ($('#cargoQuantity').val() || '-'));
+    $('#reviewCargo').text(cargoSummary || '-');
     $('#reviewPrice').text($('#bookingPrice').val() || '-');
     $('#reviewPickup').text(pickupAddress + ' (' + ($('#pickupCoordinateText').text() || '-') + ')');
     $('#reviewDestination').text(destinationAddress + ' (' + ($('#destinationCoordinateText').text() || '-') + ')');
@@ -612,7 +680,7 @@ $(document).ready(function () {
           '<div><strong>Truck:</strong> ' + ($('#bookingTruck option:selected').text().trim() || '-') + '</div>' +
           '<div><strong>Driver:</strong> ' + ($('#bookingDriver option:selected').text().trim() || '-') + '</div>' +
           '<div><strong>Assistants:</strong> ' + ($('.booking-assistant').map(function () { return $(this).find('option:selected').text().trim(); }).get().filter(Boolean).join(', ') || '-') + '</div>' +
-          '<div><strong>Cargo:</strong> ' + ($('#cargoType').val() || '-') + ' (' + ($('#cargoQuantity').val() || '-') + ')</div>' +
+          '<div><strong>Cargo:</strong> ' + (getCargoItems().filter(item => item.cargoType && item.quantity).map(item => item.cargoType + ' (' + item.quantity + ')').join(', ') || '-') + '</div>' +
           '<div><strong>Pickup:</strong> ' + ($('#pickupCoordinateText').text() || '-') + '</div>' +
           '<div><strong>Destination:</strong> ' + ($('#destinationCoordinateText').text() || '-') + '</div>' +
         '</div>',
@@ -638,8 +706,7 @@ $(document).ready(function () {
     formData.append('assistantIDs', JSON.stringify(getAssistantIDs()));
     formData.append('pickupDateTime', $('#bookingPickupDateTime').val().replace('T', ' '));
     formData.append('price', $('#bookingPrice').val());
-    formData.append('cargoType', $('#cargoType').val());
-    formData.append('cargoQuantity', $('#cargoQuantity').val());
+    formData.append('cargoItems', JSON.stringify(getCargoItems().filter(item => item.cargoType && item.quantity)));
     formData.append('cargoCondition', $('#cargoCondition').val());
     formData.append('cargoDescription', $('#cargoDescription').val());
     formData.append('cargoSpecialHandling', $('#cargoSpecialHandling').val());

@@ -15,9 +15,25 @@ $(document).ready(function () {
   function bindEvents() {
     $(document).on('change', '#tripSort, #tripStatusFilter, #tripDateRangeFilter', renderTrips);
 
+    $(document).on('click', '.trip-stat-card', function () {
+      const status = $(this).data('status-shortcut');
+      $('#tripStatusFilter').val(status);
+      $('.trip-stat-card').removeClass('active');
+      $(this).addClass('active');
+      renderTrips();
+    });
+
+    $(document).on('change', '#tripStatusFilter', function () {
+      const status = $(this).val();
+      $('.trip-stat-card').removeClass('active');
+      $('.trip-stat-card[data-status-shortcut="' + status + '"]').addClass('active');
+    });
+
     $(document).on('click', '#tripClearFilters', function () {
       $('#tripSort').val('date_desc');
       $('#tripStatusFilter').val('all');
+      $('.trip-stat-card').removeClass('active');
+      $('.trip-stat-card[data-status-shortcut="all"]').addClass('active');
       $('#tripDateRangeFilter').val('');
       if (tripDatePicker) {
         tripDatePicker.clear();
@@ -126,6 +142,7 @@ $(document).ready(function () {
       clearMap();
       $('#tripMapStatus').text('No trips match the selected filters.');
       $('#tripMapBadge').text('No trip selected');
+      $('#tripListSummary').text('No trips match the current filters.');
       return;
     }
 
@@ -134,6 +151,7 @@ $(document).ready(function () {
     }
 
     $('.trip-item[data-trip-id="' + selectedTripID + '"]').addClass('active');
+    $('#tripListSummary').text(filteredTrips.length + ' trip(s) shown. Select a trip to inspect its route.');
     renderTripMap(getTripByID(selectedTripID, filteredTrips));
   }
 
@@ -208,13 +226,25 @@ $(document).ready(function () {
     const status = statusMeta(trip.status);
     const crew = formatCrew(trip.crew);
     const customerText = (trip.customers || []).join(', ') || '-';
+    const bookings = trip.bookings || [];
+    const firstBooking = bookings[0] || {};
+    const lastBooking = bookings.length ? bookings[bookings.length - 1] : firstBooking;
+    const routeStart = firstBooking.pickup && firstBooking.pickup.address ? firstBooking.pickup.address : '-';
+    const routeEnd = lastBooking.destination && lastBooking.destination.address ? lastBooking.destination.address : '-';
     const bookingRows = (trip.bookings || []).map(function (booking) {
       return (
         '<div class="trip-booking-row">' +
-          '<div class="fw-semibold">Booking #' + escapeHtml(booking.bookingID) + ' - ' + escapeHtml(booking.customerName || '-') + '</div>' +
-          '<div class="small text-muted">' + escapeHtml(formatDateTime(booking.pickupDateTime)) + '</div>' +
-          '<div class="small mt-1"><i class="ri-map-pin-2-line text-primary me-1"></i>' + escapeHtml(booking.pickup.address || '-') + '</div>' +
-          '<div class="small"><i class="ri-flag-line text-danger me-1"></i>' + escapeHtml(booking.destination.address || '-') + '</div>' +
+          '<div class="d-flex align-items-start justify-content-between gap-2 flex-wrap">' +
+            '<div>' +
+              '<div class="fw-semibold">Booking #' + escapeHtml(booking.bookingID) + ' - ' + escapeHtml(booking.customerName || '-') + '</div>' +
+              '<div class="small text-muted">' + escapeHtml(formatDateTime(booking.pickupDateTime)) + '</div>' +
+            '</div>' +
+            '<span class="badge bg-light text-body">' + escapeHtml(booking.customerType || '-') + '</span>' +
+          '</div>' +
+          '<div class="trip-booking-locations small">' +
+            '<div><i class="ri-map-pin-2-line text-primary me-1"></i>' + escapeHtml(booking.pickup.address || '-') + '</div>' +
+            '<div><i class="ri-flag-line text-danger me-1"></i>' + escapeHtml(booking.destination.address || '-') + '</div>' +
+          '</div>' +
         '</div>'
       );
     }).join('');
@@ -222,7 +252,7 @@ $(document).ready(function () {
     return (
       '<button type="button" class="trip-item" data-trip-id="' + escapeHtml(trip.tripID) + '">' +
         '<div class="d-flex align-items-start justify-content-between gap-2">' +
-          '<div>' +
+          '<div class="trip-item-title">' +
             '<h6 class="mb-1">Trip #' + escapeHtml(trip.tripID) + '</h6>' +
             '<div class="trip-meta">' +
               '<span><i class="ri-calendar-line me-1"></i>' + escapeHtml(formatDateTime(trip.firstPickupDateTime)) + '</span>' +
@@ -231,8 +261,14 @@ $(document).ready(function () {
           '</div>' +
           '<span class="badge ' + status.className + '">' + status.label + '</span>' +
         '</div>' +
-        '<div class="small text-muted mt-2">Customer(s): ' + escapeHtml(customerText) + '</div>' +
-        '<div class="small text-muted">Crew: ' + escapeHtml(crew || '-') + '</div>' +
+        '<div class="trip-route-meta">' +
+          '<span><i class="ri-user-smile-line me-1"></i>' + escapeHtml(customerText) + '</span>' +
+          '<span><i class="ri-team-line me-1"></i>' + escapeHtml(crew || '-') + '</span>' +
+        '</div>' +
+        '<div class="small mt-2">' +
+          '<div><i class="ri-map-pin-2-line text-primary me-1"></i>' + escapeHtml(routeStart) + '</div>' +
+          '<div><i class="ri-flag-line text-danger me-1"></i>' + escapeHtml(routeEnd) + '</div>' +
+        '</div>' +
         bookingRows +
       '</button>'
     );
@@ -313,6 +349,10 @@ $(document).ready(function () {
 
     if (status === 'in-transit') {
       return { label: 'On Transit', className: 'bg-info-subtle text-info' };
+    }
+
+    if (status === 'stopover') {
+      return { label: 'Stopover', className: 'bg-primary-subtle text-primary' };
     }
 
     return { label: 'Pending', className: 'bg-warning-subtle text-warning' };
