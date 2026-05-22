@@ -16,11 +16,15 @@ $(document).ready(function () {
 
   $(document).on('change', '#bookingTruck', function () {
     applyTruckDefaultCrew($(this).val());
+    lookupTariffPrice();
   });
 
   $(document).on('change', '#bookingCustomer', function () {
     applyCompanyWarehousePickup();
+    lookupTariffPrice();
   });
+
+  $(document).on('input', '#bookingFuelPrice', lookupTariffPrice);
 
   $(document).on('change', '#bookingDriver, .booking-assistant', function () {
     syncAssistantOptions();
@@ -104,10 +108,13 @@ $(document).ready(function () {
 
   $(document).on('input', '#pickupProvince, #pickupCity, #pickupBarangay, #pickupStreet, #pickupDescription, #destinationProvince, #destinationCity, #destinationBarangay, #destinationStreet, #destinationDescription', function () {
     $(this).data('autofilled', false);
+    if (this.id.indexOf('destination') === 0) {
+      lookupTariffPrice();
+    }
   });
 
   $(document).on('click', '#bookingBtnReset', function () {
-    $('#bookingCustomer, #bookingPickupDateTime, #bookingPrice, #bookingTruck, #bookingDriver').val('');
+    $('#bookingCustomer, #bookingPickupDateTime, #bookingPrice, #bookingFuelPrice, #bookingTruck, #bookingDriver').val('');
     $('#bookingAssistantList .booking-assistant-item').slice(2).remove();
     $('.booking-assistant').val('');
     $('#bookingCargoList .booking-cargo-item').slice(1).remove();
@@ -460,6 +467,7 @@ $(document).ready(function () {
     $('#destinationLongitude').val(formattedLng);
     $('#destinationCoordinateText').text(formattedLat + ', ' + formattedLng);
     $('#destinationLatitude, #destinationLongitude').removeClass('is-invalid');
+    lookupTariffPrice();
   }
 
   function fillAddressFromPin(type, lat, lng) {
@@ -498,6 +506,9 @@ $(document).ready(function () {
 
         $('#' + prefix + 'Province, #' + prefix + 'City, #' + prefix + 'Barangay, #' + prefix + 'Street').removeClass('is-invalid');
         updateMapStatus();
+        if (prefix === 'destination') {
+          lookupTariffPrice();
+        }
       })
       .catch(function () {
         $('#bookingMapStatus').text(previousStatus || 'Address lookup failed. You can enter the address manually.');
@@ -516,6 +527,58 @@ $(document).ready(function () {
       $el.val(value);
       $el.data('autofilled', true);
     }
+  }
+
+  function lookupTariffPrice() {
+    const customerID = $('#bookingCustomer').val();
+    const $customer = getSelectedCustomerOption();
+    const truckType = $('#bookingTruck option:selected').data('type') || '';
+    const fuelPrice = $('#bookingFuelPrice').val();
+    const destinationText = [
+      $('#destinationStreet').val(),
+      $('#destinationBarangay').val(),
+      $('#destinationCity').val(),
+      $('#destinationProvince').val(),
+      $('#destinationDescription').val()
+    ].filter(Boolean).join(' ');
+
+    if (!customerID || !$customer.length || $customer.data('type') !== 'company' || !truckType || !destinationText.trim()) {
+      $('#bookingTariffHint').text('Select company, truck, and destination to use tariff pricing.');
+      return;
+    }
+
+    $('#bookingTariffHint').text('Checking tariff for this destination...');
+
+    $.ajax({
+      url: 'ajax/tariff_lookup.ajax.php',
+      method: 'POST',
+      dataType: 'json',
+      data: {
+        customerID: customerID,
+        truckType: truckType,
+        destinationText: destinationText,
+        fuelPrice: fuelPrice
+      },
+      success: function (response) {
+        if (!response || response.status !== 'success') {
+          $('#bookingTariffHint').text('No tariff matched. You may enter the booking price manually.');
+          return;
+        }
+
+        const totalRate = Number(response.totalRate || response.baseRate || 0);
+        const fuelSubsidy = Number(response.fuelSubsidy || 0);
+        $('#bookingPrice').val(totalRate.toFixed(2)).removeClass('is-invalid');
+        $('#bookingTariffHint').text(
+          'Tariff matched: ' + response.origin + ' to ' + response.destination +
+          ' | ' + response.distanceKm + ' km | base PHP ' + Number(response.baseRate || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) +
+          ' + fuel subsidy PHP ' + fuelSubsidy.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) +
+          ' = PHP ' + totalRate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+        );
+      },
+      error: function () {
+        $('#bookingTariffHint').text('Tariff lookup failed. You may enter the booking price manually.');
+      }
+    });
   }
 
   function validateInputs() {

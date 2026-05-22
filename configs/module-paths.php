@@ -11,6 +11,7 @@ return [
     'sales'                         => 'modules/sales.php',
     'manage-company'                => 'modules/manage-company.php',
     'manage-employee'               => 'modules/manage-employee.php',
+    'manage-tariff'                 => 'modules/manage-tariff.php',
     'manage-truck'                  => 'modules/manage-truck.php',
     'customer-individual/profile'   => 'modules/customer-individual/profile.php',
     'customer-individual/bookings'  => 'modules/customer-individual/bookings.php',

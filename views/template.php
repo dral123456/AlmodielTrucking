@@ -252,6 +252,7 @@
       "sales" => ["sales.js"],
       "manage-company" => ["manage.js"],
       "manage-employee" => ["manage.js"],
+      "manage-tariff" => ["manage.js", "manage-tariff.js"],
       "manage-truck" => ["manage.js"]
     ];
 

@@ -11,6 +11,7 @@ $staffRoutes = [
     'sales',
     'manage-company',
     'manage-employee',
+    'manage-tariff',
     'manage-truck',
     'logout',
     'signup',

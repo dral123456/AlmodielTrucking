@@ -222,6 +222,52 @@ INSERT INTO `location` (`locationID`, `province`, `city`, `barangay`, `street`, 
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `tariff`
+--
+
+CREATE TABLE `tariff` (
+  `tariffID` int NOT NULL,
+  `customerID` int DEFAULT NULL,
+  `branch` varchar(100) NOT NULL DEFAULT 'BACOLOD',
+  `origin` varchar(100) NOT NULL,
+  `destination` varchar(255) NOT NULL,
+  `distanceKm` double NOT NULL DEFAULT '0',
+  `truckType` varchar(50) NOT NULL,
+  `baseRate` double NOT NULL DEFAULT '0',
+  `hasFuelSubsidy` tinyint(1) NOT NULL DEFAULT '1',
+  `fuelRangeStart` double DEFAULT NULL,
+  `fuelRangeEnd` double DEFAULT NULL,
+  `fuelSubsidy` double NOT NULL DEFAULT '0',
+  `status` enum('active','inactive') NOT NULL DEFAULT 'active',
+  `dateCreated` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+--
+-- Dumping data for table `tariff`
+--
+
+INSERT INTO `tariff` (`tariffID`, `customerID`, `branch`, `origin`, `destination`, `distanceKm`, `truckType`, `baseRate`, `fuelRangeStart`, `fuelRangeEnd`, `fuelSubsidy`, `status`, `dateCreated`) VALUES
+(1, 3, 'BACOLOD', 'BACOLOD', 'BACOLOD CITY', 20, '6W', 3256.63, 60, 65, 0, 'active', CURRENT_TIMESTAMP),
+(2, 3, 'BACOLOD', 'BACOLOD', 'TALISAY/MURCIA', 30, '6W', 3673.33, 60, 65, 0, 'active', CURRENT_TIMESTAMP),
+(3, 3, 'BACOLOD', 'BACOLOD', 'SILAY/BAGO/PULUPANDAN', 40, '6W', 4090.03, 60, 65, 0, 'active', CURRENT_TIMESTAMP),
+(4, 3, 'BACOLOD', 'BACOLOD', 'EB MAGALONA/VALLADOLID/SAN ENRIQUE/MA-AO/LACARLOTA', 60, '6W', 4923.43, 60, 65, 0, 'active', CURRENT_TIMESTAMP),
+(5, 3, 'BACOLOD', 'BACOLOD', 'VICTORIAS/PONTEVEDRA', 80, '6W', 5756.83, 60, 65, 0, 'active', CURRENT_TIMESTAMP),
+(6, 3, 'BACOLOD', 'BACOLOD', 'DSB/MANAPLA/HINIGARAN', 100, '6W', 6590.23, 60, 65, 0, 'active', CURRENT_TIMESTAMP),
+(7, 3, 'BACOLOD', 'BACOLOD', 'LA CASTELLANA/BINALBAGAN', 120, '6W', 7423.62, 60, 65, 0, 'active', CURRENT_TIMESTAMP),
+(8, 3, 'BACOLOD', 'BACOLOD', 'MOISES PADILLA/ISABELA/CADIZ/HIMAMAYLAN', 140, '6W', 8257.02, 60, 65, 0, 'active', CURRENT_TIMESTAMP),
+(9, 3, 'BACOLOD', 'BACOLOD', 'SAN CARLOS VIA DSB', 160, '6W', 9090.42, 60, 65, 0, 'active', CURRENT_TIMESTAMP),
+(10, 3, 'BACOLOD', 'BACOLOD', 'CANLAON/SAGAY/KABANKALAN', 180, '6W', 9923.82, 60, 65, 0, 'active', CURRENT_TIMESTAMP),
+(11, 3, 'BACOLOD', 'BACOLOD', 'ILOG/ESCALANTE', 200, '6W', 10757.22, 60, 65, 0, 'active', CURRENT_TIMESTAMP),
+(12, 3, 'BACOLOD', 'BACOLOD', 'CAUAYAN', 220, '6W', 11590.62, 60, 65, 0, 'active', CURRENT_TIMESTAMP),
+(13, 3, 'BACOLOD', 'BACOLOD', 'TOBOSO', 240, '6W', 12424.02, 60, 65, 0, 'active', CURRENT_TIMESTAMP),
+(14, 3, 'BACOLOD', 'BACOLOD', 'CALATRAVA/CANDONI', 280, '6W', 14090.81, 60, 65, 0, 'active', CURRENT_TIMESTAMP),
+(15, 3, 'BACOLOD', 'BACOLOD', 'SAN CARLOS VIA NORTH', 300, '6W', 14924.21, 60, 65, 0, 'active', CURRENT_TIMESTAMP),
+(16, 3, 'BACOLOD', 'BACOLOD', 'SIPALAY', 340, '6W', 16591.01, 60, 65, 0, 'active', CURRENT_TIMESTAMP),
+(17, 3, 'BACOLOD', 'BACOLOD', 'HINOBAAN', 380, '6W', 18257.81, 60, 65, 0, 'active', CURRENT_TIMESTAMP);
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `tripemployee`
 --
 
@@ -394,6 +440,17 @@ ALTER TABLE `truck`
   ADD PRIMARY KEY (`id`);
 
 --
+-- Indexes for table `tariff`
+--
+ALTER TABLE `tariff`
+  ADD PRIMARY KEY (`tariffID`),
+  ADD KEY `idx_tariff_customerID` (`customerID`),
+  ADD KEY `idx_tariff_truckType` (`truckType`),
+  ADD KEY `idx_tariff_destination` (`destination`),
+  ADD KEY `idx_tariff_status` (`status`),
+  ADD UNIQUE KEY `uniq_tariff_company_route_truck` (`customerID`, `branch`, `origin`, `destination`, `truckType`);
+
+--
 -- Indexes for table `truckemployee`
 --
 ALTER TABLE `truckemployee`
@@ -460,6 +517,12 @@ ALTER TABLE `truck`
   MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
+-- AUTO_INCREMENT for table `tariff`
+--
+ALTER TABLE `tariff`
+  MODIFY `tariffID` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
+
+--
 -- AUTO_INCREMENT for table `truckemployee`
 --
 ALTER TABLE `truckemployee`
@@ -489,6 +552,12 @@ ALTER TABLE `staffsalary`
 ALTER TABLE `truckemployee`
   ADD CONSTRAINT `fk_truckemployee_employee` FOREIGN KEY (`empID`) REFERENCES `employee` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_truckemployee_truck` FOREIGN KEY (`truckID`) REFERENCES `truck` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `tariff`
+--
+ALTER TABLE `tariff`
+  ADD CONSTRAINT `fk_tariff_customer` FOREIGN KEY (`customerID`) REFERENCES `customer` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

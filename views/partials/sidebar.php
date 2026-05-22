@@ -62,6 +62,11 @@
                             </a>
                         </li>
                         <li class="pe-slide-item">
+                            <a href="manage-tariff" class="pe-nav-link">
+                                Tariff
+                            </a>
+                        </li>
+                        <li class="pe-slide-item">
                             <a href="manage-truck" class="pe-nav-link">
                                 Truck
                             </a>

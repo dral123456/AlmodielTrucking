@@ -32,6 +32,34 @@
     grid-column: 1 / -1;
   }
 
+  .tariff-toolbar,
+  .tariff-import-grid {
+    display: grid;
+    grid-template-columns: minmax(220px, 0.8fr) minmax(260px, 1fr) auto;
+    gap: 1rem;
+    align-items: end;
+  }
+
+  .tariff-import-panel {
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    background: var(--bs-tertiary-bg);
+  }
+
+  .tariff-import-grid {
+    grid-template-columns: repeat(4, minmax(150px, 1fr)) minmax(160px, auto);
+    margin-top: 1rem;
+  }
+
+  .tariff-check {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 38px;
+    margin-bottom: 0;
+  }
+
   #companyManageMap {
     width: 100%;
     height: 360px;
@@ -91,6 +119,11 @@
     }
 
     .salary-form-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .tariff-toolbar,
+    .tariff-import-grid {
       grid-template-columns: 1fr;
     }
 
