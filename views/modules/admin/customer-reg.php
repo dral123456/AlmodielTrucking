@@ -204,7 +204,51 @@
             <h6 class="text-uppercase text-muted mb-3">
               <i class="ri-map-pin-line me-1"></i> Warehouse Address
             </h6>
-            <div class="row">
+
+            <!-- ===== MAP SECTION ===== -->
+            <div class="mb-3">
+
+              <!-- Map wrapper -->
+              <div class="warehouse-map-wrapper">
+
+                <!-- Search inside map -->
+                <div class="warehouse-map-search">
+                  <input
+                    type="text"
+                    id="warehouseMapSearch"
+                    placeholder="Search warehouse address or place"
+                  >
+
+                  <button type="button" id="warehouseMapSearchBtn">
+                    <i class="ri-search-line"></i>
+                  </button>
+                  <div id="warehouseLocationSuggestions" class="warehouse-suggestions-box"></div>
+                </div>
+
+                <!-- Map -->
+                <div id="customerWarehouseMap"></div>
+
+              </div>
+
+              <div class="form-text mt-2">
+                <i class="ri-information-line me-1"></i>
+                Click anywhere on the map to pin the warehouse and auto-fill the address below.
+              </div>
+
+              <div class="d-flex justify-content-end mt-2">
+                <span class="badge bg-primary-subtle text-primary" id="customerCoordinateText">
+                  Not pinned
+                </span>
+              </div>
+
+              <input type="hidden" id="warehouseLatitude">
+              <input type="hidden" id="warehouseLongitude">
+
+            </div>
+
+            <!-- ===== ADDRESS FIELDS ===== -->
+            <div class="row mt-3">
+
               <div class="col-12 col-md-6 mb-3">
                 <label class="form-label">Province <span class="text-danger">*</span></label>
                 <div class="form-icon">
@@ -212,6 +256,7 @@
                   <input type="text" class="form-control form-control-icon" id="provinceCorp" placeholder="Province">
                 </div>
               </div>
+
               <div class="col-12 col-md-6 mb-3">
                 <label class="form-label">City / Municipality <span class="text-danger">*</span></label>
                 <div class="form-icon">
@@ -219,6 +264,7 @@
                   <input type="text" class="form-control form-control-icon" id="cityCorp" placeholder="City">
                 </div>
               </div>
+
               <div class="col-12 col-md-6 mb-3">
                 <label class="form-label">Barangay <span class="text-danger">*</span></label>
                 <div class="form-icon">
@@ -226,6 +272,7 @@
                   <input type="text" class="form-control form-control-icon" id="barangayCorp" placeholder="Barangay">
                 </div>
               </div>
+
               <div class="col-12 col-md-6 mb-3">
                 <label class="form-label">Street</label>
                 <div class="form-icon">
@@ -233,6 +280,7 @@
                   <input type="text" class="form-control form-control-icon" id="streetCorp" placeholder="Street">
                 </div>
               </div>
+
               <div class="col-12 col-md-4 mb-3">
                 <label class="form-label">Building / Unit No.</label>
                 <div class="form-icon">
@@ -240,31 +288,7 @@
                   <input type="text" class="form-control form-control-icon" id="houseCorp" placeholder="Bldg / Unit">
                 </div>
               </div>
-              <div class="col-12 mb-3">
-                <div class="customer-map-panel">
-                  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
-                    <div>
-                      <h6 class="text-uppercase text-muted mb-1">
-                        <i class="ri-map-pin-2-line me-1"></i> Warehouse Pin
-                      </h6>
-                      <p class="text-muted small mb-0" id="customerMapStatus">Click the map to pin the company warehouse.</p>
-                    </div>
-                    <span class="badge bg-primary-subtle text-primary" id="customerCoordinateText">Not pinned</span>
-                  </div>
-                  <div class="customer-map-search mb-3">
-                    <div class="input-group">
-                      <span class="input-group-text"><i class="ri-search-line"></i></span>
-                      <input type="text" class="form-control" id="warehouseMapSearch" placeholder="Search warehouse address or place">
-                      <button type="button" class="btn btn-primary" id="warehouseMapSearchBtn">
-                        Search
-                      </button>
-                    </div>
-                  </div>
-                  <div id="customerWarehouseMap"></div>
-                  <input type="hidden" id="warehouseLatitude">
-                  <input type="hidden" id="warehouseLongitude">
-                </div>
-              </div>
+
             </div>
           </div>
 
@@ -335,6 +359,8 @@
 </div>
 
 <style>
+  /* ===== CUSTOMER TYPE SELECTOR ===== */
+
   .cust-type-tile {
     cursor: pointer;
     border: 2px solid var(--bs-border-color);
@@ -344,61 +370,224 @@
     transition: all 0.2s ease;
     user-select: none;
   }
+
   .cust-type-tile:hover {
     border-color: var(--bs-primary);
   }
+
   .cust-type-tile.active {
     border-color: var(--bs-primary);
     background: var(--bs-primary-bg-subtle);
     box-shadow: 0 0 0 3px rgba(105, 108, 255, 0.12);
   }
+
   .cust-type-tile .cust-type-check {
     font-size: 1.5rem;
     opacity: 0;
     transition: opacity 0.2s ease;
   }
+
   .cust-type-tile.active .cust-type-check {
     opacity: 1;
   }
+
   .cust-type-icon {
     width: 48px;
     height: 48px;
     border-radius: 0.5rem;
+
     display: flex;
     align-items: center;
     justify-content: center;
+
     font-size: 1.5rem;
     flex-shrink: 0;
   }
 
-  #customerWarehouseMap {
-    width: 100%;
-    min-height: 380px;
-    border: 1px solid var(--bs-border-color);
+  /* ===== WAREHOUSE MAP ===== */
+
+  .warehouse-map-wrapper {
+    position: relative;
     border-radius: 0.5rem;
     overflow: hidden;
+    border: 1px solid var(--bs-border-color);
+    background: var(--bs-body-bg);
   }
 
-  .customer-map-search .input-group {
-    max-width: 680px;
+  #customerWarehouseMap {
+    width: 100%;
+    height: 380px;
   }
 
-  @media (max-width: 575.98px) {
-    .customer-map-search .input-group {
-      display: grid;
-      grid-template-columns: auto minmax(0, 1fr);
-    }
+  /* ===== SEARCH INSIDE MAP ===== */
 
-    .customer-map-search .input-group .btn {
-      grid-column: 1 / -1;
-      width: 100%;
-      margin-left: 0 !important;
-      border-radius: 0.375rem !important;
-      margin-top: 0.5rem;
-    }
+  .warehouse-map-search {
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
 
-    #customerWarehouseMap {
-      min-height: 320px;
-    }
+    display: flex;
+    gap: 8px;
+
+    width: 72%;
+    min-width: 240px;
   }
+
+  .warehouse-map-search input {
+    flex: 1;
+
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.5rem;
+
+    padding: 0.6rem 0.9rem;
+
+    background-color: #fff !important;
+    color: #566a7f !important;
+
+    font-size: 0.9rem;
+
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+
+    transition:
+      background-color 0.2s ease,
+      border-color 0.2s ease,
+      color 0.2s ease;
+  }
+
+  .warehouse-map-search input::placeholder {
+    color: #a1acb8;
+  }
+
+  .warehouse-map-search input:focus {
+    outline: none;
+    border-color: #696cff !important;
+
+    box-shadow:
+      0 0 0 0.2rem rgba(105, 108, 255, 0.2),
+      0 2px 8px rgba(0, 0, 0, 0.15);
+  }
+
+  .warehouse-map-search button {
+    border: none;
+    border-radius: 0.5rem;
+
+    padding: 0 1rem;
+
+    background: #696cff;
+    color: #fff;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    cursor: pointer;
+
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+
+    transition:
+      opacity 0.2s ease,
+      transform 0.2s ease;
+  }
+
+  .warehouse-map-search button:hover {
+    opacity: 0.95;
+  }
+
+  .warehouse-map-search button:active {
+    transform: scale(0.98);
+  }
+
+  /* ===== SEARCH SUGGESTIONS ===== */
+
+  .warehouse-map-search {
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+
+    display: flex;
+    gap: 8px;
+
+    width: 72%;
+    min-width: 240px;
+  }
+
+  /* IMPORTANT */
+  .warehouse-map-search {
+    flex-wrap: wrap;
+  }
+
+  .warehouse-suggestions-box {
+    width: 100%;
+    display: none;
+
+    background-color: var(--bs-body-bg, #fff);
+
+    border: 1px solid var(--bs-border-color, #ccc);
+    border-top: none;
+
+    border-radius: 0 0 8px 8px;
+
+    max-height: 220px;
+    overflow-y: auto;
+
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+
+    z-index: 1001;
+  }
+
+  .warehouse-suggestion-item {
+    padding: 10px 12px;
+    font-size: 13px;
+    cursor: pointer;
+
+    border-bottom: 1px solid var(--bs-border-color, #eee);
+
+    background-color: var(--bs-body-bg, #fff);
+    color: var(--bs-body-color, #333);
+
+    transition: background 0.15s ease;
+  }
+
+  .warehouse-suggestion-item:last-child {
+    border-bottom: none;
+  }
+
+  .warehouse-suggestion-item:hover {
+    background-color: var(--bs-primary-bg-subtle);
+    color: var(--bs-primary);
+  }
+
+  /* Light theme defaults */
+  .warehouse-suggestions-box,
+  .warehouse-suggestion-item {
+    --bs-body-bg: #fff;
+    --bs-body-color: #212529;
+    --bs-border-color: #dee2e6;
+  }
+
+  /* Dark theme */
+  [data-bs-theme="dark"] .warehouse-suggestions-box,
+  [data-bs-theme="dark"] .warehouse-suggestion-item {
+    --bs-body-bg: #2b2c40;
+    --bs-body-color: #a8aaae;
+    --bs-border-color: #434968;
+  }
+
+  /* ===== DARK MODE ===== */
+
+  [data-bs-theme="dark"] .warehouse-map-search input,
+  [data-theme="dark"] .warehouse-map-search input {
+    background-color: #2b2c40 !important;
+    color: #fff !important;
+    border-color: rgba(255,255,255,0.12);
+  }
+
+  [data-bs-theme="dark"] .warehouse-map-search input::placeholder,
+  [data-theme="dark"] .warehouse-map-search input::placeholder {
+    color: rgba(255,255,255,0.6);
+  } 
 </style>

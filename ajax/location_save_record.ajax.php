@@ -24,7 +24,8 @@ class LocationRegistration {
       "longitude"   => $this->longitude,
     ];
 
-    $locationID = (new ControllerLocation)->ctrSaveLocation($data);
+    // Use save-or-reuse: returns existing locationID if a nearby pin already exists
+    $locationID = ControllerLocation::ctrSaveOrReuseLocation($data);
 
     if ($locationID) {
       echo json_encode(["status" => "success", "locationID" => $locationID]);
@@ -41,7 +42,7 @@ $save_location->barangay    = $_POST["barangay"]    ?? '';
 $save_location->street      = $_POST["street"]      ?? '';
 $save_location->houseNumber = $_POST["houseNumber"] ?? '';
 $save_location->description = $_POST["description"] ?? '';
-$save_location->latitude    = $_POST["lat"]         ?? 0;
-$save_location->longitude   = $_POST["lng"]         ?? 0;
+$save_location->latitude    = $_POST["latitude"]    ?? 0;
+$save_location->longitude   = $_POST["longitude"]   ?? 0;
 
 $save_location->saveLocation();

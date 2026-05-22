@@ -1,5 +1,5 @@
 <?php
-$staffRoutes = [
+$adminRoutes = [
     'sample',
     'employee-reg',
     'customer-reg',
@@ -14,6 +14,18 @@ $staffRoutes = [
     'signup',
 ];
 
+$driverRoutes = [
+    'sample',
+    'trips',
+    'logout',
+];
+
+$assistantRoutes = [
+    'sample',
+    'trips',
+    'logout',
+];
+
 $customerRoutes = [
     'sample',
     'customer-individual/profile',
@@ -23,11 +35,10 @@ $customerRoutes = [
 ];
 
 return [
-    'admin' => $staffRoutes,
-    'employee' => $staffRoutes,
-    'assistant' => $staffRoutes,
-    'driver' => $staffRoutes,
+    'admin' => $adminRoutes,
+    'assistant' => $assistantRoutes,
+    'driver' => $driverRoutes,
     'customer' => $customerRoutes,
-    'customerindividual' => $customerRoutes,
-    'customercompany' => $customerRoutes,
+    'customer-individual' => $customerRoutes,
+    'customer-company' => $customerRoutes,
 ];

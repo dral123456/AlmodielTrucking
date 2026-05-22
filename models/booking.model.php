@@ -1,34 +1,46 @@
 <?php
 require_once "connection.php";
+require_once "location.model.php";
 
 class ModelBooking {
 
   static public function mdlCustomerList() {
     $pdo = (new Connection)->connect();
-    $warehouseSelect = self::columnExists($pdo, "customer", "warehouseLatitude") &&
-      self::columnExists($pdo, "customer", "warehouseLongitude")
-      ? "warehouseLatitude, warehouseLongitude"
-      : "NULL AS warehouseLatitude, NULL AS warehouseLongitude";
 
     $stmt = $pdo->prepare("
       SELECT
-        id,
-        customerType,
-        customerFName,
-        customerLName,
-        contactPerson,
-        province,
-        city,
-        barangay,
-        street,
-        houseNumber,
-        {$warehouseSelect}
-      FROM customer
-      WHERE status = 'active'
-      ORDER BY customerFName, customerLName, contactPerson
+        c.id,
+        c.customerType,
+        c.customerFName,
+        c.customerLName,
+        c.customerMI,
+        c.contactPerson,
+        c.email,
+        c.phoneNumber,
+        c.locationID,
+
+        l.province,
+        l.city,
+        l.barangay,
+        l.street,
+        l.description,
+        l.latitude,
+        l.longitude
+
+      FROM customer c
+      INNER JOIN location l
+        ON l.locationID = c.locationID
+
+      WHERE c.status = 'active'
+
+      ORDER BY
+        c.customerFName,
+        c.customerLName,
+        c.contactPerson
     ");
 
     $stmt->execute();
+
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
   }
 
@@ -258,8 +270,20 @@ class ModelBooking {
       $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
       $pdo->beginTransaction();
 
-      $pickupLocationID = self::insertLocation($pdo, $data["pickup"]);
-      $destinationLocationID = self::insertLocation($pdo, $data["destination"]);
+      // ✅ FIX: ensure arrays exist (prevents undefined index + null location IDs)
+      $pickupData = $data["pickup"] ?? [];
+      $destinationData = $data["destination"] ?? [];
+
+      if (empty($pickupData) || empty($destinationData)) {
+        throw new Exception("Pickup or Destination data is missing.");
+      }
+
+      $pickupLocationID = $data["pickupLocationID"];
+      $destinationLocationID = $data["destinationLocationID"];  
+      if (!$pickupLocationID || !$destinationLocationID) {
+        throw new Exception("Missing location IDs");
+      }
+
       $tripID = self::assignTripID($pdo, $data, $pickupLocationID, $destinationLocationID);
 
       $stmt = $pdo->prepare("
@@ -306,46 +330,15 @@ class ModelBooking {
       return "success";
 
     } catch (PDOException $e) {
+
       if ($pdo->inTransaction()) {
         $pdo->rollBack();
       }
 
-      return "error";
+      die("BOOKING ERROR: " . $e->getMessage());
     }
   }
 
-  static private function insertLocation($pdo, $location) {
-    $stmt = $pdo->prepare("
-      INSERT INTO `location` (
-        province,
-        city,
-        barangay,
-        street,
-        description,
-        latitude,
-        longitude
-      ) VALUES (
-        :province,
-        :city,
-        :barangay,
-        :street,
-        :description,
-        :latitude,
-        :longitude
-      )
-    ");
-
-    $stmt->bindParam(":province", $location["province"], PDO::PARAM_STR);
-    $stmt->bindParam(":city", $location["city"], PDO::PARAM_STR);
-    $stmt->bindParam(":barangay", $location["barangay"], PDO::PARAM_STR);
-    $stmt->bindParam(":street", $location["street"], PDO::PARAM_STR);
-    $stmt->bindParam(":description", $location["description"], PDO::PARAM_STR);
-    $stmt->bindParam(":latitude", $location["latitude"]);
-    $stmt->bindParam(":longitude", $location["longitude"]);
-    $stmt->execute();
-
-    return $pdo->lastInsertId();
-  }
 
   static private function assignTripID($pdo, $data, $pickupLocationID, $destinationLocationID) {
     $customer = self::getCustomer($pdo, $data["customerID"]);
@@ -363,9 +356,24 @@ class ModelBooking {
 
   static private function getCustomer($pdo, $customerID) {
     $stmt = $pdo->prepare("
-      SELECT id, customerType
-      FROM customer
-      WHERE id = :customerID
+      SELECT
+        c.id,
+        c.customerType,
+        c.locationID,
+
+        l.province,
+        l.city,
+        l.barangay,
+        l.street,
+        l.description,
+        l.latitude,
+        l.longitude
+
+      FROM customer c
+      INNER JOIN location l
+        ON l.locationID = c.locationID
+
+      WHERE c.id = :customerID
       LIMIT 1
     ");
 

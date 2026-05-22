@@ -100,6 +100,68 @@ $(document).ready(function () {
     }
   }
 
+    // ===== LOCATION SUGGESTIONS =====
+  let regSuggestTimer = null;
+
+  $(document).on('input', '#mapSearchInput', function () {
+    clearTimeout(regSuggestTimer);
+    const query = $(this).val().trim();
+    if (query.length < 2) {
+      $('#regLocationSuggestions').hide().empty();
+      return;
+    }
+    regSuggestTimer = setTimeout(function () {
+      fetchRegSuggestions(query);
+    }, 300);
+  });
+
+  function fetchRegSuggestions(query) {
+    $.ajax({
+      url: '/almodieltrucking/ajax/location_search.ajax.php',
+      method: 'GET',
+      data: { q: query },
+      dataType: 'json',
+      success: function (results) {
+        const $box = $('#regLocationSuggestions');
+        $box.empty();
+        if (!results || results.length === 0) {
+          $box.hide();
+          return;
+        }
+        results.forEach(function (loc) {
+          const $item = $('<div class="reg-suggestion-item"></div>').text(loc.label);
+          $item.on('click', function () {
+            // Fill search input
+            $('#mapSearchInput').val(loc.label);
+            $box.hide().empty();
+
+            // Place marker on map
+            if (loc.lat && loc.lng) {
+              placeMarker(loc.lat, loc.lng);
+              if (regMap) regMap.setView([loc.lat, loc.lng], 15);
+            }
+
+            // Fill address fields
+            $('#provinceIndiv').val(loc.province  || '').removeClass('is-invalid');
+            $('#cityIndiv').val(loc.city          || '').removeClass('is-invalid');
+            $('#barangayIndiv').val(loc.barangay  || '').removeClass('is-invalid');
+            $('#streetIndiv').val(loc.street      || '');
+            $('#locationDescription').val(loc.description || '');
+          });
+          $box.append($item);
+        });
+        $box.show();
+      }
+    });
+  }
+
+  // Hide suggestions when clicking outside
+  $(document).on('click', function (e) {
+    if (!$(e.target).closest('#mapSearch').length) {
+      $('#regLocationSuggestions').hide().empty();
+    }
+  });
+
   // ===== NAVIGATION =====
   $(document).on('click', '#btnStep1Next', function () {
     const missing = validateStep1();
@@ -227,15 +289,24 @@ $(document).ready(function () {
 
   // ===== STEP 1: SAVE LOCATION =====
   function saveLocation() {
+    const house = $('#houseIndiv').val().trim();
+    const desc  = $('#locationDescription').val().trim();
+
+    // Combine house number into description
+    let combinedDesc = desc;
+    if (house) {
+      combinedDesc = house + (desc ? ' — ' + desc : '');
+    }
+
     const locationData = new FormData();
     locationData.append('province',    $('#provinceIndiv').val());
     locationData.append('city',        $('#cityIndiv').val());
     locationData.append('barangay',    $('#barangayIndiv').val());
     locationData.append('street',      $('#streetIndiv').val());
-    locationData.append('houseNumber', $('#houseIndiv').val());
-    locationData.append('lat',         $('#lat').val());
-    locationData.append('lng',         $('#lng').val());
-    locationData.append('description', $('#locationDescription').val());
+    locationData.append('houseNumber', house);
+    locationData.append('description', combinedDesc);   // ← merged
+    locationData.append('latitude',    $('#lat').val()); // ← match your PHP field names
+    locationData.append('longitude',   $('#lng').val());
 
     $.ajax({
       url: '/almodieltrucking/ajax/location_save_record.ajax.php',
