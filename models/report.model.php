@@ -14,7 +14,11 @@ class ModelReport {
         $completedCount = self::bookingStatusCount($pdo, "completed");
 
         $expenseMeta = self::resolveMoneyTable($pdo, array("expenses", "expense"), array("amount", "cost", "total", "price"));
-        $salaryMeta = self::resolveMoneyTable($pdo, array("staffsalary", "staff_salary", "employee_salary", "payroll", "salary"), array("amount", "salary", "grossPay", "netPay", "rate", "pay"));
+        $salaryMeta = self::resolveSalaryTable($pdo);
+
+        $salaryTotalSql = $salaryMeta
+            ? "SELECT COALESCE(SUM(" . self::quoteIdentifier($salaryMeta["amountColumn"]) . "), 0) FROM " . self::quoteIdentifier($salaryMeta["table"]) . ($salaryMeta["statusColumn"] ? " WHERE " . self::quoteIdentifier($salaryMeta["statusColumn"]) . " <> 'cancelled'" : "")
+            : null;
 
         return array(
             "billingTotal" => (float) $billingTotal,
@@ -23,7 +27,7 @@ class ModelReport {
             "inTransitCount" => (int) $inTransitCount,
             "completedCount" => (int) $completedCount,
             "expenseTotal" => $expenseMeta ? (float) self::scalar($pdo, "SELECT COALESCE(SUM(" . self::quoteIdentifier($expenseMeta["amountColumn"]) . "), 0) FROM " . self::quoteIdentifier($expenseMeta["table"])) : 0,
-            "salaryTotal" => $salaryMeta ? (float) self::scalar($pdo, "SELECT COALESCE(SUM(" . self::quoteIdentifier($salaryMeta["amountColumn"]) . "), 0) FROM " . self::quoteIdentifier($salaryMeta["table"])) : 0,
+            "salaryTotal" => $salaryMeta ? (float) self::scalar($pdo, $salaryTotalSql) : 0,
             "staffCount" => (int) self::scalar($pdo, "SELECT COUNT(*) FROM employee"),
             "activeStaffCount" => (int) self::scalar($pdo, "SELECT COUNT(*) FROM employee WHERE empStatus = 'active'"),
             "hasExpenseTable" => $expenseMeta !== null,
@@ -108,7 +112,7 @@ class ModelReport {
 
     static public function mdlSalaryRows() {
         $pdo = (new Connection)->connect();
-        $meta = self::resolveMoneyTable($pdo, array("staffsalary", "staff_salary", "employee_salary", "payroll", "salary"), array("amount", "salary", "grossPay", "netPay", "rate", "pay"));
+        $meta = self::resolveSalaryTable($pdo);
 
         if (!$meta) {
             return array();
@@ -116,10 +120,18 @@ class ModelReport {
 
         $table = $meta["table"];
         $amountColumn = $meta["amountColumn"];
-        $idColumn = self::firstExistingColumn($pdo, $table, array("salaryID", "payrollID", "id"));
-        $empColumn = self::firstExistingColumn($pdo, $table, array("empID", "employeeID", "employeeId", "employee_id"));
-        $dateColumn = self::firstExistingColumn($pdo, $table, array("salaryDate", "payrollDate", "dateCreated", "createdAt", "date"));
-        $statusColumn = self::firstExistingColumn($pdo, $table, array("status", "salaryStatus", "payrollStatus"));
+        $idColumn = $meta["idColumn"];
+        $empColumn = $meta["empColumn"];
+        $dateColumn = $meta["dateColumn"];
+        $statusColumn = $meta["statusColumn"];
+        $periodStartColumn = $meta["periodStartColumn"];
+        $periodEndColumn = $meta["periodEndColumn"];
+        $grossColumn = $meta["grossColumn"];
+        $deductionColumn = $meta["deductionColumn"];
+        $payTypeColumn = $meta["payTypeColumn"];
+        $tripColumn = $meta["tripColumn"];
+        $creditedBookingColumn = $meta["creditedBookingColumn"];
+        $creditedDistanceColumn = $meta["creditedDistanceColumn"];
 
         $join = $empColumn ? "LEFT JOIN employee e ON e.id = s." . self::quoteIdentifier($empColumn) : "";
         $employeeName = $empColumn ? "COALESCE(NULLIF(TRIM(CONCAT(e.empFName, ' ', e.empLName)), ''), 'Employee')" : "'Employee'";
@@ -128,8 +140,16 @@ class ModelReport {
             SELECT
                 " . self::selectAlias($idColumn, "recordID", "s") . ",
                 {$employeeName} AS employeeName,
+                " . self::selectAlias($periodStartColumn, "periodStart", "s") . ",
+                " . self::selectAlias($periodEndColumn, "periodEnd", "s") . ",
+                " . self::selectAlias($tripColumn, "tripID", "s") . ",
+                " . self::selectAlias($creditedBookingColumn, "creditedBookingID", "s") . ",
+                " . self::selectAlias($creditedDistanceColumn, "creditedDistanceKm", "s") . ",
                 " . self::selectAlias($dateColumn, "recordDate", "s") . ",
                 s." . self::quoteIdentifier($amountColumn) . " AS amount,
+                " . self::selectAlias($grossColumn, "grossPay", "s") . ",
+                " . self::selectAlias($deductionColumn, "deductions", "s") . ",
+                " . self::selectAlias($payTypeColumn, "payType", "s") . ",
                 " . self::selectAlias($statusColumn, "status", "s") . "
             FROM " . self::quoteIdentifier($table) . " s
             {$join}
@@ -171,6 +191,38 @@ class ModelReport {
             if ($amountColumn) {
                 return array("table" => $table, "amountColumn" => $amountColumn);
             }
+        }
+
+        return null;
+    }
+
+    static private function resolveSalaryTable($pdo) {
+        foreach (array("staffsalary", "staff_salary", "employee_salary", "payroll", "salary") as $table) {
+            if (!self::tableExists($pdo, $table)) {
+                continue;
+            }
+
+            $amountColumn = self::firstExistingColumn($pdo, $table, array("netPay", "amount", "salary", "grossPay", "rate", "pay"));
+            if (!$amountColumn) {
+                continue;
+            }
+
+            return array(
+                "table" => $table,
+                "amountColumn" => $amountColumn,
+                "idColumn" => self::firstExistingColumn($pdo, $table, array("salaryID", "payrollID", "id")),
+                "empColumn" => self::firstExistingColumn($pdo, $table, array("empID", "employeeID", "employeeId", "employee_id")),
+                "dateColumn" => self::firstExistingColumn($pdo, $table, array("datePaid", "salaryDate", "payrollDate", "dateCreated", "createdAt", "date")),
+                "statusColumn" => self::firstExistingColumn($pdo, $table, array("status", "salaryStatus", "payrollStatus")),
+                "periodStartColumn" => self::firstExistingColumn($pdo, $table, array("payPeriodStart", "periodStart", "salaryStart")),
+                "periodEndColumn" => self::firstExistingColumn($pdo, $table, array("payPeriodEnd", "periodEnd", "salaryEnd")),
+                "tripColumn" => self::firstExistingColumn($pdo, $table, array("tripID", "tripId")),
+                "creditedBookingColumn" => self::firstExistingColumn($pdo, $table, array("creditedBookingID", "bookingID")),
+                "creditedDistanceColumn" => self::firstExistingColumn($pdo, $table, array("creditedDistanceKm", "distanceKm")),
+                "grossColumn" => self::firstExistingColumn($pdo, $table, array("grossPay", "grossAmount", "salary")),
+                "deductionColumn" => self::firstExistingColumn($pdo, $table, array("deductions", "deductionAmount", "totalDeductions")),
+                "payTypeColumn" => self::firstExistingColumn($pdo, $table, array("payType", "salaryType", "rateType"))
+            );
         }
 
         return null;

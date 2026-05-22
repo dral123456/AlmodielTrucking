@@ -110,6 +110,70 @@ $(document).ready(function () {
 
   $(document).on('change', '#manageCrewDriver, .manage-crew-assistant', syncCrewAssistantOptions);
 
+  $(document).on('input', '.salary-search', filterSalaryTable);
+  $(document).on('change', '.salary-status-filter', filterSalaryTable);
+
+  $(document).on('click', '#salaryCreateBtn', function () {
+    Swal.fire({
+      title: 'Add Salary Record',
+      html: buildSalaryForm(),
+      width: 820,
+      showCancelButton: true,
+      confirmButtonText: 'Save Salary',
+      confirmButtonColor: '#696cff',
+      focusConfirm: false,
+      didOpen: function () {
+        syncSalaryNet();
+      },
+      preConfirm: function () {
+        const data = collectSalaryForm();
+
+        if (!data.empID || Number(data.grossPay) <= 0) {
+          Swal.showValidationMessage('Select an employee and enter a gross pay amount.');
+          return false;
+        }
+
+        if (data.tripID && (!data.payPeriodStart || !data.payPeriodEnd)) {
+          Swal.showValidationMessage('Select a pay period for trip salary.');
+          return false;
+        }
+
+        return data;
+      }
+    }).then(function (result) {
+      if (result.isConfirmed) {
+        saveSalaryRecord(result.value);
+      }
+    });
+  });
+
+  $(document).on('input', '#salaryGrossPay, #salaryDeductions', syncSalaryNet);
+
+  $(document).on('click', '.salary-pay-btn', function () {
+    const salaryID = $(this).closest('tr').data('salary-id');
+
+    Swal.fire({
+      icon: 'question',
+      title: 'Mark Salary as Paid?',
+      text: 'This will set the salary status to paid and save the paid date.',
+      showCancelButton: true,
+      confirmButtonText: 'Pay',
+      confirmButtonColor: '#198754'
+    }).then(function (result) {
+      if (result.isConfirmed) {
+        $.post('ajax/salary_record.ajax.php', { action: 'pay', salaryID: salaryID }, function (response) {
+          if (response && response.status === 'success') {
+            Swal.fire({ icon: 'success', title: 'Salary Paid', timer: 1200, showConfirmButton: false })
+              .then(function () { window.location.reload(); });
+            return;
+          }
+
+          Swal.fire({ icon: 'error', title: 'Unable to update salary', text: 'Please try again.' });
+        }, 'json');
+      }
+    });
+  });
+
   function filterManageTable(target) {
     const $table = $(target);
     const query = String($('.manage-search[data-target="' + target + '"]').val() || '').toLowerCase();
@@ -128,6 +192,25 @@ $(document).ready(function () {
     });
 
     $table.closest('.card-body').find('.manage-empty').toggleClass('d-none', visibleCount !== 0);
+  }
+
+  function filterSalaryTable() {
+    const query = String($('.salary-search').val() || '').toLowerCase();
+    const status = String($('.salary-status-filter').val() || 'all');
+    let visibleCount = 0;
+
+    $('#salaryManageTable tbody tr').each(function () {
+      const rowText = $(this).text().toLowerCase();
+      const rowStatus = String($(this).data('status') || '');
+      const visible = (!query || rowText.includes(query)) && (status === 'all' || rowStatus === status);
+
+      $(this).toggle(visible);
+      if (visible) {
+        visibleCount++;
+      }
+    });
+
+    $('.salary-empty').toggleClass('d-none', visibleCount !== 0);
   }
 
   function initCompanyManageMap() {
@@ -225,6 +308,131 @@ $(document).ready(function () {
       '<i class="ri-add-line me-1"></i> Add Assistant' +
       '</button>' +
       '</div>';
+  }
+
+  function buildSalaryForm() {
+    return '<div class="text-start salary-form-grid">' +
+      '<div>' +
+        '<label class="form-label">Employee</label>' +
+        salaryEmployeeSelect() +
+      '</div>' +
+      '<div>' +
+        '<label class="form-label">Trip ID</label>' +
+        salaryTripSelect() +
+        '<div class="form-text">For trips with multiple bookings, the farthest booking is credited automatically.</div>' +
+      '</div>' +
+      '<div>' +
+        '<label class="form-label">Pay Period Start</label>' +
+        '<input type="date" class="form-control salary-field" name="payPeriodStart">' +
+      '</div>' +
+      '<div>' +
+        '<label class="form-label">Pay Period End</label>' +
+        '<input type="date" class="form-control salary-field" name="payPeriodEnd">' +
+      '</div>' +
+      '<div>' +
+        '<label class="form-label">Pay Type</label>' +
+        '<select class="form-select salary-field" name="payType">' +
+          '<option value="trip">Trip</option>' +
+          '<option value="daily">Daily</option>' +
+          '<option value="weekly">Weekly</option>' +
+          '<option value="semi-monthly">Semi-monthly</option>' +
+          '<option value="monthly">Monthly</option>' +
+          '<option value="allowance">Allowance</option>' +
+          '<option value="bonus">Bonus</option>' +
+          '<option value="adjustment">Adjustment</option>' +
+        '</select>' +
+      '</div>' +
+      '<div>' +
+        '<label class="form-label">Status</label>' +
+        '<select class="form-select salary-field" name="status">' +
+          '<option value="pending">Unpaid</option>' +
+          '<option value="paid">Paid</option>' +
+        '</select>' +
+      '</div>' +
+      '<div>' +
+        '<label class="form-label">Base Rate</label>' +
+        '<input type="number" min="0" step="0.01" class="form-control salary-field" name="baseRate" placeholder="0.00">' +
+      '</div>' +
+      '<div>' +
+        '<label class="form-label">Gross Pay</label>' +
+        '<input type="number" min="0" step="0.01" class="form-control salary-field" id="salaryGrossPay" name="grossPay" placeholder="0.00">' +
+      '</div>' +
+      '<div>' +
+        '<label class="form-label">Deductions</label>' +
+        '<input type="number" min="0" step="0.01" class="form-control salary-field" id="salaryDeductions" name="deductions" placeholder="0.00" value="0">' +
+      '</div>' +
+      '<div>' +
+        '<label class="form-label">Net Pay</label>' +
+        '<input type="text" class="form-control" id="salaryNetPay" readonly value="PHP 0.00">' +
+      '</div>' +
+      '<div class="salary-form-wide">' +
+        '<label class="form-label">Remarks</label>' +
+        '<textarea class="form-control salary-field" name="remarks" rows="3" placeholder="Notes for this payroll record"></textarea>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function salaryEmployeeSelect() {
+    let html = '<select class="form-select salary-field" name="empID"><option value="">Select employee</option>';
+    (window.salaryEmployees || []).forEach(function (employee) {
+      html += '<option value="' + escapeAttr(employee.id) + '">' +
+        escapeHtml(employee.name || 'Employee #' + employee.id) + ' - ' + escapeHtml(employee.role || '') +
+      '</option>';
+    });
+
+    return html + '</select>';
+  }
+
+  function salaryTripSelect() {
+    let html = '<select class="form-select salary-field" name="tripID"><option value="">No trip / regular salary</option>';
+    (window.salaryTrips || []).forEach(function (trip) {
+      html += '<option value="' + escapeAttr(trip.tripID) + '">Trip #' + escapeHtml(trip.tripID) +
+        ' - ' + escapeHtml(trip.firstPickupDateTime || '') +
+        ' (' + escapeHtml(trip.bookingCount || 0) + ' booking/s)</option>';
+    });
+
+    return html + '</select>';
+  }
+
+  function collectSalaryForm() {
+    const data = { action: 'create' };
+
+    $('.salary-field').each(function () {
+      data[$(this).attr('name')] = $(this).val();
+    });
+
+    return data;
+  }
+
+  function syncSalaryNet() {
+    const gross = Number($('#salaryGrossPay').val() || 0);
+    const deductions = Number($('#salaryDeductions').val() || 0);
+    const net = Math.max(gross - deductions, 0);
+
+    $('#salaryNetPay').val('PHP ' + net.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+  }
+
+  function saveSalaryRecord(data) {
+    $.post('ajax/salary_record.ajax.php', data, function (response) {
+      if (response && response.status === 'success') {
+        Swal.fire({ icon: 'success', title: 'Salary Saved', timer: 1200, showConfirmButton: false })
+          .then(function () { window.location.reload(); });
+        return;
+      }
+
+      const messages = {
+        'missing-table': 'The staffsalary table does not exist yet.',
+        'invalid-trip': 'The selected employee is not assigned to that completed trip.',
+        'duplicate-trip': 'This employee already has a salary credit for that trip.',
+        invalid: 'Please check the salary details.'
+      };
+
+      Swal.fire({
+        icon: 'error',
+        title: 'Unable to Save Salary',
+        text: messages[response && response.status] || 'Please try again.'
+      });
+    }, 'json');
   }
 
   function assistantSelect(value) {

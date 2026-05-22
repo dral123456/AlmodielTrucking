@@ -22,6 +22,16 @@
     vertical-align: middle;
   }
 
+  .salary-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+  }
+
+  .salary-form-wide {
+    grid-column: 1 / -1;
+  }
+
   #companyManageMap {
     width: 100%;
     height: 360px;
@@ -77,6 +87,10 @@
 
   @media (max-width: 767.98px) {
     .manage-toolbar {
+      grid-template-columns: 1fr;
+    }
+
+    .salary-form-grid {
       grid-template-columns: 1fr;
     }
 

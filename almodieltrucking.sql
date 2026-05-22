@@ -160,6 +160,33 @@ INSERT INTO `employee` (`id`, `empFName`, `empLName`, `empMI`, `empSuffix`, `emp
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `staffsalary`
+--
+
+CREATE TABLE `staffsalary` (
+  `salaryID` int NOT NULL,
+  `empID` int NOT NULL,
+  `tripID` int DEFAULT NULL,
+  `creditedBookingID` int DEFAULT NULL,
+  `creditedDistanceKm` double NOT NULL DEFAULT '0',
+  `tripRole` varchar(50) DEFAULT NULL,
+  `payPeriodStart` date NOT NULL,
+  `payPeriodEnd` date NOT NULL,
+  `payType` enum('daily','weekly','semi-monthly','monthly','trip','allowance','bonus','adjustment') NOT NULL DEFAULT 'monthly',
+  `baseRate` double NOT NULL DEFAULT '0',
+  `grossPay` double NOT NULL DEFAULT '0',
+  `deductions` double NOT NULL DEFAULT '0',
+  `netPay` double NOT NULL DEFAULT '0',
+  `datePaid` datetime DEFAULT NULL,
+  `status` enum('pending','paid','cancelled') NOT NULL DEFAULT 'pending',
+  `remarks` text,
+  `createdBy` int DEFAULT NULL,
+  `dateCreated` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `location`
 --
 
@@ -339,6 +366,19 @@ ALTER TABLE `location`
   ADD PRIMARY KEY (`locationID`);
 
 --
+-- Indexes for table `staffsalary`
+--
+ALTER TABLE `staffsalary`
+  ADD PRIMARY KEY (`salaryID`),
+  ADD KEY `idx_staffsalary_empID` (`empID`),
+  ADD KEY `idx_staffsalary_tripID` (`tripID`),
+  ADD KEY `idx_staffsalary_creditedBookingID` (`creditedBookingID`),
+  ADD KEY `idx_staffsalary_period` (`payPeriodStart`, `payPeriodEnd`),
+  ADD KEY `idx_staffsalary_status` (`status`),
+  ADD UNIQUE KEY `uniq_staffsalary_employee_trip` (`empID`, `tripID`),
+  ADD KEY `idx_staffsalary_createdBy` (`createdBy`);
+
+--
 -- Indexes for table `tripemployee`
 --
 ALTER TABLE `tripemployee`
@@ -402,6 +442,12 @@ ALTER TABLE `location`
   MODIFY `locationID` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
 
 --
+-- AUTO_INCREMENT for table `staffsalary`
+--
+ALTER TABLE `staffsalary`
+  MODIFY `salaryID` int NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `tripemployee`
 --
 ALTER TABLE `tripemployee`
@@ -428,6 +474,14 @@ ALTER TABLE `userrights`
 --
 -- Constraints for dumped tables
 --
+
+--
+-- Constraints for table `staffsalary`
+--
+ALTER TABLE `staffsalary`
+  ADD CONSTRAINT `fk_staffsalary_created_by` FOREIGN KEY (`createdBy`) REFERENCES `employee` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_staffsalary_credited_booking` FOREIGN KEY (`creditedBookingID`) REFERENCES `booking` (`bookingID`) ON DELETE SET NULL ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_staffsalary_employee` FOREIGN KEY (`empID`) REFERENCES `employee` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Constraints for table `truckemployee`

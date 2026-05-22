@@ -35,6 +35,15 @@ function reportDateValue($value) {
     return $timestamp ? date("Y-m-d", $timestamp) : "";
 }
 
+function reportDateOnly($value) {
+    if (!$value) {
+        return "-";
+    }
+
+    $timestamp = strtotime($value);
+    return $timestamp ? date("M d, Y", $timestamp) : $value;
+}
+
 function reportStaffName($employee) {
     return trim($employee["empFName"] . " " . $employee["empMI"] . " " . $employee["empLName"] . " " . $employee["empSuffix"]);
 }
@@ -265,9 +274,14 @@ function reportStaffName($employee) {
                   <tr>
                     <th>Record</th>
                     <th>Employee</th>
-                    <th>Date</th>
+                    <th>Trip Credit</th>
+                    <th>Pay Period</th>
+                    <th>Pay Type</th>
                     <th>Status</th>
-                    <th class="text-end">Amount</th>
+                    <th>Paid Date</th>
+                    <th class="text-end">Gross</th>
+                    <th class="text-end">Deductions</th>
+                    <th class="text-end">Net</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -275,8 +289,20 @@ function reportStaffName($employee) {
                     <tr class="report-data-row" data-report-date="<?php echo htmlspecialchars(reportDateValue($row["recordDate"])); ?>" data-report-specific="<?php echo htmlspecialchars(strtolower($row["status"] ?: "recorded")); ?>">
                       <td>#<?php echo reportText($row["recordID"]); ?></td>
                       <td><?php echo reportText($row["employeeName"]); ?></td>
-                      <td><?php echo htmlspecialchars(reportDate($row["recordDate"])); ?></td>
+                      <td>
+                        <?php if (!empty($row["tripID"])): ?>
+                          Trip #<?php echo (int) $row["tripID"]; ?>
+                          <div class="small text-muted">Booking #<?php echo (int) $row["creditedBookingID"]; ?> | <?php echo number_format((float) $row["creditedDistanceKm"], 2); ?> km</div>
+                        <?php else: ?>
+                          <span class="text-muted">Regular salary</span>
+                        <?php endif; ?>
+                      </td>
+                      <td><?php echo htmlspecialchars(reportDateOnly($row["periodStart"])); ?> - <?php echo htmlspecialchars(reportDateOnly($row["periodEnd"])); ?></td>
+                      <td><?php echo reportText(ucfirst($row["payType"])); ?></td>
                       <td><span class="badge bg-secondary-subtle text-secondary"><?php echo reportText($row["status"]); ?></span></td>
+                      <td><?php echo htmlspecialchars(reportDate($row["recordDate"])); ?></td>
+                      <td class="text-end"><?php echo reportMoney($row["grossPay"]); ?></td>
+                      <td class="text-end"><?php echo reportMoney($row["deductions"]); ?></td>
                       <td class="text-end fw-semibold"><?php echo reportMoney($row["amount"]); ?></td>
                     </tr>
                   <?php endforeach; ?>

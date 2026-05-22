@@ -308,9 +308,23 @@ function salesDate($value) {
     border-radius: 0.5rem;
     font-size: 1.35rem;
     line-height: 1;
+    position: relative;
   }
 
   .sales-kpi-icon i {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    margin: 0;
+    text-align: center;
+  }
+
+  .sales-kpi-icon i::before {
     display: block;
     line-height: 1;
   }
