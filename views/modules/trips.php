@@ -126,6 +126,7 @@ foreach ($trips as $trip) {
   .trip-page {
     max-width: 1480px;
     margin: 0 auto;
+    width: 100%;
   }
 
   .trip-stat-grid {
