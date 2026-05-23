@@ -24,7 +24,7 @@ $(document).ready(function () {
     lookupTariffPrice();
   });
 
-  $(document).on('input', '#bookingFuelPrice', lookupTariffPrice);
+  $(document).on('input change', '#bookingFuelPrice', lookupTariffPrice);
 
   $(document).on('change', '#bookingDriver, .booking-assistant', function () {
     syncAssistantOptions();
@@ -183,9 +183,13 @@ $(document).ready(function () {
     return $option.length && $option.val() ? $option : $();
   }
 
+  function selectedCustomerIsCompany() {
+    return getSelectedCustomerOption().data('type') === 'company';
+  }
+
   function applyCompanyWarehousePickup() {
     const $option = getSelectedCustomerOption();
-    const isCompany = $option.data('type') === 'company';
+    const isCompany = selectedCustomerIsCompany();
 
     setPickupLocked(isCompany);
 
@@ -388,7 +392,7 @@ $(document).ready(function () {
 
   function updateMapStatus() {
     const mode = getMapMode();
-    const customerIsCompany = getSelectedCustomerOption().data('type') === 'company';
+    const customerIsCompany = selectedCustomerIsCompany();
 
     if (customerIsCompany) {
       $('#bookingMapStatus').text('Company warehouse is fixed as pickup. Click the map to place the destination pin.');
@@ -404,7 +408,7 @@ $(document).ready(function () {
 
   function setActiveMarker(latlng) {
     const mode = getMapMode();
-    const customerIsCompany = getSelectedCustomerOption().data('type') === 'company';
+    const customerIsCompany = selectedCustomerIsCompany();
 
     if (customerIsCompany && mode === 'pickup') {
       $('#mapModeDestination').prop('checked', true);
@@ -568,10 +572,17 @@ $(document).ready(function () {
         const totalRate = Number(response.totalRate || response.baseRate || 0);
         const fuelSubsidy = Number(response.fuelSubsidy || 0);
         $('#bookingPrice').val(totalRate.toFixed(2)).removeClass('is-invalid');
+        const fuelBaseMin = Number(response.fuelBaseMin || 0);
+        const fuelBaseMax = Number(response.fuelBaseMax || 0);
+        const fuelBaseRange = fuelBaseMin > 0 && fuelBaseMax > 0 ? fuelBaseMin + '-' + fuelBaseMax : '';
+        const fuelNote = fuelSubsidy > 0
+          ? ' + fuel subsidy PHP ' + fuelSubsidy.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+          : ' + no fuel subsidy' + (fuelBaseRange ? ' because fuel is within base range ' + fuelBaseRange : '');
+
         $('#bookingTariffHint').text(
           'Tariff matched: ' + response.origin + ' to ' + response.destination +
           ' | ' + response.distanceKm + ' km | base PHP ' + Number(response.baseRate || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) +
-          ' + fuel subsidy PHP ' + fuelSubsidy.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) +
+          fuelNote +
           ' = PHP ' + totalRate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
         );
       },
@@ -587,6 +598,8 @@ $(document).ready(function () {
     for (let step = 0; step < totalSteps - 1; step++) {
       allMissing.push(...validateStep(step));
     }
+
+    checkFinalPrice(allMissing);
 
     return [...new Set(allMissing)];
   }
@@ -611,7 +624,6 @@ $(document).ready(function () {
       check('bookingTruck', 'Truck');
       check('bookingDriver', 'Driver');
       check('bookingPickupDateTime', 'Pickup Date & Time');
-      check('bookingPrice', 'Price');
 
       const assistantIDs = getAssistantIDs();
       if (assistantIDs.length < 2) {
@@ -630,11 +642,6 @@ $(document).ready(function () {
         $('.booking-assistant').addClass('is-invalid');
       }
 
-      const price = Number($('#bookingPrice').val());
-      if ($('#bookingPrice').val() !== '' && (Number.isNaN(price) || price < 0)) {
-        missing.push('Price must be a valid number');
-        $('#bookingPrice').addClass('is-invalid');
-      }
     }
 
     if (step === 1) {
@@ -679,9 +686,38 @@ $(document).ready(function () {
       check('destinationStreet', 'Destination Street');
       check('destinationLatitude', 'Destination Map Pin');
       check('destinationLongitude', 'Destination Map Pin');
+      check('bookingPrice', selectedCustomerIsCompany() ? 'Company tariff price' : 'Price');
+      checkPriceValue(missing);
     }
 
     return [...new Set(missing)];
+  }
+
+  function checkFinalPrice(missing) {
+    if (String($('#bookingPrice').val() || '').trim() === '') {
+      missing.push(selectedCustomerIsCompany() ? 'Company tariff price' : 'Price');
+      $('#bookingPrice').addClass('is-invalid');
+
+      if (selectedCustomerIsCompany()) {
+        $('#bookingTariffHint').text('Select a matching destination and truck so the company tariff can fill the price.');
+      }
+      return;
+    }
+
+    checkPriceValue(missing);
+  }
+
+  function checkPriceValue(missing) {
+    const price = Number($('#bookingPrice').val());
+    if ($('#bookingPrice').val() !== '' && (Number.isNaN(price) || price < 0)) {
+      missing.push('Price must be a valid number');
+      $('#bookingPrice').addClass('is-invalid');
+      return;
+    }
+
+    if ($('#bookingPrice').val() !== '') {
+      $('#bookingPrice').removeClass('is-invalid');
+    }
   }
 
   function updateReview() {
