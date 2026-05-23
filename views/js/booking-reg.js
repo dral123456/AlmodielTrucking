@@ -4,13 +4,13 @@ $(document).ready(function () {
   let destinationMarker = null;
   let currentStep = 0;
   const totalSteps = 4;
-
+  let NEGROS_BOUNDS = null;
   // Track locationIDs chosen from existing DB records (skip re-saving)
   let pickedPickupLocationID    = null;
   let pickedDestinationLocationID = null;
 
-  const pickupIcon     = createMarkerIcon('primary');
-  const destinationIcon = createMarkerIcon('danger');
+  let pickupIcon     = null;
+  let destinationIcon = null;
 
   initMap();
   updateStepper();
@@ -19,22 +19,6 @@ $(document).ready(function () {
   initLocationSearch('destination');
 
   $(document).on('change', 'input[name="bookingMapMode"]', updateMapStatus);
-
-  $(document).on('change', '#bookingTruck', function () {
-    applyTruckDefaultCrew($(this).val());
-    lookupTariffPrice();
-  });
-
-  $(document).on('change', '#bookingCustomer', function () {
-    applyCompanyWarehousePickup();
-    lookupTariffPrice();
-  });
-
-  $(document).on('input', '#bookingFuelPrice', lookupTariffPrice);
-
-  $(document).on('change', '#bookingDriver, .booking-assistant', function () {
-    syncAssistantOptions();
-  });
   $(document).on('change', '#bookingTruck',    function () { applyTruckDefaultCrew($(this).val()); });
   $(document).on('change', '#bookingCustomer', function () { applyCompanyWarehousePickup(); });
   $(document).on('change', '#bookingDriver, .booking-assistant', syncAssistantOptions);
@@ -42,16 +26,6 @@ $(document).ready(function () {
   $(document).on('click', '#bookingAddAssistant', function () {
     addAssistantSelect('');
     syncAssistantOptions();
-  });
-
-  $(document).on('click', '#bookingAddCargo', function () {
-    addCargoItem();
-    updateCargoRemoveButtons();
-  });
-
-  $(document).on('click', '.booking-remove-cargo', function () {
-    $(this).closest('.booking-cargo-item').remove();
-    updateCargoRemoveButtons();
   });
 
   $(document).on('click', '.booking-remove-assistant', function () {
@@ -86,12 +60,6 @@ $(document).ready(function () {
 
   $(window).on('resize', function () { if (map) map.invalidateSize(); });
 
-  $(document).on('input', '#pickupProvince, #pickupCity, #pickupBarangay, #pickupStreet, #pickupDescription, #destinationProvince, #destinationCity, #destinationBarangay, #destinationStreet, #destinationDescription', function () {
-    $(this).data('autofilled', false);
-    if (this.id.indexOf('destination') === 0) {
-      lookupTariffPrice();
-    }
-  });
   // Clear autofill flag when user manually edits address fields
   $(document).on('input',
     '#pickupProvince, #pickupCity, #pickupBarangay, #pickupStreet, #pickupDescription, ' +
@@ -100,11 +68,10 @@ $(document).ready(function () {
   );
 
   $(document).on('click', '#bookingBtnReset', function () {
-    $('#bookingCustomer, #bookingPickupDateTime, #bookingPrice, #bookingFuelPrice, #bookingTruck, #bookingDriver').val('');
+    $('#bookingCustomer, #bookingPickupDateTime, #bookingPrice, #bookingTruck, #bookingDriver').val('');
     $('#bookingAssistantList .booking-assistant-item').slice(2).remove();
     $('.booking-assistant').val('');
-    $('#bookingCargoList .booking-cargo-item').slice(1).remove();
-    $('#bookingCargoList .cargo-type, #bookingCargoList .cargo-quantity, #cargoCondition, #cargoDescription, #cargoSpecialHandling').val('');
+    $('#cargoType, #cargoQuantity, #cargoCondition, #cargoDescription, #cargoSpecialHandling').val('');
     $('#pickupProvince, #pickupCity, #pickupBarangay, #pickupStreet, #pickupDescription, #pickupLatitude, #pickupLongitude').val('');
     $('#destinationProvince, #destinationCity, #destinationBarangay, #destinationStreet, #destinationDescription, #destinationLatitude, #destinationLongitude').val('');
     setPickupLocked(false);
@@ -120,7 +87,6 @@ $(document).ready(function () {
     updateStepper();
     updateMapStatus();
     syncAssistantOptions();
-    updateCargoRemoveButtons();
   });
 
   $(document).on('click', '#bookingBtnRegister', function () {
@@ -220,6 +186,14 @@ $(document).ready(function () {
         destinationMarker = L.marker(latlng, { draggable: true, icon: destinationIcon }).addTo(map);
         destinationMarker.on('dragend', function () {
           const pos = destinationMarker.getLatLng();
+          if (!isInNegros(pos)) {
+            destinationMarker.setLatLng(L.latLng(
+              Math.min(Math.max(pos.lat, 9.0), 11.0),
+              Math.min(Math.max(pos.lng, 122.2), 123.4)
+            ));
+            $('#bookingMapStatus').text('Pin snapped back — must stay within Negros Island.');
+            return;
+          }
           setDestinationCoordinates(pos.lat, pos.lng);
           fillAddressFromPin('destination', pos.lat, pos.lng);
           pickedDestinationLocationID = null;
@@ -291,10 +265,13 @@ $(document).ready(function () {
         const latlng  = { lat: Number(result.lat), lng: Number(result.lon) };
         if (!Number.isFinite(latlng.lat) || !Number.isFinite(latlng.lng)) return;
 
+        if (!isInNegros(L.latLng(latlng.lat, latlng.lng))) {
+          $('#bookingMapStatus').text('That location is outside Negros Island. Please search within Negros.');
+          return;
+        }
+
         setActiveMarkerAt(type, latlng);
         map.setView(L.latLng(latlng.lat, latlng.lng), 16);
-
-        // Reverse geocode to fill fields (already done inside setActiveMarkerAt → fillAddressFromPin)
       })
       .catch(function () {
         $('#bookingMapStatus').text('Search failed. Check your connection or click the map manually.');
@@ -305,10 +282,29 @@ $(document).ready(function () {
   }
 
   // ─── Map ────────────────────────────────────────────────────────────────────
+  // ─── Map ────────────────────────────────────────────────────────────────────
+  // Negros Island bounding box — initialised inside initMap() once L is ready
+
+  function isInNegros(latlng) {
+    if (!NEGROS_BOUNDS) return true; // if not yet set, allow (shouldn't happen)
+    return NEGROS_BOUNDS.contains(latlng);
+  }
+
   function initMap() {
     if (typeof L === 'undefined' || !document.getElementById('bookingMap')) return;
 
-    map = L.map('bookingMap').setView([10.6765, 122.9509], 12);
+    NEGROS_BOUNDS = L.latLngBounds(   // ← no 'let' here
+      L.latLng(9.0,  122.2),
+      L.latLng(11.0, 123.4)
+    );
+    pickupIcon     = createMarkerIcon('primary');
+    destinationIcon = createMarkerIcon('danger');
+
+    map = L.map('bookingMap', {
+      maxBounds: NEGROS_BOUNDS,
+      maxBoundsViscosity: 1.0,
+      minZoom: 9
+    }).setView([10.6765, 122.9509], 12);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
@@ -316,6 +312,17 @@ $(document).ready(function () {
     }).addTo(map);
 
     map.on('click', function (event) {
+      if (!isInNegros(event.latlng)) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Out of range',
+          text: 'Please select a location within Negros Island.',
+          confirmButtonColor: '#696cff',
+          timer: 2500,
+          showConfirmButton: false
+        });
+        return;
+      }
       setActiveMarker(event.latlng);
     });
 
@@ -441,41 +448,6 @@ $(document).ready(function () {
     $('#bookingAssistantList').append($item);
   }
 
-  function addCargoItem() {
-    const $item = $('<div class="booking-cargo-item"></div>');
-    $item.append(
-      '<div class="row g-2 align-items-end">' +
-        '<div class="col-12 col-md-7">' +
-          '<label class="form-label">Cargo Type <span class="text-danger">*</span></label>' +
-          '<input type="text" class="form-control cargo-type" maxlength="100" placeholder="e.g. Construction materials">' +
-        '</div>' +
-        '<div class="col-12 col-md-4">' +
-          '<label class="form-label">Quantity <span class="text-danger">*</span></label>' +
-          '<input type="number" class="form-control cargo-quantity" min="1" step="1" placeholder="Quantity">' +
-        '</div>' +
-        '<div class="col-12 col-md-1 d-grid">' +
-          '<button class="btn btn-outline-danger booking-remove-cargo" type="button" aria-label="Remove cargo">' +
-            '<i class="ri-close-line"></i>' +
-          '</button>' +
-        '</div>' +
-      '</div>'
-    );
-    $('#bookingCargoList').append($item);
-  }
-
-  function updateCargoRemoveButtons() {
-    $('.booking-remove-cargo').prop('disabled', $('.booking-cargo-item').length <= 1);
-  }
-
-  function getCargoItems() {
-    return $('.booking-cargo-item').map(function () {
-      return {
-        cargoType: String($(this).find('.cargo-type').val() || '').trim(),
-        quantity: String($(this).find('.cargo-quantity').val() || '').trim()
-      };
-    }).get();
-  }
-
   function getAssistantIDs() {
     return $('.booking-assistant').map(function () {
       return String($(this).val() || '').trim();
@@ -534,6 +506,14 @@ $(document).ready(function () {
         pickupMarker = L.marker(ll, { draggable: true, icon: pickupIcon }).addTo(map);
         pickupMarker.on('dragend', function () {
           const pos = pickupMarker.getLatLng();
+          if (!isInNegros(pos)) {
+            pickupMarker.setLatLng(L.latLng(
+              Math.min(Math.max(pos.lat, 9.0), 11.0),
+              Math.min(Math.max(pos.lng, 122.2), 123.4)
+            ));
+            $('#bookingMapStatus').text('Pin snapped back — must stay within Negros Island.');
+            return;
+          }
           setPickupCoordinates(pos.lat, pos.lng);
           fillAddressFromPin('pickup', pos.lat, pos.lng);
           pickedPickupLocationID = null; // user dragged, unknown location
@@ -578,7 +558,6 @@ $(document).ready(function () {
     $('#destinationLongitude').val(fLng);
     $('#destinationCoordinateText').text(fLat + ', ' + fLng);
     $('#destinationLatitude, #destinationLongitude').removeClass('is-invalid');
-    lookupTariffPrice();
   }
 
   function fillAddressFromPin(type, lat, lng) {
@@ -600,9 +579,6 @@ $(document).ready(function () {
         setIfEmptyOrAutofilled(type + 'Description', data.display_name || '');
         $('#' + type + 'Province, #' + type + 'City, #' + type + 'Barangay, #' + type + 'Street').removeClass('is-invalid');
         updateMapStatus();
-        if (prefix === 'destination') {
-          lookupTariffPrice();
-        }
       })
       .catch(function () { updateMapStatus(); });
   }
@@ -613,58 +589,6 @@ $(document).ready(function () {
     if (String($el.val() || '').trim() === '' || $el.data('autofilled') === true) {
       $el.val(value).data('autofilled', true);
     }
-  }
-
-  function lookupTariffPrice() {
-    const customerID = $('#bookingCustomer').val();
-    const $customer = getSelectedCustomerOption();
-    const truckType = $('#bookingTruck option:selected').data('type') || '';
-    const fuelPrice = $('#bookingFuelPrice').val();
-    const destinationText = [
-      $('#destinationStreet').val(),
-      $('#destinationBarangay').val(),
-      $('#destinationCity').val(),
-      $('#destinationProvince').val(),
-      $('#destinationDescription').val()
-    ].filter(Boolean).join(' ');
-
-    if (!customerID || !$customer.length || $customer.data('type') !== 'company' || !truckType || !destinationText.trim()) {
-      $('#bookingTariffHint').text('Select company, truck, and destination to use tariff pricing.');
-      return;
-    }
-
-    $('#bookingTariffHint').text('Checking tariff for this destination...');
-
-    $.ajax({
-      url: 'ajax/tariff_lookup.ajax.php',
-      method: 'POST',
-      dataType: 'json',
-      data: {
-        customerID: customerID,
-        truckType: truckType,
-        destinationText: destinationText,
-        fuelPrice: fuelPrice
-      },
-      success: function (response) {
-        if (!response || response.status !== 'success') {
-          $('#bookingTariffHint').text('No tariff matched. You may enter the booking price manually.');
-          return;
-        }
-
-        const totalRate = Number(response.totalRate || response.baseRate || 0);
-        const fuelSubsidy = Number(response.fuelSubsidy || 0);
-        $('#bookingPrice').val(totalRate.toFixed(2)).removeClass('is-invalid');
-        $('#bookingTariffHint').text(
-          'Tariff matched: ' + response.origin + ' to ' + response.destination +
-          ' | ' + response.distanceKm + ' km | base PHP ' + Number(response.baseRate || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) +
-          ' + fuel subsidy PHP ' + fuelSubsidy.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) +
-          ' = PHP ' + totalRate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-        );
-      },
-      error: function () {
-        $('#bookingTariffHint').text('Tariff lookup failed. You may enter the booking price manually.');
-      }
-    });
   }
 
   // ─── Validation ─────────────────────────────────────────────────────────────
@@ -706,19 +630,18 @@ $(document).ready(function () {
     }
 
     if (step === 1) {
-      const cargoItems = getCargoItems();
       let hasCompleteCargo = false;
 
-      $('.booking-cargo-item').each(function (index) {
-        const $type = $(this).find('.cargo-type');
+      $('.booking-cargo-item').each(function () {
+        const $type     = $(this).find('.cargo-type');
         const $quantity = $(this).find('.cargo-quantity');
-        const type = cargoItems[index].cargoType;
-        const quantity = Number(cargoItems[index].quantity);
-        const quantityIsValid = cargoItems[index].quantity !== '' && Number.isInteger(quantity) && quantity >= 1;
+        const type      = String($type.val() || '').trim();
+        const rawQty    = String($quantity.val() || '').trim();
+        const quantity  = Number(rawQty);
+        const quantityIsValid = rawQty !== '' && !Number.isNaN(quantity) && Math.floor(quantity) === quantity && quantity >= 1;
 
         $type.toggleClass('is-invalid', type === '');
         $quantity.toggleClass('is-invalid', !quantityIsValid);
-
         if (type !== '' && quantityIsValid) {
           hasCompleteCargo = true;
         }
@@ -728,15 +651,8 @@ $(document).ready(function () {
         missing.push('At least 1 cargo item with type and quantity');
       }
 
-      if ($('.booking-cargo-item .is-invalid').length) {
+      if ($('.booking-cargo-item .cargo-quantity.is-invalid').length) {
         missing.push('Each cargo quantity must be a whole number greater than 0');
-      }
-      check('cargoType',     'Cargo Type');
-      check('cargoQuantity', 'Cargo Quantity');
-      const qty = Number($('#cargoQuantity').val());
-      if ($('#cargoQuantity').val() !== '' && (!Number.isInteger(qty) || qty < 1)) {
-        missing.push('Cargo Quantity must be a whole number greater than 0');
-        $('#cargoQuantity').addClass('is-invalid');
       }
     }
 
@@ -757,17 +673,12 @@ $(document).ready(function () {
 
     return [...new Set(missing)];
   }
-  
 
   // ─── Review ─────────────────────────────────────────────────────────────────
   function updateReview() {
     const assistantNames = $('.booking-assistant').map(function () {
       return $(this).find('option:selected').text().trim();
     }).get().filter(Boolean).join(', ');
-    const cargoSummary = getCargoItems()
-      .filter(item => item.cargoType && item.quantity)
-      .map(item => item.cargoType + ' x ' + item.quantity)
-      .join(', ');
 
     $('#reviewCustomer').text($('#bookingCustomer option:selected').text().trim() || '-');
     $('#reviewTripSchedule').text('Generated on save / ' + ($('#bookingPickupDateTime').val() || '-'));
@@ -776,7 +687,13 @@ $(document).ready(function () {
       ' / Driver: '     + ($('#bookingDriver option:selected').text().trim() || '-') +
       ' / Assistants: ' + (assistantNames || '-')
     );
-    $('#reviewCargo').text(cargoSummary || '-');
+    const cargoSummary = [];
+    $('.booking-cargo-item').each(function () {
+      const t = $(this).find('.cargo-type').val().trim();
+      const q = $(this).find('.cargo-quantity').val().trim();
+      if (t && q) cargoSummary.push(t + ' x ' + q);
+    });
+    $('#reviewCargo').text(cargoSummary.length ? cargoSummary.join(', ') : '-');
     $('#reviewPrice').text($('#bookingPrice').val() || '-');
     $('#reviewPickup').text(formatAddress('pickup')      + ' (' + ($('#pickupCoordinateText').text()      || '-') + ')');
     $('#reviewDestination').text(formatAddress('destination') + ' (' + ($('#destinationCoordinateText').text() || '-') + ')');
@@ -802,6 +719,12 @@ $(document).ready(function () {
   }
 
   function showConfirmModal() {
+    const cargoConfirm = [];
+    $('.booking-cargo-item').each(function () {
+      const t = $(this).find('.cargo-type').val().trim();
+      const q = $(this).find('.cargo-quantity').val().trim();
+      if (t && q) cargoConfirm.push(t + ' (' + q + ')');
+    });
     Swal.fire({
       icon: 'question', title: 'Confirm Booking',
       html:
@@ -809,14 +732,9 @@ $(document).ready(function () {
         '<div class="text-start bg-light rounded p-3">' +
           '<div><strong>Customer:</strong> '    + ($('#bookingCustomer option:selected').text().trim() || '-') + '</div>' +
           '<div><strong>Trip ID:</strong> Generated on save</div>' +
-          '<div><strong>Truck:</strong> ' + ($('#bookingTruck option:selected').text().trim() || '-') + '</div>' +
-          '<div><strong>Driver:</strong> ' + ($('#bookingDriver option:selected').text().trim() || '-') + '</div>' +
-          '<div><strong>Assistants:</strong> ' + ($('.booking-assistant').map(function () { return $(this).find('option:selected').text().trim(); }).get().filter(Boolean).join(', ') || '-') + '</div>' +
-          '<div><strong>Cargo:</strong> ' + (getCargoItems().filter(item => item.cargoType && item.quantity).map(item => item.cargoType + ' (' + item.quantity + ')').join(', ') || '-') + '</div>' +
-          '<div><strong>Pickup:</strong> ' + ($('#pickupCoordinateText').text() || '-') + '</div>' +
           '<div><strong>Truck:</strong> '       + ($('#bookingTruck option:selected').text().trim()    || '-') + '</div>' +
           '<div><strong>Driver:</strong> '      + ($('#bookingDriver option:selected').text().trim()   || '-') + '</div>' +
-          '<div><strong>Cargo:</strong> '       + ($('#cargoType').val() || '-') + ' (' + ($('#cargoQuantity').val() || '-') + ')</div>' +
+          '<div><strong>Cargo:</strong> ' + (cargoConfirm.join(', ') || '-') + '</div>' +
           '<div><strong>Pickup:</strong> '      + ($('#pickupCoordinateText').text()      || '-') + '</div>' +
           '<div><strong>Destination:</strong> ' + ($('#destinationCoordinateText').text() || '-') + '</div>' +
         '</div>',
@@ -832,8 +750,6 @@ $(document).ready(function () {
 
   // ─── Save: locations first, then booking ────────────────────────────────────
   function saveLocationsAndBooking() {
-    console.log('pickedPickupLocationID:', pickedPickupLocationID);
-    console.log('pickedDestinationLocationID:', pickedDestinationLocationID);
     const pickupLocationID      = pickedPickupLocationID;
     const destinationLocationID = pickedDestinationLocationID;
 
@@ -852,8 +768,8 @@ $(document).ready(function () {
           barangay:    $('#pickupBarangay').val(),
           street:      $('#pickupStreet').val(),
           description: $('#pickupDescription').val(),
-          latitude:         $('#pickupLatitude').val(),
-          longitude:         $('#pickupLongitude').val(),
+          lat:         $('#pickupLatitude').val(),
+          lng:         $('#pickupLongitude').val(),
         });
 
     // Save destination location (or reuse nearby)
@@ -865,8 +781,8 @@ $(document).ready(function () {
           barangay:    $('#destinationBarangay').val(),
           street:      $('#destinationStreet').val(),
           description: $('#destinationDescription').val(),
-          latitude:         $('#destinationLatitude').val(),
-          longitude:         $('#destinationLongitude').val(),
+          lat:         $('#destinationLatitude').val(),
+          lng:         $('#destinationLongitude').val(),
         });
 
     Promise.all([savePickup, saveDestination])
@@ -907,43 +823,23 @@ $(document).ready(function () {
   function saveBooking(pickupLocationID, destinationLocationID) {
     const formData = new FormData();
 
-    formData.append('customerID', $('#bookingCustomer').val());
-    formData.append('truckID', $('#bookingTruck').val());
-    formData.append('driverID', $('#bookingDriver').val());
-    formData.append('assistantIDs', JSON.stringify(getAssistantIDs()));
-    formData.append('pickupDateTime', $('#bookingPickupDateTime').val().replace('T', ' '));
-    formData.append('price', $('#bookingPrice').val());
-    formData.append('cargoItems', JSON.stringify(getCargoItems().filter(item => item.cargoType && item.quantity)));
-    formData.append('cargoCondition', $('#cargoCondition').val());
-    formData.append('cargoDescription', $('#cargoDescription').val());
-    formData.append('cargoSpecialHandling', $('#cargoSpecialHandling').val());
-
-    formData.append('pickupProvince', $('#pickupProvince').val());
-    formData.append('pickupCity', $('#pickupCity').val());
-    formData.append('pickupBarangay', $('#pickupBarangay').val());
-    formData.append('pickupStreet', $('#pickupStreet').val());
-    formData.append('pickupDescription', $('#pickupDescription').val());
-    formData.append('pickupLatitude', $('#pickupLatitude').val());
-    formData.append('pickupLongitude', $('#pickupLongitude').val());
-
-    formData.append('destinationProvince', $('#destinationProvince').val());
-    formData.append('destinationCity', $('#destinationCity').val());
-    formData.append('destinationBarangay', $('#destinationBarangay').val());
-    formData.append('destinationStreet', $('#destinationStreet').val());
-    formData.append('destinationDescription', $('#destinationDescription').val());
-    formData.append('destinationLatitude', $('#destinationLatitude').val());
-    formData.append('destinationLongitude', $('#destinationLongitude').val());
     formData.append('customerID',            $('#bookingCustomer').val());
     formData.append('truckID',               $('#bookingTruck').val());
     formData.append('driverID',              $('#bookingDriver').val());
     formData.append('assistantIDs',          JSON.stringify(getAssistantIDs()));
     formData.append('pickupDateTime',        $('#bookingPickupDateTime').val().replace('T', ' '));
     formData.append('price',                 $('#bookingPrice').val());
-    formData.append('cargoType',             $('#cargoType').val());
-    formData.append('cargoQuantity',         $('#cargoQuantity').val());
-    formData.append('cargoCondition',        $('#cargoCondition').val());
-    formData.append('cargoDescription',      $('#cargoDescription').val());
-    formData.append('cargoSpecialHandling',  $('#cargoSpecialHandling').val());
+    // Replace the single cargo appends with:
+    const cargoItems = [];
+    $('.booking-cargo-item').each(function () {
+      const type = $(this).find('.cargo-type').val().trim();
+      const qty  = $(this).find('.cargo-quantity').val().trim();
+      if (type && qty) cargoItems.push({ cargoType: type, quantity: qty });
+    });
+    formData.append('cargoItems',        JSON.stringify(cargoItems));
+    formData.append('cargoCondition',    $('#cargoCondition').val());
+    formData.append('cargoDescription',  $('#cargoDescription').val());
+    formData.append('cargoSpecialHandling', $('#cargoSpecialHandling').val());
     formData.append('pickupLocationID',      pickupLocationID);
     formData.append('destinationLocationID', destinationLocationID);
 
@@ -960,7 +856,7 @@ $(document).ready(function () {
             icon: 'success', title: 'Saved!', text: 'Booking saved successfully.', confirmButtonColor: '#696cff'
           }).then(() => { window.location = 'booking-reg'; });
         } else {
-          Swal.fire({ icon: 'error', title: 'Error', text: response, confirmButtonColor: '#696cff' });
+          Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to save booking.', confirmButtonColor: '#696cff' });
         }
       },
       error: function () {

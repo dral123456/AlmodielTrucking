@@ -1,10 +1,7 @@
 <?php
 require_once "connection.php";
-<<<<<<< HEAD
 require_once __DIR__ . "/sales.model.php";
-=======
 require_once "location.model.php";
->>>>>>> 373b83a772d91dd97d414bb763f460f3f6210230
 
 class ModelBooking {
 

@@ -35,6 +35,7 @@ class BookingRegistration {
 
     if (empty($cargoItems)) {
       echo "error";
+      return;
     }
     // 🔥 SAFE POST ACCESS (prevents undefined key warnings)
     $customerID      = $_POST["customerID"] ?? null;
@@ -42,9 +43,6 @@ class BookingRegistration {
     $driverID        = $_POST["driverID"] ?? null;
     $pickupDateTime  = $_POST["pickupDateTime"] ?? null;
     $price           = $_POST["price"] ?? null;
-
-    $cargoType       = $_POST["cargoType"] ?? null;
-    $cargoQuantity   = $_POST["cargoQuantity"] ?? null;
     $cargoCondition  = $_POST["cargoCondition"] ?? null;
     $cargoDescription = $_POST["cargoDescription"] ?? null;
     $cargoSpecialHandling = $_POST["cargoSpecialHandling"] ?? null;

@@ -13,6 +13,10 @@ foreach ($trucks as $truck) {
 }
 ?>
 
+<script>
+  window.bookingTruckCrew = <?php echo json_encode($truckCrewMap); ?>;
+</script>
+
 <div class="row justify-content-center booking-page">
   <div class="col-12 col-xxl-10">
     <div class="card">
