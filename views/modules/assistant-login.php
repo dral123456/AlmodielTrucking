@@ -10,7 +10,7 @@
     <h3 class="text-body-emphasis fw-bolder mb-0 ms-1">Urbix</h3>
   </a>
   <ul class="list-inline mb-0">
-    <li class="list-inline-item pe-4 border-end"><a href="customer-login" class="link-body-emphasis">Staff Login</a></li>
+    <li class="list-inline-item pe-4 border-end"><a href="customer-login" class="link-body-emphasis">Assistant Login</a></li>
   </ul>
 </header>
 <div class="container">
@@ -18,8 +18,8 @@
     <div class="col-12 col-md-8 col-lg-6 col-xl-5">
       <div class="card mx-xxl-8 shadow-none">
         <div class="card-body p-8">
-          <h3 class="fw-medium text-center">Staff Login</h3>
-          <p class="mb-8 text-muted text-center">Admin, driver, and assistant access</p>
+          <h3 class="fw-medium text-center">Assistant Login</h3>
+          <p class="mb-8 text-muted text-center">Assistant access</p>
           <form id="formAuthentication" method="POST" action="">
             <div class="mb-4">
               <label for="phoneNumber" class="form-label">Phone Number <span class="text-danger">*</span></label>
@@ -47,10 +47,10 @@
               </div>
             </div>
             <div>
-              <button type="submit" name="loginStaff" class="btn btn-primary w-100 mb-4">Sign In</button>
+              <button type="submit" name="loginAssistant" class="btn btn-primary w-100 mb-4">Sign In</button>
               <?php
                 $login = new ControllerEmployee();
-                $login->ctrStaffLogin();
+                $login->ctrAssistantLogin();
               ?>
             </div>
           </form>

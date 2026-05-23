@@ -254,27 +254,28 @@ $(document).ready(function () {
 
     if (entity === 'company') {
       return companyEditMapHtml($row) + formGrid([
-        input('companyName', 'Company Name', $row.data('company-name')),
+        input('companyName',   'Company Name',   $row.data('company-name')),
         input('contactPerson', 'Contact Person', $row.data('contact-person')),
-        input('email', 'Email', $row.data('email')),
-        input('phoneNumber', 'Phone Number', $row.data('phone-number')),
-        input('province', 'Province', $row.data('province')),
-        input('city', 'City', $row.data('city')),
-        input('barangay', 'Barangay', $row.data('barangay')),
-        input('street', 'Street', $row.data('street')),
-        input('houseNumber', 'House / Unit', $row.data('house-number')),
-        hiddenInput('warehouseLatitude', $row.data('warehouse-latitude')),
-        hiddenInput('warehouseLongitude', $row.data('warehouse-longitude')),
+        input('email',         'Email',          $row.data('email')),
+        input('phoneNumber',   'Phone Number',   $row.data('phone-number')),
+        input('province',      'Province',       $row.data('province')),
+        input('city',          'City',           $row.data('city')),
+        input('barangay',      'Barangay',       $row.data('barangay')),
+        input('street',        'Street',         $row.data('street')),
+        textarea('description', 'Description / Landmark', $row.data('description')),
+        hiddenInput('latitude',    $row.data('latitude')),
+        hiddenInput('longitude',   $row.data('longitude')),
+        hiddenInput('locationId',  $row.data('location-id')),
         statusSelect(status)
       ]);
     }
 
     if (entity === 'employee') {
       return formGrid([
-        input('firstName', 'First Name', $row.data('first-name')),
-        input('lastName', 'Last Name', $row.data('last-name')),
+        input('firstName',   'First Name',   $row.data('first-name')),
+        input('lastName',    'Last Name',    $row.data('last-name')),
         input('phoneNumber', 'Phone Number', $row.data('phone-number')),
-        input('email', 'Email', $row.data('email')),
+        input('email',       'Email',        $row.data('email')),
         select('empType', 'Role', $row.data('emp-type'), { driver: 'Driver', assistant: 'Assistant' }),
         statusSelect(status)
       ]);
@@ -282,11 +283,11 @@ $(document).ready(function () {
 
     return formGrid([
       input('plateNumber', 'Plate Number', $row.data('plate-number')),
-      input('brand', 'Brand', $row.data('brand')),
-      input('type', 'Type', $row.data('type')),
-      input('capacity', 'Capacity', $row.data('capacity'), 'number'),
-      input('fuel', 'Fuel', $row.data('fuel'), 'number'),
-      input('mileage', 'Mileage', $row.data('mileage'), 'number'),
+      input('brand',       'Brand',        $row.data('brand')),
+      input('type',        'Type',         $row.data('type')),
+      input('capacity',    'Capacity',     $row.data('capacity'), 'number'),
+      input('fuel',        'Fuel',         $row.data('fuel'),     'number'),
+      input('mileage',     'Mileage',      $row.data('mileage'),  'number'),
       statusSelect(status)
     ]);
   }
@@ -481,8 +482,8 @@ $(document).ready(function () {
   }
 
   function companyEditMapHtml($row) {
-    const lat = String($row.data('warehouse-latitude') || '');
-    const lng = String($row.data('warehouse-longitude') || '');
+    const lat = String($row.data('latitude') || '');
+    const lng = String($row.data('longitude') || '');
     const coordinateText = lat && lng ? lat + ', ' + lng : 'Not pinned';
 
     return '<div class="text-start mb-3">' +
@@ -507,8 +508,8 @@ $(document).ready(function () {
       return;
     }
 
-    const rawLat = String($row.data('warehouse-latitude') || '').trim();
-    const rawLng = String($row.data('warehouse-longitude') || '').trim();
+    const rawLat = String($row.data('latitude') || '').trim();
+    const rawLng = String($row.data('longitude') || '').trim();
     const lat = Number(rawLat);
     const lng = Number(rawLng);
     const hasPin = rawLat !== '' && rawLng !== '' && Number.isFinite(lat) && Number.isFinite(lng);
@@ -540,22 +541,18 @@ $(document).ready(function () {
         marker.setLatLng(latlng);
       }
 
-      $('input[name="warehouseLatitude"]').val(nextLat);
-      $('input[name="warehouseLongitude"]').val(nextLng);
+      $('input[name="latitude"]').val(nextLat);
+      $('input[name="longitude"]').val(nextLng);
       $('#manageCompanyCoordinateText').text(nextLat + ', ' + nextLng);
       $('#manageCompanyMapStatus').text('Warehouse pin updated. Save changes to apply it.');
     }
 
     function fillAddressFromResult(address) {
-      if (!address) {
-        return;
-      }
-
+      if (!address) return;
       $('input[name="province"]').val(address.state || address.region || address.province || '');
       $('input[name="city"]').val(address.city || address.town || address.municipality || address.village || address.county || '');
       $('input[name="barangay"]').val(address.suburb || address.neighbourhood || address.quarter || address.barangay || '');
       $('input[name="street"]').val(address.road || address.pedestrian || address.footway || '');
-      $('input[name="houseNumber"]').val(address.house_number || '');
     }
 
     function searchWarehouseAddress() {
@@ -574,11 +571,7 @@ $(document).ready(function () {
       const url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&addressdetails=1&q=' +
         encodeURIComponent(query);
 
-      fetch(url, {
-        headers: {
-          'Accept': 'application/json'
-        }
-      })
+      fetch(url, { headers: { 'Accept': 'application/json' } })
         .then(function (response) {
           return response.ok ? response.json() : [];
         })
@@ -589,10 +582,7 @@ $(document).ready(function () {
           }
 
           const result = results[0];
-          const latlng = {
-            lat: Number(result.lat),
-            lng: Number(result.lon)
-          };
+          const latlng = { lat: Number(result.lat), lng: Number(result.lon) };
 
           if (!Number.isFinite(latlng.lat) || !Number.isFinite(latlng.lng)) {
             $('#manageCompanyMapStatus').text('Search result has no usable coordinates.');
@@ -628,22 +618,14 @@ $(document).ready(function () {
       setPin({ lat: lat, lng: lng });
     }
 
-    setTimeout(function () {
-      map.invalidateSize();
-    }, 150);
-
-    setTimeout(function () {
-      map.invalidateSize();
-    }, 450);
-
-    setTimeout(function () {
-      map.invalidateSize();
-    }, 800);
+    setTimeout(function () { map.invalidateSize(); }, 150);
+    setTimeout(function () { map.invalidateSize(); }, 450);
+    setTimeout(function () { map.invalidateSize(); }, 800);
   }
 
   function saveManageRecord($row, payload) {
     payload.entity = $row.data('entity');
-    payload.id = $row.data('id');
+    payload.id     = $row.data('id');
 
     $.ajax({
       url: 'ajax/manage_record.ajax.php',
@@ -685,6 +667,15 @@ $(document).ready(function () {
     return '<div class="col-12 col-md-6">' +
       '<label class="form-label">' + label + '</label>' +
       '<input type="' + (type || 'text') + '" class="form-control manage-edit-field" name="' + name + '" value="' + escapeAttr(value) + '">' +
+      '</div>';
+  }
+
+  function textarea(name, label, value) {
+    return '<div class="col-12">' +
+      '<label class="form-label">' + label + '</label>' +
+      '<textarea class="form-control manage-edit-field" name="' + name + '" rows="2" style="resize:none;">' +
+      escapeHtml(value) +
+      '</textarea>' +
       '</div>';
   }
 
