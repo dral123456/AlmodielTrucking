@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: May 21, 2026 at 05:29 AM
+-- Generation Time: May 23, 2026 at 03:46 AM
 -- Server version: 8.4.3
 -- PHP Version: 8.3.30
 
@@ -95,13 +95,7 @@ CREATE TABLE `customer` (
   `contactPerson` varchar(100) NOT NULL,
   `email` varchar(100) NOT NULL,
   `phoneNumber` varchar(11) NOT NULL,
-  `province` varchar(50) NOT NULL,
-  `city` varchar(50) NOT NULL,
-  `barangay` varchar(50) NOT NULL,
-  `street` varchar(50) NOT NULL,
-  `houseNumber` varchar(50) NOT NULL,
-  `warehouseLatitude` double DEFAULT NULL,
-  `warehouseLongitude` double DEFAULT NULL,
+  `locationID` int NOT NULL,
   `companyDocument` varchar(255) NOT NULL,
   `password` varchar(255) NOT NULL,
   `dateRegistered` date NOT NULL,
@@ -112,11 +106,11 @@ CREATE TABLE `customer` (
 -- Dumping data for table `customer`
 --
 
-INSERT INTO `customer` (`id`, `customerType`, `customerFName`, `customerLName`, `customerMI`, `contactPerson`, `email`, `phoneNumber`, `province`, `city`, `barangay`, `street`, `houseNumber`, `warehouseLatitude`, `warehouseLongitude`, `companyDocument`, `password`, `dateRegistered`, `status`) VALUES
-(1, 'individual', 'Arldrich', 'Marcelino', 'A', '', 'marcelinoarldrich@gmail.com', '09369430341', 'Negros Occidental', 'Bacolod', 'Mansilingan', 'Teak', 'East Homes 6 Blk 27 Lot 7', NULL, NULL, '', '', '2026-04-24', 'active'),
-(2, 'company', 'Jethro T. Almodiel', '', '', 'Jethro T. Almodiel', 'almodieljethro16@gmail.com', '09287310860', 'Negros Occidental', 'Bacolod', 'Mansilingan', 'Guanzon', 'Blk 2 Lot 1', NULL, NULL, '', '', '2026-04-24', 'active'),
-(3, 'company', 'Almodiel Trucking Service', '', '', 'Jethro T. Almodiel', 'almodieljethro16@gmail.com', '09287310860', 'Negros Occidental', 'Bacolod', 'Mansilingan', 'Guanzon', 'Blk 1 Lot 2', NULL, NULL, '', '', '2026-04-24', 'active'),
-(4, 'company', 'Almodiel Trucking Services', '', '', 'Jethro T. Almodiel', 'almodieljethro16@gmail.com', '09287310860', 'Negros Occidental', 'Bacolod', 'Mansilingan', 'Guanzon', 'Blk 2 Lot 1', 10.65038966, 122.94679642, '1777000022_barangay_check_in.png', '', '2026-04-24', 'active');
+INSERT INTO `customer` (`id`, `customerType`, `customerFName`, `customerLName`, `customerMI`, `contactPerson`, `email`, `phoneNumber`, `locationID`, `companyDocument`, `password`, `dateRegistered`, `status`) VALUES
+(1, 'individual', 'Arldrich', 'Marcelino', 'A', '', 'marcelinoarldrich@gmail.com', '09369430341', 13, '', '', '2026-04-24', 'active'),
+(2, 'company', 'Jethro T. Almodiel', '', '', 'Jethro T. Almodiel', 'almodieljethro16@gmail.com', '09287310860', 14, '', '', '2026-04-24', 'active'),
+(3, 'company', 'Almodiel Trucking Service', '', '', 'Jethro T. Almodiel', 'almodieljethro16@gmail.com', '09287310860', 15, '', '', '2026-04-24', 'active'),
+(4, 'company', 'Almodiel Trucking Services', '', '', 'Jethro T. Almodiel', 'almodieljethro16@gmail.com', '09287310860', 16, '1777000022_barangay_check_in.png', '', '2026-04-24', 'active');
 
 -- --------------------------------------------------------
 
@@ -160,33 +154,6 @@ INSERT INTO `employee` (`id`, `empFName`, `empLName`, `empMI`, `empSuffix`, `emp
 -- --------------------------------------------------------
 
 --
--- Table structure for table `staffsalary`
---
-
-CREATE TABLE `staffsalary` (
-  `salaryID` int NOT NULL,
-  `empID` int NOT NULL,
-  `tripID` int DEFAULT NULL,
-  `creditedBookingID` int DEFAULT NULL,
-  `creditedDistanceKm` double NOT NULL DEFAULT '0',
-  `tripRole` varchar(50) DEFAULT NULL,
-  `payPeriodStart` date NOT NULL,
-  `payPeriodEnd` date NOT NULL,
-  `payType` enum('daily','weekly','semi-monthly','monthly','trip','allowance','bonus','adjustment') NOT NULL DEFAULT 'monthly',
-  `baseRate` double NOT NULL DEFAULT '0',
-  `grossPay` double NOT NULL DEFAULT '0',
-  `deductions` double NOT NULL DEFAULT '0',
-  `netPay` double NOT NULL DEFAULT '0',
-  `datePaid` datetime DEFAULT NULL,
-  `status` enum('pending','paid','cancelled') NOT NULL DEFAULT 'pending',
-  `remarks` text,
-  `createdBy` int DEFAULT NULL,
-  `dateCreated` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
--- --------------------------------------------------------
-
---
 -- Table structure for table `location`
 --
 
@@ -217,7 +184,42 @@ INSERT INTO `location` (`locationID`, `province`, `city`, `barangay`, `street`, 
 (9, 'Negros Island Region', 'Bacolod', 'Mandalagan', '3rd Street', '3rd Street, Paghida-et II, Barangay 17, Mandalagan, Bacolod-1, Bacolod, Negros Island Region, 6100, Philippines', 10.67399811, 122.95299803),
 (10, 'Negros Occidental', 'Talisay', 'Zone 9', 'Governor Rafael Lacson Street', 'Governor Rafael Lacson Street, Zone 9, Zone 12, Talisay, Negros Occidental, Negros Island Region, 6115, Philippines', 10.73556411, 122.96758604),
 (11, 'Negros Island Region', 'Bacolod', 'Taculing', 'Gomez Street', 'Taculing, Bacolod-2, Bacolod, Negros Island Region, 6100, Philippines', 10.64896753, 122.95502294),
-(12, 'Negros Occidental', 'Silay', 'Guinhalaran', 'Lizares Avenue', 'Carmela Valley Silay 2, Guinhalaran, Mambulac, Silay, Negros Occidental, Negros Island Region, 6116, Philippines', 10.78659958, 122.97561779);
+(12, 'Negros Occidental', 'Silay', 'Guinhalaran', 'Lizares Avenue', 'Carmela Valley Silay 2, Guinhalaran, Mambulac, Silay, Negros Occidental, Negros Island Region, 6116, Philippines', 10.78659958, 122.97561779),
+(13, 'Negros Occidental', 'Bacolod', 'Mansilingan', 'Teak', 'East Homes 6 Blk 27 Lot 7, Mansilingan, Bacolod', 0, 0),
+(14, 'Negros Occidental', 'Bacolod', 'Mansilingan', 'Guanzon', 'Blk 2 Lot 1, Guanzon, Mansilingan, Bacolod', 0, 0),
+(15, 'Negros Occidental', 'Bacolod', 'Mansilingan', 'Guanzon', 'Blk 1 Lot 2, Guanzon, Mansilingan, Bacolod', 0, 0),
+(16, 'Negros Occidental', 'Bacolod', 'Mansilingan', 'Guanzon', 'Blk 2 Lot 1, Guanzon, Mansilingan, Bacolod', 10.65038966, 122.94679642),
+(17, 'Negros Occidental', 'Bacolod', 'Mansilingan', 'Teak', 'East Homes 6 Blk 27 Lot 7, Mansilingan, Bacolod', 0, 0),
+(18, 'Negros Occidental', 'Bacolod', 'Mansilingan', 'Guanzon', 'Blk 2 Lot 1, Guanzon, Mansilingan, Bacolod', 0, 0),
+(19, 'Negros Occidental', 'Bacolod', 'Mansilingan', 'Guanzon', 'Blk 1 Lot 2, Guanzon, Mansilingan, Bacolod', 0, 0),
+(20, 'Negros Occidental', 'Bacolod', 'Mansilingan', 'Guanzon', 'Blk 2 Lot 1, Guanzon, Mansilingan, Bacolod', 10.65038966, 122.94679642);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `staffsalary`
+--
+
+CREATE TABLE `staffsalary` (
+  `salaryID` int NOT NULL,
+  `empID` int NOT NULL,
+  `tripID` int DEFAULT NULL,
+  `creditedBookingID` int DEFAULT NULL,
+  `creditedDistanceKm` double NOT NULL DEFAULT '0',
+  `tripRole` varchar(50) DEFAULT NULL,
+  `payPeriodStart` date NOT NULL,
+  `payPeriodEnd` date NOT NULL,
+  `payType` enum('daily','weekly','semi-monthly','monthly','trip','allowance','bonus','adjustment') NOT NULL DEFAULT 'monthly',
+  `baseRate` double NOT NULL DEFAULT '0',
+  `grossPay` double NOT NULL DEFAULT '0',
+  `deductions` double NOT NULL DEFAULT '0',
+  `netPay` double NOT NULL DEFAULT '0',
+  `datePaid` datetime DEFAULT NULL,
+  `status` enum('pending','paid','cancelled') NOT NULL DEFAULT 'pending',
+  `remarks` text,
+  `createdBy` int DEFAULT NULL,
+  `dateCreated` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- --------------------------------------------------------
 
@@ -246,24 +248,24 @@ CREATE TABLE `tariff` (
 -- Dumping data for table `tariff`
 --
 
-INSERT INTO `tariff` (`tariffID`, `customerID`, `branch`, `origin`, `destination`, `distanceKm`, `truckType`, `baseRate`, `fuelRangeStart`, `fuelRangeEnd`, `fuelSubsidy`, `status`, `dateCreated`) VALUES
-(1, 3, 'BACOLOD', 'BACOLOD', 'BACOLOD CITY', 20, '6W', 3256.63, 60, 65, 0, 'active', CURRENT_TIMESTAMP),
-(2, 3, 'BACOLOD', 'BACOLOD', 'TALISAY/MURCIA', 30, '6W', 3673.33, 60, 65, 0, 'active', CURRENT_TIMESTAMP),
-(3, 3, 'BACOLOD', 'BACOLOD', 'SILAY/BAGO/PULUPANDAN', 40, '6W', 4090.03, 60, 65, 0, 'active', CURRENT_TIMESTAMP),
-(4, 3, 'BACOLOD', 'BACOLOD', 'EB MAGALONA/VALLADOLID/SAN ENRIQUE/MA-AO/LACARLOTA', 60, '6W', 4923.43, 60, 65, 0, 'active', CURRENT_TIMESTAMP),
-(5, 3, 'BACOLOD', 'BACOLOD', 'VICTORIAS/PONTEVEDRA', 80, '6W', 5756.83, 60, 65, 0, 'active', CURRENT_TIMESTAMP),
-(6, 3, 'BACOLOD', 'BACOLOD', 'DSB/MANAPLA/HINIGARAN', 100, '6W', 6590.23, 60, 65, 0, 'active', CURRENT_TIMESTAMP),
-(7, 3, 'BACOLOD', 'BACOLOD', 'LA CASTELLANA/BINALBAGAN', 120, '6W', 7423.62, 60, 65, 0, 'active', CURRENT_TIMESTAMP),
-(8, 3, 'BACOLOD', 'BACOLOD', 'MOISES PADILLA/ISABELA/CADIZ/HIMAMAYLAN', 140, '6W', 8257.02, 60, 65, 0, 'active', CURRENT_TIMESTAMP),
-(9, 3, 'BACOLOD', 'BACOLOD', 'SAN CARLOS VIA DSB', 160, '6W', 9090.42, 60, 65, 0, 'active', CURRENT_TIMESTAMP),
-(10, 3, 'BACOLOD', 'BACOLOD', 'CANLAON/SAGAY/KABANKALAN', 180, '6W', 9923.82, 60, 65, 0, 'active', CURRENT_TIMESTAMP),
-(11, 3, 'BACOLOD', 'BACOLOD', 'ILOG/ESCALANTE', 200, '6W', 10757.22, 60, 65, 0, 'active', CURRENT_TIMESTAMP),
-(12, 3, 'BACOLOD', 'BACOLOD', 'CAUAYAN', 220, '6W', 11590.62, 60, 65, 0, 'active', CURRENT_TIMESTAMP),
-(13, 3, 'BACOLOD', 'BACOLOD', 'TOBOSO', 240, '6W', 12424.02, 60, 65, 0, 'active', CURRENT_TIMESTAMP),
-(14, 3, 'BACOLOD', 'BACOLOD', 'CALATRAVA/CANDONI', 280, '6W', 14090.81, 60, 65, 0, 'active', CURRENT_TIMESTAMP),
-(15, 3, 'BACOLOD', 'BACOLOD', 'SAN CARLOS VIA NORTH', 300, '6W', 14924.21, 60, 65, 0, 'active', CURRENT_TIMESTAMP),
-(16, 3, 'BACOLOD', 'BACOLOD', 'SIPALAY', 340, '6W', 16591.01, 60, 65, 0, 'active', CURRENT_TIMESTAMP),
-(17, 3, 'BACOLOD', 'BACOLOD', 'HINOBAAN', 380, '6W', 18257.81, 60, 65, 0, 'active', CURRENT_TIMESTAMP);
+INSERT INTO `tariff` (`tariffID`, `customerID`, `branch`, `origin`, `destination`, `distanceKm`, `truckType`, `baseRate`, `hasFuelSubsidy`, `fuelRangeStart`, `fuelRangeEnd`, `fuelSubsidy`, `status`, `dateCreated`) VALUES
+(1, 3, 'BACOLOD', 'BACOLOD', 'BACOLOD CITY', 20, '6W', 3256.63, 1, 60, 65, 0, 'active', '2026-05-23 03:40:44'),
+(2, 3, 'BACOLOD', 'BACOLOD', 'TALISAY/MURCIA', 30, '6W', 3673.33, 1, 60, 65, 0, 'active', '2026-05-23 03:40:44'),
+(3, 3, 'BACOLOD', 'BACOLOD', 'SILAY/BAGO/PULUPANDAN', 40, '6W', 4090.03, 1, 60, 65, 0, 'active', '2026-05-23 03:40:44'),
+(4, 3, 'BACOLOD', 'BACOLOD', 'EB MAGALONA/VALLADOLID/SAN ENRIQUE/MA-AO/LACARLOTA', 60, '6W', 4923.43, 1, 60, 65, 0, 'active', '2026-05-23 03:40:44'),
+(5, 3, 'BACOLOD', 'BACOLOD', 'VICTORIAS/PONTEVEDRA', 80, '6W', 5756.83, 1, 60, 65, 0, 'active', '2026-05-23 03:40:44'),
+(6, 3, 'BACOLOD', 'BACOLOD', 'DSB/MANAPLA/HINIGARAN', 100, '6W', 6590.23, 1, 60, 65, 0, 'active', '2026-05-23 03:40:44'),
+(7, 3, 'BACOLOD', 'BACOLOD', 'LA CASTELLANA/BINALBAGAN', 120, '6W', 7423.62, 1, 60, 65, 0, 'active', '2026-05-23 03:40:44'),
+(8, 3, 'BACOLOD', 'BACOLOD', 'MOISES PADILLA/ISABELA/CADIZ/HIMAMAYLAN', 140, '6W', 8257.02, 1, 60, 65, 0, 'active', '2026-05-23 03:40:44'),
+(9, 3, 'BACOLOD', 'BACOLOD', 'SAN CARLOS VIA DSB', 160, '6W', 9090.42, 1, 60, 65, 0, 'active', '2026-05-23 03:40:44'),
+(10, 3, 'BACOLOD', 'BACOLOD', 'CANLAON/SAGAY/KABANKALAN', 180, '6W', 9923.82, 1, 60, 65, 0, 'active', '2026-05-23 03:40:44'),
+(11, 3, 'BACOLOD', 'BACOLOD', 'ILOG/ESCALANTE', 200, '6W', 10757.22, 1, 60, 65, 0, 'active', '2026-05-23 03:40:44'),
+(12, 3, 'BACOLOD', 'BACOLOD', 'CAUAYAN', 220, '6W', 11590.62, 1, 60, 65, 0, 'active', '2026-05-23 03:40:44'),
+(13, 3, 'BACOLOD', 'BACOLOD', 'TOBOSO', 240, '6W', 12424.02, 1, 60, 65, 0, 'active', '2026-05-23 03:40:44'),
+(14, 3, 'BACOLOD', 'BACOLOD', 'CALATRAVA/CANDONI', 280, '6W', 14090.81, 1, 60, 65, 0, 'active', '2026-05-23 03:40:44'),
+(15, 3, 'BACOLOD', 'BACOLOD', 'SAN CARLOS VIA NORTH', 300, '6W', 14924.21, 1, 60, 65, 0, 'active', '2026-05-23 03:40:44'),
+(16, 3, 'BACOLOD', 'BACOLOD', 'SIPALAY', 340, '6W', 16591.01, 1, 60, 65, 0, 'active', '2026-05-23 03:40:44'),
+(17, 3, 'BACOLOD', 'BACOLOD', 'HINOBAAN', 380, '6W', 18257.81, 1, 60, 65, 0, 'active', '2026-05-23 03:40:44');
 
 -- --------------------------------------------------------
 
@@ -350,27 +352,6 @@ INSERT INTO `truckemployee` (`truckEmployeeID`, `truckID`, `empID`, `role`, `dat
 (5, 1, 3, 'assistant', '2026-05-17 23:24:40'),
 (6, 1, 7, 'assistant', '2026-05-17 23:24:40');
 
--- --------------------------------------------------------
-
---
--- Table structure for table `userrights`
---
-
-CREATE TABLE `userrights` (
-  `id` int NOT NULL,
-  `userid` varchar(10) NOT NULL,
-  `empid` varchar(10) NOT NULL,
-  `username` varchar(20) NOT NULL,
-  `upassword` varchar(20) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
---
--- Dumping data for table `userrights`
---
-
-INSERT INTO `userrights` (`id`, `userid`, `empid`, `username`, `upassword`) VALUES
-(1, 'U0001', 'EM0001', 'admin', 'admin');
-
 --
 -- Indexes for dumped tables
 --
@@ -397,7 +378,8 @@ ALTER TABLE `cargo`
 -- Indexes for table `customer`
 --
 ALTER TABLE `customer`
-  ADD PRIMARY KEY (`id`);
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `locationID` (`locationID`);
 
 --
 -- Indexes for table `employee`
@@ -416,13 +398,24 @@ ALTER TABLE `location`
 --
 ALTER TABLE `staffsalary`
   ADD PRIMARY KEY (`salaryID`),
+  ADD UNIQUE KEY `uniq_staffsalary_employee_trip` (`empID`,`tripID`),
   ADD KEY `idx_staffsalary_empID` (`empID`),
   ADD KEY `idx_staffsalary_tripID` (`tripID`),
   ADD KEY `idx_staffsalary_creditedBookingID` (`creditedBookingID`),
-  ADD KEY `idx_staffsalary_period` (`payPeriodStart`, `payPeriodEnd`),
+  ADD KEY `idx_staffsalary_period` (`payPeriodStart`,`payPeriodEnd`),
   ADD KEY `idx_staffsalary_status` (`status`),
-  ADD UNIQUE KEY `uniq_staffsalary_employee_trip` (`empID`, `tripID`),
   ADD KEY `idx_staffsalary_createdBy` (`createdBy`);
+
+--
+-- Indexes for table `tariff`
+--
+ALTER TABLE `tariff`
+  ADD PRIMARY KEY (`tariffID`),
+  ADD UNIQUE KEY `uniq_tariff_company_route_truck` (`customerID`,`branch`,`origin`,`destination`,`truckType`),
+  ADD KEY `idx_tariff_customerID` (`customerID`),
+  ADD KEY `idx_tariff_truckType` (`truckType`),
+  ADD KEY `idx_tariff_destination` (`destination`),
+  ADD KEY `idx_tariff_status` (`status`);
 
 --
 -- Indexes for table `tripemployee`
@@ -440,29 +433,12 @@ ALTER TABLE `truck`
   ADD PRIMARY KEY (`id`);
 
 --
--- Indexes for table `tariff`
---
-ALTER TABLE `tariff`
-  ADD PRIMARY KEY (`tariffID`),
-  ADD KEY `idx_tariff_customerID` (`customerID`),
-  ADD KEY `idx_tariff_truckType` (`truckType`),
-  ADD KEY `idx_tariff_destination` (`destination`),
-  ADD KEY `idx_tariff_status` (`status`),
-  ADD UNIQUE KEY `uniq_tariff_company_route_truck` (`customerID`, `branch`, `origin`, `destination`, `truckType`);
-
---
 -- Indexes for table `truckemployee`
 --
 ALTER TABLE `truckemployee`
   ADD PRIMARY KEY (`truckEmployeeID`),
   ADD KEY `idx_truckemployee_truckID` (`truckID`),
   ADD KEY `idx_truckemployee_empID` (`empID`);
-
---
--- Indexes for table `userrights`
---
-ALTER TABLE `userrights`
-  ADD PRIMARY KEY (`id`);
 
 --
 -- AUTO_INCREMENT for dumped tables
@@ -496,13 +472,19 @@ ALTER TABLE `employee`
 -- AUTO_INCREMENT for table `location`
 --
 ALTER TABLE `location`
-  MODIFY `locationID` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
+  MODIFY `locationID` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
 
 --
 -- AUTO_INCREMENT for table `staffsalary`
 --
 ALTER TABLE `staffsalary`
   MODIFY `salaryID` int NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `tariff`
+--
+ALTER TABLE `tariff`
+  MODIFY `tariffID` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
 
 --
 -- AUTO_INCREMENT for table `tripemployee`
@@ -517,26 +499,28 @@ ALTER TABLE `truck`
   MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
--- AUTO_INCREMENT for table `tariff`
---
-ALTER TABLE `tariff`
-  MODIFY `tariffID` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
-
---
 -- AUTO_INCREMENT for table `truckemployee`
 --
 ALTER TABLE `truckemployee`
   MODIFY `truckEmployeeID` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
--- AUTO_INCREMENT for table `userrights`
---
-ALTER TABLE `userrights`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
-
---
 -- Constraints for dumped tables
 --
+
+--
+-- Constraints for table `booking`
+--
+ALTER TABLE `booking`
+  ADD CONSTRAINT `fk_booking_customer` FOREIGN KEY (`customerID`) REFERENCES `customer` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_booking_destination_location` FOREIGN KEY (`destinationLocationID`) REFERENCES `location` (`locationID`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_booking_pickup_location` FOREIGN KEY (`pickupLocationID`) REFERENCES `location` (`locationID`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+--
+-- Constraints for table `customer`
+--
+ALTER TABLE `customer`
+  ADD CONSTRAINT `customer_ibfk_1` FOREIGN KEY (`locationID`) REFERENCES `location` (`locationID`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Constraints for table `staffsalary`
@@ -547,17 +531,17 @@ ALTER TABLE `staffsalary`
   ADD CONSTRAINT `fk_staffsalary_employee` FOREIGN KEY (`empID`) REFERENCES `employee` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
+-- Constraints for table `tariff`
+--
+ALTER TABLE `tariff`
+  ADD CONSTRAINT `fk_tariff_customer` FOREIGN KEY (`customerID`) REFERENCES `customer` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
 -- Constraints for table `truckemployee`
 --
 ALTER TABLE `truckemployee`
   ADD CONSTRAINT `fk_truckemployee_employee` FOREIGN KEY (`empID`) REFERENCES `employee` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_truckemployee_truck` FOREIGN KEY (`truckID`) REFERENCES `truck` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
-
---
--- Constraints for table `tariff`
---
-ALTER TABLE `tariff`
-  ADD CONSTRAINT `fk_tariff_customer` FOREIGN KEY (`customerID`) REFERENCES `customer` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
