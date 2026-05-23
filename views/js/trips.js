@@ -14,6 +14,7 @@ $(document).ready(function () {
 
   function bindEvents() {
     $(document).on('change', '#tripSort, #tripStatusFilter, #tripDateRangeFilter', renderTrips);
+    $(document).on('input', '#tripNumberFilter', renderTrips);
 
     $(document).on('click', '.trip-stat-card', function () {
       const status = $(this).data('status-shortcut');
@@ -32,6 +33,7 @@ $(document).ready(function () {
     $(document).on('click', '#tripClearFilters', function () {
       $('#tripSort').val('date_desc');
       $('#tripStatusFilter').val('all');
+      $('#tripNumberFilter').val('');
       $('.trip-stat-card').removeClass('active');
       $('.trip-stat-card[data-status-shortcut="all"]').addClass('active');
       $('#tripDateRangeFilter').val('');
@@ -41,11 +43,11 @@ $(document).ready(function () {
       renderTrips();
     });
 
-    $(document).on('click', '.trip-item', function () {
+    $(document).on('click', '.trip-row', function () {
       selectedTripID = Number($(this).data('trip-id'));
-      $('.trip-item').removeClass('active');
+      $('.trip-row').removeClass('active');
       $(this).addClass('active');
-      renderTripMap(getTripByID(selectedTripID));
+      renderTripDetails(getTripByID(selectedTripID));
     });
 
     $(document).on('click', '#toggleSidebar', function () {
@@ -119,6 +121,12 @@ $(document).ready(function () {
       return;
     }
 
+    if (map) {
+      map.remove();
+      map = null;
+      mapLayers = [];
+    }
+
     map = L.map('tripMap').setView([10.6765, 122.9509], 12);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
@@ -132,16 +140,15 @@ $(document).ready(function () {
     updateDateHint(filteredTrips.length);
 
     const html = filteredTrips.length
-      ? filteredTrips.map(renderTripItem).join('')
-      : '<div class="text-center text-muted border rounded p-4">No trips found.</div>';
+      ? filteredTrips.map(renderTripRow).join('')
+      : '<tr><td colspan="6" class="text-center text-muted py-4">No trips found.</td></tr>';
 
-    $('#tripList').html(html);
+    $('#tripTableBody').html(html);
 
     if (!filteredTrips.length) {
       selectedTripID = null;
       clearMap();
-      $('#tripMapStatus').text('No trips match the selected filters.');
-      $('#tripMapBadge').text('No trip selected');
+      $('#tripDetails').html('<div class="text-muted text-center p-4">No trips match the selected filters.</div>');
       $('#tripListSummary').text('No trips match the current filters.');
       return;
     }
@@ -150,19 +157,24 @@ $(document).ready(function () {
       selectedTripID = filteredTrips[0].tripID;
     }
 
-    $('.trip-item[data-trip-id="' + selectedTripID + '"]').addClass('active');
-    $('#tripListSummary').text(filteredTrips.length + ' trip(s) shown. Select a trip to inspect its route.');
-    renderTripMap(getTripByID(selectedTripID, filteredTrips));
+    $('.trip-row[data-trip-id="' + selectedTripID + '"]').addClass('active');
+    $('#tripListSummary').text(filteredTrips.length + ' trip(s) shown. Select a row to view route details.');
+    renderTripDetails(getTripByID(selectedTripID, filteredTrips));
   }
 
   function filterTrips() {
     const status = $('#tripStatusFilter').val();
+    const tripNumber = String($('#tripNumberFilter').val() || '').replace(/[^0-9]/g, '');
     const dateRange = parseDateRange($('#tripDateRangeFilter').val());
 
     return trips.filter(function (trip) {
       const tripDate = formatDateInput(trip.firstPickupDateTime);
 
       if (status !== 'all' && trip.status !== status) {
+        return false;
+      }
+
+      if (tripNumber && String(trip.tripID).indexOf(tripNumber) === -1) {
         return false;
       }
 
@@ -222,7 +234,7 @@ $(document).ready(function () {
     return bDate - aDate;
   }
 
-  function renderTripItem(trip) {
+  function renderTripRow(trip) {
     const status = statusMeta(trip.status);
     const crew = formatCrew(trip.crew);
     const customerText = (trip.customers || []).join(', ') || '-';
@@ -231,16 +243,49 @@ $(document).ready(function () {
     const lastBooking = bookings.length ? bookings[bookings.length - 1] : firstBooking;
     const routeStart = firstBooking.pickup && firstBooking.pickup.address ? firstBooking.pickup.address : '-';
     const routeEnd = lastBooking.destination && lastBooking.destination.address ? lastBooking.destination.address : '-';
+
+    return (
+      '<tr class="trip-row" data-trip-id="' + escapeHtml(trip.tripID) + '">' +
+        '<td>' +
+          '<div class="trip-row-main">Trip #' + escapeHtml(trip.tripID) + '</div>' +
+          '<div class="trip-row-sub">' + escapeHtml(routeStart) + ' to ' + escapeHtml(routeEnd) + '</div>' +
+        '</td>' +
+        '<td>' + escapeHtml(formatDateTime(trip.firstPickupDateTime)) + '</td>' +
+        '<td><div class="trip-row-sub">' + escapeHtml(customerText) + '</div></td>' +
+        '<td><div class="trip-row-sub">' + escapeHtml(crew || '-') + '</div></td>' +
+        '<td class="text-center"><span class="badge bg-light text-body">' + escapeHtml(trip.bookingCount) + '</span></td>' +
+        '<td><span class="badge ' + status.className + '">' + status.label + '</span></td>' +
+      '</tr>'
+    );
+  }
+
+  function renderTripDetails(trip) {
+    if (!trip) {
+      $('#tripDetails').html('<div class="text-muted text-center p-4">Select a trip to view details.</div>');
+      clearMap();
+      return;
+    }
+
+    if (map) {
+      map.remove();
+      map = null;
+      mapLayers = [];
+    }
+
+    const status = statusMeta(trip.status);
+    const crew = formatCrew(trip.crew) || '-';
+    const customerText = (trip.customers || []).join(', ') || '-';
     const bookingRows = (trip.bookings || []).map(function (booking) {
       return (
         '<div class="trip-booking-row">' +
           '<div class="d-flex align-items-start justify-content-between gap-2 flex-wrap">' +
             '<div>' +
               '<div class="fw-semibold">Booking #' + escapeHtml(booking.bookingID) + ' - ' + escapeHtml(booking.customerName || '-') + '</div>' +
-              '<div class="small text-muted">' + escapeHtml(formatDateTime(booking.pickupDateTime)) + '</div>' +
+              '<div class="small text-muted">' + escapeHtml(formatDateTime(booking.pickupDateTime)) + ' | ' + escapeHtml(formatKilometers(booking.distanceKm)) + '</div>' +
             '</div>' +
             '<span class="badge bg-light text-body">' + escapeHtml(booking.customerType || '-') + '</span>' +
           '</div>' +
+          '<div class="small mt-2"><i class="ri-box-3-line me-1"></i><strong>Cargo:</strong> ' + escapeHtml(booking.cargoSummary || 'No cargo recorded') + '</div>' +
           '<div class="trip-booking-locations small">' +
             '<div><i class="ri-map-pin-2-line text-primary me-1"></i>' + escapeHtml(booking.pickup.address || '-') + '</div>' +
             '<div><i class="ri-flag-line text-danger me-1"></i>' + escapeHtml(booking.destination.address || '-') + '</div>' +
@@ -249,29 +294,39 @@ $(document).ready(function () {
       );
     }).join('');
 
-    return (
-      '<button type="button" class="trip-item" data-trip-id="' + escapeHtml(trip.tripID) + '">' +
-        '<div class="d-flex align-items-start justify-content-between gap-2">' +
-          '<div class="trip-item-title">' +
-            '<h6 class="mb-1">Trip #' + escapeHtml(trip.tripID) + '</h6>' +
-            '<div class="trip-meta">' +
-              '<span><i class="ri-calendar-line me-1"></i>' + escapeHtml(formatDateTime(trip.firstPickupDateTime)) + '</span>' +
-              '<span><i class="ri-file-list-3-line me-1"></i>' + escapeHtml(trip.bookingCount) + ' booking(s)</span>' +
+    $('#tripDetails').html(
+      '<div class="trip-panel-heading mb-3">' +
+        '<div>' +
+          '<h6 class="mb-1">Trip #' + escapeHtml(trip.tripID) + '</h6>' +
+          '<p class="text-muted small mb-0">' + escapeHtml(formatDateTime(trip.firstPickupDateTime)) + ' | ' + escapeHtml(trip.bookingCount) + ' booking(s)</p>' +
+        '</div>' +
+        '<span class="badge ' + status.className + '">' + status.label + '</span>' +
+      '</div>' +
+      '<div class="row g-3 mb-3">' +
+        '<div class="col-12 col-lg-4"><div class="border rounded p-3 h-100"><span class="text-muted small d-block">Customer</span><strong>' + escapeHtml(customerText) + '</strong></div></div>' +
+        '<div class="col-12 col-lg-4"><div class="border rounded p-3 h-100"><span class="text-muted small d-block">Trip KM</span><strong>' + escapeHtml(formatKilometers(trip.totalDistanceKm)) + '</strong></div></div>' +
+        '<div class="col-12 col-lg-4"><div class="border rounded p-3 h-100"><span class="text-muted small d-block">Crew</span><strong>' + escapeHtml(crew) + '</strong></div></div>' +
+      '</div>' +
+      '<div class="trip-detail-grid">' +
+        '<div>' +
+          '<h6 class="mb-3"><i class="ri-file-list-3-line me-1"></i> Connected Bookings</h6>' +
+          '<div class="trip-booking-list">' + (bookingRows || '<div class="text-muted border rounded p-3">No bookings attached.</div>') + '</div>' +
+        '</div>' +
+        '<div class="trip-map-shell">' +
+          '<div class="trip-panel-heading mb-3">' +
+            '<div>' +
+              '<h6 class="mb-0"><i class="ri-road-map-line me-1"></i> Route Map</h6>' +
+              '<p class="text-muted small mb-0" id="tripMapStatus">Showing pickup and destination pins for Trip #' + escapeHtml(trip.tripID) + '.</p>' +
             '</div>' +
+            '<span class="badge bg-secondary-subtle text-secondary" id="tripMapBadge">' + escapeHtml((trip.bookings || []).length) + ' booking(s)</span>' +
           '</div>' +
-          '<span class="badge ' + status.className + '">' + status.label + '</span>' +
+          '<div id="tripMap"></div>' +
         '</div>' +
-        '<div class="trip-route-meta">' +
-          '<span><i class="ri-user-smile-line me-1"></i>' + escapeHtml(customerText) + '</span>' +
-          '<span><i class="ri-team-line me-1"></i>' + escapeHtml(crew || '-') + '</span>' +
-        '</div>' +
-        '<div class="small mt-2">' +
-          '<div><i class="ri-map-pin-2-line text-primary me-1"></i>' + escapeHtml(routeStart) + '</div>' +
-          '<div><i class="ri-flag-line text-danger me-1"></i>' + escapeHtml(routeEnd) + '</div>' +
-        '</div>' +
-        bookingRows +
-      '</button>'
+      '</div>'
     );
+
+    initMap();
+    renderTripMap(trip);
   }
 
   function renderTripMap(trip) {
@@ -418,6 +473,15 @@ $(document).ready(function () {
 
   function minutesOfDay(date) {
     return date.getHours() * 60 + date.getMinutes();
+  }
+
+  function formatKilometers(value) {
+    const distance = Number(value || 0);
+    if (!Number.isFinite(distance) || distance <= 0) {
+      return '0.00 km';
+    }
+
+    return distance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' km';
   }
 
   function escapeHtml(value) {

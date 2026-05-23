@@ -134,7 +134,12 @@ class ModelBooking {
         destination.street AS destinationStreet,
         destination.description AS destinationDescription,
         destination.latitude AS destinationLatitude,
-        destination.longitude AS destinationLongitude
+        destination.longitude AS destinationLongitude,
+        (
+          SELECT GROUP_CONCAT(CONCAT(cargo.cargoType, ' x', cargo.quantity) SEPARATOR ', ')
+          FROM cargo
+          WHERE cargo.bookingID = b.bookingID
+        ) AS cargoSummary
       FROM booking b
       INNER JOIN customer c ON c.id = b.customerID
       INNER JOIN location pickup ON pickup.locationID = b.pickupLocationID
@@ -156,6 +161,7 @@ class ModelBooking {
           "status" => $row["status"],
           "bookingCount" => 0,
           "totalPrice" => 0,
+          "totalDistanceKm" => 0,
           "customers" => array(),
           "crew" => array(),
           "bookings" => array()
@@ -175,8 +181,16 @@ class ModelBooking {
         $customerName = $row["contactPerson"];
       }
 
+      $distanceKm = round(self::distanceInKilometers(
+        (float) $row["pickupLatitude"],
+        (float) $row["pickupLongitude"],
+        (float) $row["destinationLatitude"],
+        (float) $row["destinationLongitude"]
+      ), 2);
+
       $trips[$tripID]["bookingCount"]++;
       $trips[$tripID]["totalPrice"] += (float) $row["price"];
+      $trips[$tripID]["totalDistanceKm"] += $distanceKm;
       $trips[$tripID]["customers"][$row["customerID"]] = $customerName;
       $trips[$tripID]["bookings"][] = array(
         "bookingID" => (int) $row["bookingID"],
@@ -185,6 +199,8 @@ class ModelBooking {
         "pickupDateTime" => $row["pickupDateTime"],
         "status" => $row["status"],
         "price" => (float) $row["price"],
+        "distanceKm" => $distanceKm,
+        "cargoSummary" => $row["cargoSummary"] ?: "",
         "pickup" => array(
           "address" => self::formatAddress($row["pickupStreet"], $row["pickupBarangay"], $row["pickupCity"], $row["pickupProvince"]),
           "description" => $row["pickupDescription"],
