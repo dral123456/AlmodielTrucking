@@ -5,9 +5,19 @@ class ModelReport {
 
     static public function mdlSummary() {
         $pdo = (new Connection)->connect();
+        self::ensureDeliveryChargeTable($pdo);
 
         $successfulStatusSql = self::successfulStatusSql();
-        $billingTotal = self::scalar($pdo, "SELECT COALESCE(SUM(price), 0) FROM booking WHERE {$successfulStatusSql}");
+        $billingTotal = self::scalar($pdo, "
+            SELECT COALESCE(SUM(b.price), 0) + COALESCE((
+                SELECT SUM(dc.amount)
+                FROM deliverycharge dc
+                INNER JOIN booking b2 ON b2.bookingID = dc.bookingID
+                WHERE " . self::successfulStatusSql("b2") . "
+            ), 0)
+            FROM booking b
+            WHERE {$successfulStatusSql}
+        ");
         $bookingCount = self::scalar($pdo, "SELECT COUNT(*) FROM booking WHERE {$successfulStatusSql}");
         $pendingCount = self::bookingStatusCount($pdo, "pending");
         $inTransitCount = self::bookingStatusCount($pdo, "in-transit");
@@ -32,7 +42,10 @@ class ModelReport {
     }
 
     static public function mdlBillingRows() {
-        $stmt = (new Connection)->connect()->prepare("
+        $pdo = (new Connection)->connect();
+        self::ensureDeliveryChargeTable($pdo);
+
+        $stmt = $pdo->prepare("
             SELECT
                 b.bookingID,
                 b.tripID,
@@ -40,9 +53,33 @@ class ModelReport {
                 b.price,
                 b.status,
                 COALESCE(NULLIF(TRIM(CONCAT(c.customerFName, ' ', c.customerLName)), ''), c.contactPerson, 'Customer') AS customerName,
-                c.customerType
+                c.customerType,
+                destination.province AS destinationProvince,
+                destination.city AS destinationCity,
+                destination.barangay AS destinationBarangay,
+                destination.street AS destinationStreet,
+                t.plateNumber,
+                t.type AS truckSize,
+                COALESCE(extra.extraAmount, 0) AS extraAmount,
+                COALESCE(extra.extraTypes, '') AS extraTypes,
+                b.price + COALESCE(extra.extraAmount, 0) AS grossAmount
             FROM booking b
             LEFT JOIN customer c ON c.id = b.customerID
+            LEFT JOIN location destination ON destination.locationID = b.destinationLocationID
+            LEFT JOIN (
+                SELECT tripID, MIN(truckID) AS truckID
+                FROM tripemployee
+                GROUP BY tripID
+            ) tripTruck ON tripTruck.tripID = b.tripID
+            LEFT JOIN truck t ON t.id = tripTruck.truckID
+            LEFT JOIN (
+                SELECT
+                    bookingID,
+                    SUM(amount) AS extraAmount,
+                    GROUP_CONCAT(DISTINCT chargeType ORDER BY chargeType SEPARATOR ', ') AS extraTypes
+                FROM deliverycharge
+                GROUP BY bookingID
+            ) extra ON extra.bookingID = b.bookingID
             WHERE " . self::successfulStatusSql("b") . "
             ORDER BY b.pickupDateTime DESC, b.bookingID DESC
             LIMIT 50
@@ -50,6 +87,49 @@ class ModelReport {
 
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    static public function mdlSaveDeliveryCharge($data) {
+        $pdo = (new Connection)->connect();
+        self::ensureDeliveryChargeTable($pdo);
+
+        $bookingID = (int) ($data["bookingID"] ?? 0);
+        $tripID = (int) ($data["tripID"] ?? 0);
+        $amount = (float) ($data["amount"] ?? 0);
+        $chargeType = strtolower(trim((string) ($data["chargeType"] ?? "hauling")));
+
+        if ($bookingID <= 0 || $tripID <= 0 || $amount < 0 || !in_array($chargeType, array("hauling", "others"), true)) {
+            return "invalid";
+        }
+
+        $stmt = $pdo->prepare("
+            INSERT INTO deliverycharge (
+                bookingID,
+                tripID,
+                chargeType,
+                amount,
+                notes,
+                createdBy,
+                dateCreated
+            ) VALUES (
+                :bookingID,
+                :tripID,
+                :chargeType,
+                :amount,
+                :notes,
+                :createdBy,
+                NOW()
+            )
+        ");
+
+        $stmt->bindValue(":bookingID", $bookingID, PDO::PARAM_INT);
+        $stmt->bindValue(":tripID", $tripID, PDO::PARAM_INT);
+        $stmt->bindValue(":chargeType", $chargeType, PDO::PARAM_STR);
+        $stmt->bindValue(":amount", $amount, PDO::PARAM_STR);
+        $stmt->bindValue(":notes", trim((string) ($data["notes"] ?? "")), PDO::PARAM_STR);
+        self::bindNullableInt($stmt, ":createdBy", $data["createdBy"] ?? null);
+
+        return $stmt->execute() ? "success" : "error";
     }
 
     static public function mdlExpenseRows() {
@@ -147,6 +227,33 @@ class ModelReport {
         $stmt->execute();
 
         return $stmt->fetchColumn();
+    }
+
+    static private function ensureDeliveryChargeTable($pdo) {
+        $pdo->exec("
+            CREATE TABLE IF NOT EXISTS deliverycharge (
+                deliveryChargeID int NOT NULL AUTO_INCREMENT,
+                bookingID int NOT NULL,
+                tripID int NOT NULL,
+                chargeType enum('hauling','others') NOT NULL DEFAULT 'hauling',
+                amount double NOT NULL DEFAULT 0,
+                notes text NULL,
+                createdBy int NULL,
+                dateCreated datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (deliveryChargeID),
+                KEY idx_deliverycharge_bookingID (bookingID),
+                KEY idx_deliverycharge_tripID (tripID)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+        ");
+    }
+
+    static private function bindNullableInt($stmt, $key, $value) {
+        if ($value === null || $value === "") {
+            $stmt->bindValue($key, null, PDO::PARAM_NULL);
+            return;
+        }
+
+        $stmt->bindValue($key, (int) $value, PDO::PARAM_INT);
     }
 
     static private function successfulStatusSql($alias = null) {
