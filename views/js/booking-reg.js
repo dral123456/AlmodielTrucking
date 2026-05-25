@@ -4,13 +4,19 @@ $(document).ready(function () {
   let destinationMarker = null;
   let currentStep = 0;
   const totalSteps = 4;
+  let NEGROS_BOUNDS = null;
+  // Track locationIDs chosen from existing DB records (skip re-saving)
+  let pickedPickupLocationID    = null;
+  let pickedDestinationLocationID = null;
 
-  const pickupIcon = createMarkerIcon('primary');
-  const destinationIcon = createMarkerIcon('danger');
+  let pickupIcon     = null;
+  let destinationIcon = null;
 
   initMap();
   updateStepper();
   syncAssistantOptions();
+  initLocationSearch('pickup');
+  initLocationSearch('destination');
 
   $(document).on('change', 'input[name="bookingMapMode"]', updateMapStatus);
 
@@ -35,16 +41,6 @@ $(document).ready(function () {
     syncAssistantOptions();
   });
 
-  $(document).on('click', '#bookingAddCargo', function () {
-    addCargoItem();
-    updateCargoRemoveButtons();
-  });
-
-  $(document).on('click', '.booking-remove-cargo', function () {
-    $(this).closest('.booking-cargo-item').remove();
-    updateCargoRemoveButtons();
-  });
-
   $(document).on('click', '.booking-remove-assistant', function () {
     $(this).closest('.booking-assistant-item').remove();
     syncAssistantOptions();
@@ -52,66 +48,42 @@ $(document).ready(function () {
 
   $(document).on('click', '.booking-step-pill', function () {
     const targetStep = Number($(this).data('step'));
-
-    if (targetStep <= currentStep) {
-      currentStep = targetStep;
-      updateStepper();
-      return;
-    }
-
+    if (targetStep <= currentStep) { currentStep = targetStep; updateStepper(); return; }
     for (let step = currentStep; step < targetStep; step++) {
       const missing = validateStep(step);
-      if (missing.length > 0) {
-        showMissingModal(missing);
-        return;
-      }
+      if (missing.length > 0) { showMissingModal(missing); return; }
     }
-
     currentStep = targetStep;
     updateStepper();
   });
 
   $(document).on('click', '#bookingBtnNext', function () {
     const missing = validateStep(currentStep);
-
-    if (missing.length > 0) {
-      showMissingModal(missing);
-      return;
-    }
-
-    if (currentStep < totalSteps - 1) {
-      currentStep++;
-      updateStepper();
-    }
+    if (missing.length > 0) { showMissingModal(missing); return; }
+    if (currentStep < totalSteps - 1) { currentStep++; updateStepper(); }
   });
 
   $(document).on('click', '#bookingBtnPrev', function () {
-    if (currentStep > 0) {
-      currentStep--;
-      updateStepper();
-    }
+    if (currentStep > 0) { currentStep--; updateStepper(); }
   });
 
   $(document).on('click', '#toggleSidebar', function () {
-    setTimeout(function () {
-      if (map) {
-        map.invalidateSize();
+    setTimeout(function () { if (map) map.invalidateSize(); }, 250);
+  });
+
+  $(window).on('resize', function () { if (map) map.invalidateSize(); });
+
+  // Clear autofill flag when user manually edits address fields
+  $(document).on('input',
+    '#pickupProvince, #pickupCity, #pickupBarangay, #pickupStreet, #pickupDescription, ' +
+    '#destinationProvince, #destinationCity, #destinationBarangay, #destinationStreet, #destinationDescription',
+    function () {
+      $(this).data('autofilled', false);
+      if (this.id.indexOf('destination') === 0) {
+        lookupTariffPrice();
       }
-    }, 250);
-  });
-
-  $(window).on('resize', function () {
-    if (map) {
-      map.invalidateSize();
     }
-  });
-
-  $(document).on('input', '#pickupProvince, #pickupCity, #pickupBarangay, #pickupStreet, #pickupDescription, #destinationProvince, #destinationCity, #destinationBarangay, #destinationStreet, #destinationDescription', function () {
-    $(this).data('autofilled', false);
-    if (this.id.indexOf('destination') === 0) {
-      lookupTariffPrice();
-    }
-  });
+  );
 
   $(document).on('click', '#bookingBtnReset', function () {
     $('#bookingCustomer, #bookingPickupDateTime, #bookingPrice, #bookingFuelPrice, #bookingTruck, #bookingDriver').val('');
@@ -123,44 +95,236 @@ $(document).ready(function () {
     $('#destinationProvince, #destinationCity, #destinationBarangay, #destinationStreet, #destinationDescription, #destinationLatitude, #destinationLongitude').val('');
     setPickupLocked(false);
     $('.is-invalid').removeClass('is-invalid');
-
-    if (pickupMarker) {
-      map.removeLayer(pickupMarker);
-      pickupMarker = null;
-    }
-
-    if (destinationMarker) {
-      map.removeLayer(destinationMarker);
-      destinationMarker = null;
-    }
-
+    if (pickupMarker)      { map.removeLayer(pickupMarker);      pickupMarker      = null; }
+    if (destinationMarker) { map.removeLayer(destinationMarker); destinationMarker = null; }
     $('#pickupCoordinateText').text('Not pinned');
     $('#destinationCoordinateText').text('Not pinned');
     $('#mapModePickup').prop('checked', true);
+    pickedPickupLocationID      = null;
+    pickedDestinationLocationID = null;
     currentStep = 0;
     updateStepper();
     updateMapStatus();
     syncAssistantOptions();
-    updateCargoRemoveButtons();
   });
 
   $(document).on('click', '#bookingBtnRegister', function () {
     const missing = validateInputs();
-
-    if (missing.length > 0) {
-      showMissingModal(missing);
-      return;
-    }
-
+    if (missing.length > 0) { showMissingModal(missing); return; }
     showConfirmModal();
   });
 
-  function initMap() {
-    if (typeof L === 'undefined' || !document.getElementById('bookingMap')) {
-      return;
+  // ─── Location search with local-first suggestions ──────────────────────────
+  // Each map panel needs a search input (#pickupMapSearch / #destinationMapSearch)
+  // and a suggestions container (#pickupMapSuggestions / #destinationMapSuggestions).
+  function initLocationSearch(type) {
+    const searchId     = '#' + type + 'MapSearch';
+    const suggestId    = '#' + type + 'MapSuggestions';
+    const searchBtnId  = '#' + type + 'MapSearchBtn';
+    let debounceTimer  = null;
+
+    // Live suggestions while typing
+    $(document).on('input', searchId, function () {
+      clearTimeout(debounceTimer);
+      const query = $(this).val().trim();
+      if (query.length < 2) { $(suggestId).hide().empty(); return; }
+
+      debounceTimer = setTimeout(function () {
+        fetchLocalSuggestions(query, suggestId, type);
+      }, 280);
+    });
+
+    // Hide suggestions when clicking outside
+    $(document).on('click', function (e) {
+      if (!$(e.target).closest(searchId + ', ' + suggestId).length) {
+        $(suggestId).hide();
+      }
+    });
+
+    // Search button / Enter: local first, fall back to Nominatim
+    $(document).on('click', searchBtnId, function () {
+      doSearch(type);
+    });
+
+    $(document).on('keydown', searchId, function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); doSearch(type); }
+    });
+  }
+
+  function fetchLocalSuggestions(query, suggestId, type) {
+    $.getJSON('ajax/location_search.ajax.php', { q: query })
+      .done(function (results) {
+        const $box = $(suggestId);
+        $box.empty();
+
+        if (!results || !results.length) { $box.hide(); return; }
+
+        results.forEach(function (loc) {
+          const $item = $('<div class="location-suggestion-item"></div>').text(loc.label);
+          $item.on('click', function () {
+            applyLocationSuggestion(type, loc);
+            $box.hide().empty();
+            $('#' + type + 'MapSearch').val(loc.label);
+          });
+          $box.append($item);
+        });
+
+        $box.show();
+      })
+      .fail(function () { /* silently ignore, user can still search Nominatim */ });
+  }
+
+  function applyLocationSuggestion(type, loc) {
+    // Fill address fields
+    setAddressFields(type, {
+      province:    loc.province,
+      city:        loc.city,
+      barangay:    loc.barangay,
+      street:      loc.street,
+      description: loc.description,
+    });
+
+    // Pin the map
+    const latlng = L.latLng(loc.lat, loc.lng);
+    if (type === 'pickup') {
+      if (!pickupMarker) {
+        pickupMarker = L.marker(latlng, { draggable: true, icon: pickupIcon }).addTo(map);
+        pickupMarker.on('dragend', function () {
+          const pos = pickupMarker.getLatLng();
+          setPickupCoordinates(pos.lat, pos.lng);
+          fillAddressFromPin('pickup', pos.lat, pos.lng);
+          pickedPickupLocationID = null; // user moved pin, no longer a known location
+        });
+      } else {
+        pickupMarker.setLatLng(latlng);
+      }
+      setPickupCoordinates(loc.lat, loc.lng);
+      pickedPickupLocationID = loc.locationID;  // reuse this ID on save
+    } else {
+      if (!destinationMarker) {
+        destinationMarker = L.marker(latlng, { draggable: true, icon: destinationIcon }).addTo(map);
+        destinationMarker.on('dragend', function () {
+          const pos = destinationMarker.getLatLng();
+          if (!isInNegros(pos)) {
+            destinationMarker.setLatLng(L.latLng(
+              Math.min(Math.max(pos.lat, 9.0), 11.0),
+              Math.min(Math.max(pos.lng, 122.2), 123.4)
+            ));
+            $('#bookingMapStatus').text('Pin snapped back — must stay within Negros Island.');
+            return;
+          }
+          setDestinationCoordinates(pos.lat, pos.lng);
+          fillAddressFromPin('destination', pos.lat, pos.lng);
+          pickedDestinationLocationID = null;
+        });
+      } else {
+        destinationMarker.setLatLng(latlng);
+      }
+      setDestinationCoordinates(loc.lat, loc.lng);
+      pickedDestinationLocationID = loc.locationID;
+      lookupTariffPrice();
     }
 
-    map = L.map('bookingMap').setView([10.6765, 122.9509], 12);
+    map.setView(latlng, Math.max(map.getZoom(), 15));
+    updateMapStatus();
+  }
+
+  function setAddressFields(type, addr) {
+    $('#' + type + 'Province').val(addr.province    || '');
+    $('#' + type + 'City').val(addr.city             || '');
+    $('#' + type + 'Barangay').val(addr.barangay     || '');
+    $('#' + type + 'Street').val(addr.street         || '');
+    $('#' + type + 'Description').val(addr.description || '');
+    // Mark as autofilled so map drag can overwrite them
+    ['Province','City','Barangay','Street','Description'].forEach(function (f) {
+      $('#' + type + f).data('autofilled', true);
+    });
+  }
+
+  function doSearch(type) {
+    const searchId    = '#' + type + 'MapSearch';
+    const suggestId   = '#' + type + 'MapSuggestions';
+    const searchBtnId = '#' + type + 'MapSearchBtn';
+    const query = $(searchId).val().trim();
+
+    if (!query) { $(searchId).addClass('is-invalid'); return; }
+    $(searchId).removeClass('is-invalid');
+    $(suggestId).hide().empty();
+
+    // 1. Try local DB first
+    $.getJSON('ajax/location_search.ajax.php', { q: query })
+      .done(function (results) {
+        if (results && results.length > 0) {
+          // Best local match — apply it directly
+          applyLocationSuggestion(type, results[0]);
+          return;
+        }
+        // 2. No local result — fall through to Nominatim
+        nominatimSearch(type, query, searchBtnId);
+      })
+      .fail(function () {
+        nominatimSearch(type, query, searchBtnId);
+      });
+  }
+
+  function nominatimSearch(type, query, searchBtnId) {
+    $(searchBtnId).prop('disabled', true)
+      .html('<span class="spinner-border spinner-border-sm me-1"></span> Searching');
+
+    const url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&addressdetails=1&q=' +
+      encodeURIComponent(query);
+
+    fetch(url, { headers: { 'Accept': 'application/json' } })
+      .then(function (r) { return r.ok ? r.json() : []; })
+      .then(function (results) {
+        if (!Array.isArray(results) || !results.length) {
+          $('#bookingMapStatus').text('No location found. Try a more specific address.');
+          return;
+        }
+        const result  = results[0];
+        const latlng  = { lat: Number(result.lat), lng: Number(result.lon) };
+        if (!Number.isFinite(latlng.lat) || !Number.isFinite(latlng.lng)) return;
+
+        if (!isInNegros(L.latLng(latlng.lat, latlng.lng))) {
+          $('#bookingMapStatus').text('That location is outside Negros Island. Please search within Negros.');
+          return;
+        }
+
+        setActiveMarkerAt(type, latlng);
+        map.setView(L.latLng(latlng.lat, latlng.lng), 16);
+      })
+      .catch(function () {
+        $('#bookingMapStatus').text('Search failed. Check your connection or click the map manually.');
+      })
+      .finally(function () {
+        $(searchBtnId).prop('disabled', false).html('Search');
+      });
+  }
+
+  // ─── Map ────────────────────────────────────────────────────────────────────
+  // ─── Map ────────────────────────────────────────────────────────────────────
+  // Negros Island bounding box — initialised inside initMap() once L is ready
+
+  function isInNegros(latlng) {
+    if (!NEGROS_BOUNDS) return true; // if not yet set, allow (shouldn't happen)
+    return NEGROS_BOUNDS.contains(latlng);
+  }
+
+  function initMap() {
+    if (typeof L === 'undefined' || !document.getElementById('bookingMap')) return;
+
+    NEGROS_BOUNDS = L.latLngBounds(   // ← no 'let' here
+      L.latLng(9.0,  122.2),
+      L.latLng(11.0, 123.4)
+    );
+    pickupIcon     = createMarkerIcon('primary');
+    destinationIcon = createMarkerIcon('danger');
+
+    map = L.map('bookingMap', {
+      maxBounds: NEGROS_BOUNDS,
+      maxBoundsViscosity: 1.0,
+      minZoom: 9
+    }).setView([10.6765, 122.9509], 12);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
@@ -168,13 +332,21 @@ $(document).ready(function () {
     }).addTo(map);
 
     map.on('click', function (event) {
+      if (!isInNegros(event.latlng)) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Out of range',
+          text: 'Please select a location within Negros Island.',
+          confirmButtonColor: '#696cff',
+          timer: 2500,
+          showConfirmButton: false
+        });
+        return;
+      }
       setActiveMarker(event.latlng);
     });
 
-    setTimeout(function () {
-      map.invalidateSize();
-    }, 300);
-
+    setTimeout(function () { map.invalidateSize(); }, 300);
     updateMapStatus();
   }
 
@@ -194,22 +366,23 @@ $(document).ready(function () {
     setPickupLocked(isCompany);
 
     if (!isCompany) {
-      if (pickupMarker && map) {
-        map.removeLayer(pickupMarker);
-        pickupMarker = null;
-      }
+      if (pickupMarker && map) { map.removeLayer(pickupMarker); pickupMarker = null; }
       $('#pickupProvince, #pickupCity, #pickupBarangay, #pickupStreet, #pickupDescription, #pickupLatitude, #pickupLongitude').val('');
       $('#pickupCoordinateText').text('Not pinned');
+      pickedPickupLocationID = null;
       return;
     }
 
-    const latitude = Number($option.data('latitude'));
+    const latitude  = Number($option.data('latitude'));
     const longitude = Number($option.data('longitude'));
 
-    $('#pickupProvince').val($option.data('province') || '');
-    $('#pickupCity').val($option.data('city') || '');
-    $('#pickupBarangay').val($option.data('barangay') || '');
-    $('#pickupStreet').val($option.data('street') || '');
+    // Company customers already have a locationID — reuse it directly
+    pickedPickupLocationID = $option.data('location-id') || null;
+
+    $('#pickupProvince').val($option.data('province')    || '');
+    $('#pickupCity').val($option.data('city')            || '');
+    $('#pickupBarangay').val($option.data('barangay')    || '');
+    $('#pickupStreet').val($option.data('street')        || '');
     $('#pickupDescription').val('Company warehouse pickup point');
 
     if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
@@ -219,14 +392,10 @@ $(document).ready(function () {
           pickupMarker = L.marker(latlng, { draggable: false, icon: pickupIcon }).addTo(map);
         } else {
           pickupMarker.setLatLng(latlng);
-          if (pickupMarker.dragging) {
-            pickupMarker.dragging.disable();
-          }
+          if (pickupMarker.dragging) pickupMarker.dragging.disable();
         }
-
         map.setView(latlng, Math.max(map.getZoom(), 13));
       }
-
       setPickupCoordinates(latitude, longitude);
     }
 
@@ -236,14 +405,10 @@ $(document).ready(function () {
 
   function setPickupLocked(locked) {
     $('#pickupProvince, #pickupCity, #pickupBarangay, #pickupStreet, #pickupDescription')
-      .prop('readonly', locked)
-      .toggleClass('bg-light', locked);
+      .prop('readonly', locked).toggleClass('bg-light', locked);
     $('#mapModePickup').prop('disabled', locked);
     $('label[for="mapModePickup"]').toggleClass('disabled', locked);
-
-    if (locked && $('#mapModePickup').is(':checked')) {
-      $('#mapModeDestination').prop('checked', true);
-    }
+    if (locked && $('#mapModePickup').is(':checked')) $('#mapModeDestination').prop('checked', true);
   }
 
   function updateStepper() {
@@ -252,8 +417,8 @@ $(document).ready(function () {
 
     $('.booking-step-pill').each(function () {
       const step = Number($(this).data('step'));
-      $(this).toggleClass('active', step === currentStep);
-      $(this).toggleClass('complete', step < currentStep);
+      $(this).toggleClass('active', step === currentStep)
+             .toggleClass('complete', step < currentStep);
       $(this).find('span').html(step < currentStep ? '<i class="ri-check-line"></i>' : String(step + 1));
     });
 
@@ -262,20 +427,12 @@ $(document).ready(function () {
     $('#bookingBtnNext').toggleClass('d-none', currentStep === totalSteps - 1);
     $('#bookingBtnRegister').toggleClass('d-none', currentStep !== totalSteps - 1);
 
-    if (currentStep === 2 && map) {
-      setTimeout(function () {
-        map.invalidateSize();
-      }, 150);
-    }
-
-    if (currentStep === 3) {
-      updateReview();
-    }
+    if (currentStep === 2 && map) setTimeout(function () { map.invalidateSize(); }, 150);
+    if (currentStep === 3) updateReview();
   }
 
   function createMarkerIcon(type) {
     const color = type === 'danger' ? '#ff3e1d' : '#696cff';
-
     return L.divIcon({
       className: '',
       html: '<span style="display:block;width:18px;height:18px;border-radius:50%;background:' + color + ';border:3px solid #fff;box-shadow:0 4px 12px rgba(0,0,0,.35);"></span>',
@@ -286,82 +443,33 @@ $(document).ready(function () {
 
   function applyTruckDefaultCrew(truckID) {
     const crew = (window.bookingTruckCrew && window.bookingTruckCrew[truckID]) ? window.bookingTruckCrew[truckID] : null;
-
     $('#bookingDriver').val(crew ? crew.driverID : '');
     $('#bookingAssistantList .booking-assistant-item').slice(2).remove();
     $('.booking-assistant').val('');
-
     if (crew && Array.isArray(crew.assistantIDs)) {
       crew.assistantIDs.forEach(function (assistantID, index) {
-        if (index < 2) {
-          $('.booking-assistant').eq(index).val(assistantID);
-          return;
-        }
-
+        if (index < 2) { $('.booking-assistant').eq(index).val(assistantID); return; }
         addAssistantSelect(assistantID);
       });
     }
-
     syncAssistantOptions();
   }
 
   function addAssistantSelect(value) {
     const $first = $('.booking-assistant').first();
-    if (!$first.length) {
-      return;
-    }
-
-    const $item = $('<div class="col-12 col-md-6 mb-3 booking-assistant-item"></div>');
+    if (!$first.length) return;
+    const $item  = $('<div class="col-12 col-md-6 mb-3 booking-assistant-item"></div>');
     const $group = $('<div class="input-group"></div>');
     const $select = $first.clone();
-
-    $select.val(value || '');
-    $select.removeAttr('data-default-slot');
-    $select.removeClass('is-invalid');
-
+    $select.val(value || '').removeAttr('data-default-slot').removeClass('is-invalid');
     $group.append($select);
     $group.append(
-      '<button class="btn btn-outline-danger booking-remove-assistant" type="button" aria-label="Remove assistant">' +
+      '<button class="btn btn-outline-danger booking-remove-assistant" type="button">' +
         '<i class="ri-close-line"></i>' +
       '</button>'
     );
     $item.append($group);
     $('#bookingAssistantList').append($item);
-  }
-
-  function addCargoItem() {
-    const $item = $('<div class="booking-cargo-item"></div>');
-    $item.append(
-      '<div class="row g-2 align-items-end">' +
-        '<div class="col-12 col-md-7">' +
-          '<label class="form-label">Cargo Type <span class="text-danger">*</span></label>' +
-          '<input type="text" class="form-control cargo-type" maxlength="100" placeholder="e.g. Construction materials">' +
-        '</div>' +
-        '<div class="col-12 col-md-4">' +
-          '<label class="form-label">Quantity <span class="text-danger">*</span></label>' +
-          '<input type="number" class="form-control cargo-quantity" min="1" step="1" placeholder="Quantity">' +
-        '</div>' +
-        '<div class="col-12 col-md-1 d-grid">' +
-          '<button class="btn btn-outline-danger booking-remove-cargo" type="button" aria-label="Remove cargo">' +
-            '<i class="ri-close-line"></i>' +
-          '</button>' +
-        '</div>' +
-      '</div>'
-    );
-    $('#bookingCargoList').append($item);
-  }
-
-  function updateCargoRemoveButtons() {
-    $('.booking-remove-cargo').prop('disabled', $('.booking-cargo-item').length <= 1);
-  }
-
-  function getCargoItems() {
-    return $('.booking-cargo-item').map(function () {
-      return {
-        cargoType: String($(this).find('.cargo-type').val() || '').trim(),
-        quantity: String($(this).find('.cargo-quantity').val() || '').trim()
-      };
-    }).get();
   }
 
   function getAssistantIDs() {
@@ -372,12 +480,9 @@ $(document).ready(function () {
 
   function syncAssistantOptions() {
     const selectedAssistants = getAssistantIDs();
-
     $('.booking-assistant option').prop('hidden', false).prop('disabled', false);
-
     $('.booking-assistant').each(function () {
       const currentValue = String($(this).val() || '');
-
       selectedAssistants.forEach(function (assistantID) {
         if (assistantID !== currentValue) {
           $(this).find('option[value="' + assistantID + '"]').prop('hidden', true).prop('disabled', true);
@@ -398,7 +503,6 @@ $(document).ready(function () {
       $('#bookingMapStatus').text('Company warehouse is fixed as pickup. Click the map to place the destination pin.');
       return;
     }
-
     $('#bookingMapStatus').text(
       mode === 'pickup'
         ? 'Click the map to place the pickup pin.'
@@ -415,121 +519,104 @@ $(document).ready(function () {
       updateMapStatus();
       return;
     }
+    setActiveMarkerAt(mode === 'pickup' ? 'pickup' : 'destination', latlng);
+    if (mode === 'pickup') { $('#mapModeDestination').prop('checked', true); updateMapStatus(); }
+  }
 
-    const lat = latlng.lat.toFixed(8);
-    const lng = latlng.lng.toFixed(8);
+  function setActiveMarkerAt(type, latlng) {
+    const lat = latlng.lat.toFixed ? Number(latlng.lat).toFixed(8) : latlng.lat;
+    const lng = latlng.lng.toFixed ? Number(latlng.lng).toFixed(8) : latlng.lng;
+    const ll  = L.latLng(latlng.lat, latlng.lng);
 
-    if (mode === 'pickup') {
+    if (type === 'pickup') {
       if (!pickupMarker) {
-        pickupMarker = L.marker(latlng, { draggable: true, icon: pickupIcon }).addTo(map);
+        pickupMarker = L.marker(ll, { draggable: true, icon: pickupIcon }).addTo(map);
         pickupMarker.on('dragend', function () {
-          const position = pickupMarker.getLatLng();
-          setPickupCoordinates(position.lat, position.lng);
-          fillAddressFromPin('pickup', position.lat, position.lng);
+          const pos = pickupMarker.getLatLng();
+          if (!isInNegros(pos)) {
+            pickupMarker.setLatLng(L.latLng(
+              Math.min(Math.max(pos.lat, 9.0), 11.0),
+              Math.min(Math.max(pos.lng, 122.2), 123.4)
+            ));
+            $('#bookingMapStatus').text('Pin snapped back — must stay within Negros Island.');
+            return;
+          }
+          setPickupCoordinates(pos.lat, pos.lng);
+          fillAddressFromPin('pickup', pos.lat, pos.lng);
+          pickedPickupLocationID = null; // user dragged, unknown location
         });
       } else {
-        pickupMarker.setLatLng(latlng);
+        pickupMarker.setLatLng(ll);
       }
-
       setPickupCoordinates(lat, lng);
       fillAddressFromPin('pickup', lat, lng);
-      $('#mapModeDestination').prop('checked', true);
-      updateMapStatus();
-      return;
-    }
-
-    if (!destinationMarker) {
-      destinationMarker = L.marker(latlng, { draggable: true, icon: destinationIcon }).addTo(map);
-      destinationMarker.on('dragend', function () {
-        const position = destinationMarker.getLatLng();
-        setDestinationCoordinates(position.lat, position.lng);
-        fillAddressFromPin('destination', position.lat, position.lng);
-      });
+      pickedPickupLocationID = null; // fresh Nominatim result, not yet in DB
     } else {
-      destinationMarker.setLatLng(latlng);
+      if (!destinationMarker) {
+        destinationMarker = L.marker(ll, { draggable: true, icon: destinationIcon }).addTo(map);
+        destinationMarker.on('dragend', function () {
+          const pos = destinationMarker.getLatLng();
+          setDestinationCoordinates(pos.lat, pos.lng);
+          fillAddressFromPin('destination', pos.lat, pos.lng);
+          pickedDestinationLocationID = null;
+        });
+      } else {
+        destinationMarker.setLatLng(ll);
+      }
+      setDestinationCoordinates(lat, lng);
+      fillAddressFromPin('destination', lat, lng);
+      pickedDestinationLocationID = null;
     }
-
-    setDestinationCoordinates(lat, lng);
-    fillAddressFromPin('destination', lat, lng);
   }
 
   function setPickupCoordinates(lat, lng) {
-    const formattedLat = Number(lat).toFixed(8);
-    const formattedLng = Number(lng).toFixed(8);
-
-    $('#pickupLatitude').val(formattedLat);
-    $('#pickupLongitude').val(formattedLng);
-    $('#pickupCoordinateText').text(formattedLat + ', ' + formattedLng);
+    const fLat = Number(lat).toFixed(8);
+    const fLng = Number(lng).toFixed(8);
+    $('#pickupLatitude').val(fLat);
+    $('#pickupLongitude').val(fLng);
+    $('#pickupCoordinateText').text(fLat + ', ' + fLng);
     $('#pickupLatitude, #pickupLongitude').removeClass('is-invalid');
   }
 
   function setDestinationCoordinates(lat, lng) {
-    const formattedLat = Number(lat).toFixed(8);
-    const formattedLng = Number(lng).toFixed(8);
-
-    $('#destinationLatitude').val(formattedLat);
-    $('#destinationLongitude').val(formattedLng);
-    $('#destinationCoordinateText').text(formattedLat + ', ' + formattedLng);
+    const fLat = Number(lat).toFixed(8);
+    const fLng = Number(lng).toFixed(8);
+    $('#destinationLatitude').val(fLat);
+    $('#destinationLongitude').val(fLng);
+    $('#destinationCoordinateText').text(fLat + ', ' + fLng);
     $('#destinationLatitude, #destinationLongitude').removeClass('is-invalid');
     lookupTariffPrice();
   }
 
   function fillAddressFromPin(type, lat, lng) {
     const label = type === 'pickup' ? 'Pickup' : 'Destination';
-    const prefix = type === 'pickup' ? 'pickup' : 'destination';
-    const previousStatus = $('#bookingMapStatus').text();
-    const url = 'https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=' +
+    const url   = 'https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=' +
       encodeURIComponent(lat) + '&lon=' + encodeURIComponent(lng) + '&addressdetails=1';
 
     $('#bookingMapStatus').text('Looking up ' + label.toLowerCase() + ' address...');
 
-    fetch(url, {
-      headers: {
-        'Accept': 'application/json'
-      }
-    })
-      .then(function (response) {
-        if (!response.ok) {
-          throw new Error('Address lookup failed');
-        }
-        return response.json();
-      })
+    fetch(url, { headers: { 'Accept': 'application/json' } })
+      .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (data) {
-        const address = data.address || {};
-        const province = address.state || address.region || address.province || '';
-        const city = address.city || address.town || address.municipality || address.county || '';
-        const barangay = address.suburb || address.village || address.neighbourhood || address.quarter || address.city_district || '';
-        const streetParts = [address.road, address.house_number].filter(Boolean);
-        const street = streetParts.join(' ');
-
-        setIfEmptyOrAutofilled(prefix + 'Province', province);
-        setIfEmptyOrAutofilled(prefix + 'City', city);
-        setIfEmptyOrAutofilled(prefix + 'Barangay', barangay);
-        setIfEmptyOrAutofilled(prefix + 'Street', street);
-        setIfEmptyOrAutofilled(prefix + 'Description', data.display_name || '');
-
-        $('#' + prefix + 'Province, #' + prefix + 'City, #' + prefix + 'Barangay, #' + prefix + 'Street').removeClass('is-invalid');
+        if (!data || !data.address) { updateMapStatus(); return; }
+        const a = data.address;
+        setIfEmptyOrAutofilled(type + 'Province',    a.state || a.region || a.province || '');
+        setIfEmptyOrAutofilled(type + 'City',        a.city  || a.town   || a.municipality || a.county || '');
+        setIfEmptyOrAutofilled(type + 'Barangay',    a.suburb || a.village || a.neighbourhood || a.quarter || '');
+        setIfEmptyOrAutofilled(type + 'Street',      [a.road, a.house_number].filter(Boolean).join(' '));
+        setIfEmptyOrAutofilled(type + 'Description', data.display_name || '');
+        $('#' + type + 'Province, #' + type + 'City, #' + type + 'Barangay, #' + type + 'Street').removeClass('is-invalid');
         updateMapStatus();
-        if (prefix === 'destination') {
-          lookupTariffPrice();
-        }
+        if (type === 'destination') lookupTariffPrice();
       })
-      .catch(function () {
-        $('#bookingMapStatus').text(previousStatus || 'Address lookup failed. You can enter the address manually.');
-      });
+      .catch(function () { updateMapStatus(); });
   }
 
   function setIfEmptyOrAutofilled(id, value) {
-    if (!value) {
-      return;
-    }
-
+    if (!value) return;
     const $el = $('#' + id);
-    const currentValue = String($el.val() || '').trim();
-
-    if (currentValue === '' || $el.data('autofilled') === true) {
-      $el.val(value);
-      $el.data('autofilled', true);
+    if (String($el.val() || '').trim() === '' || $el.data('autofilled') === true) {
+      $el.val(value).data('autofilled', true);
     }
   }
 
@@ -606,17 +693,11 @@ $(document).ready(function () {
 
   function validateStep(step) {
     const missing = [];
-
     const check = (id, label) => {
       const $el = $('#' + id);
-      const ok = String($el.val() || '').trim() !== '';
-
-      if (!ok) {
-        missing.push(label);
-        $el.addClass('is-invalid');
-      } else {
-        $el.removeClass('is-invalid');
-      }
+      const ok  = String($el.val() || '').trim() !== '';
+      if (!ok) { missing.push(label); $el.addClass('is-invalid'); }
+      else { $el.removeClass('is-invalid'); }
     };
 
     if (step === 0) {
@@ -628,15 +709,8 @@ $(document).ready(function () {
       const assistantIDs = getAssistantIDs();
       if (assistantIDs.length < 2) {
         missing.push('At least 2 assistants');
-        $('.booking-assistant').each(function () {
-          if (!$(this).val()) {
-            $(this).addClass('is-invalid');
-          }
-        });
-      } else {
-        $('.booking-assistant').removeClass('is-invalid');
-      }
-
+        $('.booking-assistant').each(function () { if (!$(this).val()) $(this).addClass('is-invalid'); });
+      } else { $('.booking-assistant').removeClass('is-invalid'); }
       if (new Set(assistantIDs).size !== assistantIDs.length) {
         missing.push('Assistants must be different employees');
         $('.booking-assistant').addClass('is-invalid');
@@ -645,19 +719,18 @@ $(document).ready(function () {
     }
 
     if (step === 1) {
-      const cargoItems = getCargoItems();
       let hasCompleteCargo = false;
 
-      $('.booking-cargo-item').each(function (index) {
-        const $type = $(this).find('.cargo-type');
+      $('.booking-cargo-item').each(function () {
+        const $type     = $(this).find('.cargo-type');
         const $quantity = $(this).find('.cargo-quantity');
-        const type = cargoItems[index].cargoType;
-        const quantity = Number(cargoItems[index].quantity);
-        const quantityIsValid = cargoItems[index].quantity !== '' && Number.isInteger(quantity) && quantity >= 1;
+        const type      = String($type.val() || '').trim();
+        const rawQty    = String($quantity.val() || '').trim();
+        const quantity  = Number(rawQty);
+        const quantityIsValid = rawQty !== '' && !Number.isNaN(quantity) && Math.floor(quantity) === quantity && quantity >= 1;
 
         $type.toggleClass('is-invalid', type === '');
         $quantity.toggleClass('is-invalid', !quantityIsValid);
-
         if (type !== '' && quantityIsValid) {
           hasCompleteCargo = true;
         }
@@ -667,23 +740,22 @@ $(document).ready(function () {
         missing.push('At least 1 cargo item with type and quantity');
       }
 
-      if ($('.booking-cargo-item .is-invalid').length) {
+      if ($('.booking-cargo-item .cargo-quantity.is-invalid').length) {
         missing.push('Each cargo quantity must be a whole number greater than 0');
       }
     }
 
     if (step === 2) {
-      check('pickupProvince', 'Pickup Province');
-      check('pickupCity', 'Pickup City');
-      check('pickupBarangay', 'Pickup Barangay');
-      check('pickupStreet', 'Pickup Street');
-      check('pickupLatitude', 'Pickup Map Pin');
-      check('pickupLongitude', 'Pickup Map Pin');
-
+      check('pickupProvince',    'Pickup Province');
+      check('pickupCity',        'Pickup City');
+      check('pickupBarangay',    'Pickup Barangay');
+      check('pickupStreet',      'Pickup Street');
+      check('pickupLatitude',    'Pickup Map Pin');
+      check('pickupLongitude',   'Pickup Map Pin');
       check('destinationProvince', 'Destination Province');
-      check('destinationCity', 'Destination City');
+      check('destinationCity',     'Destination City');
       check('destinationBarangay', 'Destination Barangay');
-      check('destinationStreet', 'Destination Street');
+      check('destinationStreet',   'Destination Street');
       check('destinationLatitude', 'Destination Map Pin');
       check('destinationLongitude', 'Destination Map Pin');
       check('bookingPrice', selectedCustomerIsCompany() ? 'Company tariff price' : 'Price');
@@ -721,27 +793,27 @@ $(document).ready(function () {
   }
 
   function updateReview() {
-    const pickupAddress = formatAddress('pickup');
-    const destinationAddress = formatAddress('destination');
     const assistantNames = $('.booking-assistant').map(function () {
       return $(this).find('option:selected').text().trim();
     }).get().filter(Boolean).join(', ');
-    const cargoSummary = getCargoItems()
-      .filter(item => item.cargoType && item.quantity)
-      .map(item => item.cargoType + ' x ' + item.quantity)
-      .join(', ');
 
     $('#reviewCustomer').text($('#bookingCustomer option:selected').text().trim() || '-');
     $('#reviewTripSchedule').text('Generated on save / ' + ($('#bookingPickupDateTime').val() || '-'));
     $('#reviewCrew').text(
-      ($('#bookingTruck option:selected').text().trim() || '-') +
-      ' / Driver: ' + ($('#bookingDriver option:selected').text().trim() || '-') +
+      ($('#bookingTruck option:selected').text().trim()  || '-') +
+      ' / Driver: '     + ($('#bookingDriver option:selected').text().trim() || '-') +
       ' / Assistants: ' + (assistantNames || '-')
     );
-    $('#reviewCargo').text(cargoSummary || '-');
+    const cargoSummary = [];
+    $('.booking-cargo-item').each(function () {
+      const t = $(this).find('.cargo-type').val().trim();
+      const q = $(this).find('.cargo-quantity').val().trim();
+      if (t && q) cargoSummary.push(t + ' x ' + q);
+    });
+    $('#reviewCargo').text(cargoSummary.length ? cargoSummary.join(', ') : '-');
     $('#reviewPrice').text($('#bookingPrice').val() || '-');
-    $('#reviewPickup').text(pickupAddress + ' (' + ($('#pickupCoordinateText').text() || '-') + ')');
-    $('#reviewDestination').text(destinationAddress + ' (' + ($('#destinationCoordinateText').text() || '-') + ')');
+    $('#reviewPickup').text(formatAddress('pickup')      + ' (' + ($('#pickupCoordinateText').text()      || '-') + ')');
+    $('#reviewDestination').text(formatAddress('destination') + ' (' + ($('#destinationCoordinateText').text() || '-') + ')');
   }
 
   function formatAddress(prefix) {
@@ -755,113 +827,157 @@ $(document).ready(function () {
 
   function showMissingModal(missing) {
     const listHtml = '<ul class="text-start mb-0 ps-3">' +
-      missing.map(m => '<li>' + m + '</li>').join('') +
-      '</ul>';
-
+      missing.map(m => '<li>' + m + '</li>').join('') + '</ul>';
     Swal.fire({
-      icon: 'warning',
-      title: 'Missing Required Fields',
+      icon: 'warning', title: 'Missing Required Fields',
       html: '<p class="text-muted mb-2">Please review the following:</p>' + listHtml,
-      confirmButtonText: 'OK',
-      confirmButtonColor: '#696cff'
+      confirmButtonText: 'OK', confirmButtonColor: '#696cff'
     });
   }
 
   function showConfirmModal() {
+    const cargoConfirm = [];
+    $('.booking-cargo-item').each(function () {
+      const t = $(this).find('.cargo-type').val().trim();
+      const q = $(this).find('.cargo-quantity').val().trim();
+      if (t && q) cargoConfirm.push(t + ' (' + q + ')');
+    });
     Swal.fire({
-      icon: 'question',
-      title: 'Confirm Booking',
+      icon: 'question', title: 'Confirm Booking',
       html:
         '<p class="mb-2">Please review the details before submitting:</p>' +
         '<div class="text-start bg-light rounded p-3">' +
-          '<div><strong>Customer:</strong> ' + ($('#bookingCustomer option:selected').text().trim() || '-') + '</div>' +
+          '<div><strong>Customer:</strong> '    + ($('#bookingCustomer option:selected').text().trim() || '-') + '</div>' +
           '<div><strong>Trip ID:</strong> Generated on save</div>' +
-          '<div><strong>Truck:</strong> ' + ($('#bookingTruck option:selected').text().trim() || '-') + '</div>' +
-          '<div><strong>Driver:</strong> ' + ($('#bookingDriver option:selected').text().trim() || '-') + '</div>' +
-          '<div><strong>Assistants:</strong> ' + ($('.booking-assistant').map(function () { return $(this).find('option:selected').text().trim(); }).get().filter(Boolean).join(', ') || '-') + '</div>' +
-          '<div><strong>Cargo:</strong> ' + (getCargoItems().filter(item => item.cargoType && item.quantity).map(item => item.cargoType + ' (' + item.quantity + ')').join(', ') || '-') + '</div>' +
-          '<div><strong>Pickup:</strong> ' + ($('#pickupCoordinateText').text() || '-') + '</div>' +
+          '<div><strong>Truck:</strong> '       + ($('#bookingTruck option:selected').text().trim()    || '-') + '</div>' +
+          '<div><strong>Driver:</strong> '      + ($('#bookingDriver option:selected').text().trim()   || '-') + '</div>' +
+          '<div><strong>Cargo:</strong> ' + (cargoConfirm.join(', ') || '-') + '</div>' +
+          '<div><strong>Pickup:</strong> '      + ($('#pickupCoordinateText').text()      || '-') + '</div>' +
           '<div><strong>Destination:</strong> ' + ($('#destinationCoordinateText').text() || '-') + '</div>' +
         '</div>',
       showCancelButton: true,
       confirmButtonText: '<i class="ri-check-line"></i> Yes, Save',
       cancelButtonText: 'Cancel',
-      confirmButtonColor: '#696cff',
-      cancelButtonColor: '#6c757d',
+      confirmButtonColor: '#696cff', cancelButtonColor: '#6c757d',
       reverseButtons: true
     }).then((result) => {
-      if (result.isConfirmed) {
-        saveBooking();
-      }
+      if (result.isConfirmed) saveLocationsAndBooking();
     });
   }
 
-  function saveBooking() {
+  // ─── Save: locations first, then booking ────────────────────────────────────
+  function saveLocationsAndBooking() {
+    const pickupLocationID      = pickedPickupLocationID;
+    const destinationLocationID = pickedDestinationLocationID;
+
+    // If both locations are already known (selected from suggestions), skip saving
+    if (pickupLocationID && destinationLocationID) {
+      saveBooking(pickupLocationID, destinationLocationID);
+      return;
+    }
+
+    // Save pickup location (or reuse nearby)
+    const savePickup = pickupLocationID
+      ? Promise.resolve(pickupLocationID)
+      : saveOneLocation({
+          province:    $('#pickupProvince').val(),
+          city:        $('#pickupCity').val(),
+          barangay:    $('#pickupBarangay').val(),
+          street:      $('#pickupStreet').val(),
+          description: $('#pickupDescription').val(),
+          lat:         $('#pickupLatitude').val(),
+          lng:         $('#pickupLongitude').val(),
+        });
+
+    // Save destination location (or reuse nearby)
+    const saveDestination = destinationLocationID
+      ? Promise.resolve(destinationLocationID)
+      : saveOneLocation({
+          province:    $('#destinationProvince').val(),
+          city:        $('#destinationCity').val(),
+          barangay:    $('#destinationBarangay').val(),
+          street:      $('#destinationStreet').val(),
+          description: $('#destinationDescription').val(),
+          lat:         $('#destinationLatitude').val(),
+          lng:         $('#destinationLongitude').val(),
+        });
+
+    Promise.all([savePickup, saveDestination])
+      .then(function (ids) {
+        const pID = ids[0];
+        const dID = ids[1];
+        if (!pID || !dID) {
+          Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to save location. Please try again.', confirmButtonColor: '#696cff' });
+          return;
+        }
+        saveBooking(pID, dID);
+      })
+      .catch(function () {
+        Swal.fire({ icon: 'error', title: 'Network Error', text: 'Something went wrong while saving locations.', confirmButtonColor: '#696cff' });
+      });
+  }
+
+  function saveOneLocation(data) {
+    return new Promise(function (resolve, reject) {
+      const fd = new FormData();
+      Object.entries(data).forEach(function ([k, v]) { fd.append(k, v || ''); });
+
+      $.ajax({
+        url: 'ajax/location_save_record.ajax.php',
+        method: 'POST',
+        data: fd,
+        cache: false, contentType: false, processData: false,
+        dataType: 'json',
+        success: function (res) {
+          if (res.status === 'success' && res.locationID) resolve(res.locationID);
+          else reject(new Error('location save failed'));
+        },
+        error: reject
+      });
+    });
+  }
+
+  function saveBooking(pickupLocationID, destinationLocationID) {
     const formData = new FormData();
 
-    formData.append('customerID', $('#bookingCustomer').val());
-    formData.append('truckID', $('#bookingTruck').val());
-    formData.append('driverID', $('#bookingDriver').val());
-    formData.append('assistantIDs', JSON.stringify(getAssistantIDs()));
-    formData.append('pickupDateTime', $('#bookingPickupDateTime').val().replace('T', ' '));
-    formData.append('price', $('#bookingPrice').val());
-    formData.append('cargoItems', JSON.stringify(getCargoItems().filter(item => item.cargoType && item.quantity)));
-    formData.append('cargoCondition', $('#cargoCondition').val());
-    formData.append('cargoDescription', $('#cargoDescription').val());
+    formData.append('customerID',            $('#bookingCustomer').val());
+    formData.append('truckID',               $('#bookingTruck').val());
+    formData.append('driverID',              $('#bookingDriver').val());
+    formData.append('assistantIDs',          JSON.stringify(getAssistantIDs()));
+    formData.append('pickupDateTime',        $('#bookingPickupDateTime').val().replace('T', ' '));
+    formData.append('price',                 $('#bookingPrice').val());
+    // Replace the single cargo appends with:
+    const cargoItems = [];
+    $('.booking-cargo-item').each(function () {
+      const type = $(this).find('.cargo-type').val().trim();
+      const qty  = $(this).find('.cargo-quantity').val().trim();
+      if (type && qty) cargoItems.push({ cargoType: type, quantity: qty });
+    });
+    formData.append('cargoItems',        JSON.stringify(cargoItems));
+    formData.append('cargoCondition',    $('#cargoCondition').val());
+    formData.append('cargoDescription',  $('#cargoDescription').val());
     formData.append('cargoSpecialHandling', $('#cargoSpecialHandling').val());
-
-    formData.append('pickupProvince', $('#pickupProvince').val());
-    formData.append('pickupCity', $('#pickupCity').val());
-    formData.append('pickupBarangay', $('#pickupBarangay').val());
-    formData.append('pickupStreet', $('#pickupStreet').val());
-    formData.append('pickupDescription', $('#pickupDescription').val());
-    formData.append('pickupLatitude', $('#pickupLatitude').val());
-    formData.append('pickupLongitude', $('#pickupLongitude').val());
-
-    formData.append('destinationProvince', $('#destinationProvince').val());
-    formData.append('destinationCity', $('#destinationCity').val());
-    formData.append('destinationBarangay', $('#destinationBarangay').val());
-    formData.append('destinationStreet', $('#destinationStreet').val());
-    formData.append('destinationDescription', $('#destinationDescription').val());
-    formData.append('destinationLatitude', $('#destinationLatitude').val());
-    formData.append('destinationLongitude', $('#destinationLongitude').val());
+    formData.append('pickupLocationID',      pickupLocationID);
+    formData.append('destinationLocationID', destinationLocationID);
 
     $.ajax({
       url: 'ajax/booking_save_record.ajax.php',
       method: 'POST',
       data: formData,
-      cache: false,
-      contentType: false,
-      processData: false,
+      cache: false, contentType: false, processData: false,
       dataType: 'text',
       success: function (response) {
         const res = (response || '').trim();
-
         if (res === 'success') {
           Swal.fire({
-            icon: 'success',
-            title: 'Saved!',
-            text: 'Booking saved successfully.',
-            confirmButtonColor: '#696cff'
-          }).then(() => {
-            window.location = 'booking-reg';
-          });
+            icon: 'success', title: 'Saved!', text: 'Booking saved successfully.', confirmButtonColor: '#696cff'
+          }).then(() => { window.location = 'booking-reg'; });
         } else {
-          Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'Failed to save booking. Please check that booking and location tables exist.',
-            confirmButtonColor: '#696cff'
-          });
+          Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to save booking.', confirmButtonColor: '#696cff' });
         }
       },
       error: function () {
-        Swal.fire({
-          icon: 'error',
-          title: 'Network Error',
-          text: 'Something went wrong while saving.',
-          confirmButtonColor: '#696cff'
-        });
+        Swal.fire({ icon: 'error', title: 'Network Error', text: 'Something went wrong while saving.', confirmButtonColor: '#696cff' });
       }
     });
   }

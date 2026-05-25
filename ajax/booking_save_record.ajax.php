@@ -5,10 +5,13 @@ require_once "../controllers/booking.controller.php";
 require_once "../models/booking.model.php";
 
 class BookingRegistration {
-  public function saveBooking() {
-    $assistantIDs = array();
 
-    if (isset($_POST["assistantIDs"])) {
+  public function saveBooking() {
+
+    // Assistants (JSON safe decode)
+    $assistantIDs = [];
+
+    if (!empty($_POST["assistantIDs"])) {
       $decodedAssistants = json_decode($_POST["assistantIDs"], true);
       if (is_array($decodedAssistants)) {
         $assistantIDs = $decodedAssistants;
@@ -34,40 +37,66 @@ class BookingRegistration {
       echo "error";
       return;
     }
+    // 🔥 SAFE POST ACCESS (prevents undefined key warnings)
+    $customerID      = $_POST["customerID"] ?? null;
+    $truckID         = $_POST["truckID"] ?? null;
+    $driverID        = $_POST["driverID"] ?? null;
+    $pickupDateTime  = $_POST["pickupDateTime"] ?? null;
+    $price           = $_POST["price"] ?? null;
+    $cargoCondition  = $_POST["cargoCondition"] ?? null;
+    $cargoDescription = $_POST["cargoDescription"] ?? null;
+    $cargoSpecialHandling = $_POST["cargoSpecialHandling"] ?? null;
+
+    // 🚨 NEW FLOW: LOCATION IDS ONLY (NO ADDRESS FIELDS HERE)
+    $pickupLocationID      = $_POST["pickupLocationID"] ?? null;
+    $destinationLocationID = $_POST["destinationLocationID"] ?? null;
+
+    // 🔴 VALIDATION (IMPORTANT)
+    if (!$customerID || !$truckID || !$driverID || !$pickupLocationID || !$destinationLocationID) {
+      echo "Missing required booking data or location IDs.";
+      return;
+    }
 
     $data = array(
       "customerID" => $_POST["customerID"],
       "truckID" => $_POST["truckID"],
       "pickupDateTime" => $_POST["pickupDateTime"],
       "price" => $_POST["price"],
+      "pickupLocationID"     => $_POST["pickupLocationID"] ?? null,      // ← ADD
+      "destinationLocationID"=> $_POST["destinationLocationID"] ?? null, // ← ADD
       "createdBy" => isset($_SESSION["id"]) ? $_SESSION["id"] : 0,
+
       "crew" => array(
         "driverID" => $_POST["driverID"],
-        "assistantIDs" => $assistantIDs
+        "assistantIDs" => json_decode($_POST["assistantIDs"] ?? "[]", true)
       ),
+
       "cargo" => array(
         "items" => $cargoItems,
         "condition" => $_POST["cargoCondition"],
         "description" => $_POST["cargoDescription"],
         "specialHandling" => $_POST["cargoSpecialHandling"]
       ),
+
+      // ✅ FIXED STRUCTURE
       "pickup" => array(
-        "province" => $_POST["pickupProvince"],
-        "city" => $_POST["pickupCity"],
-        "barangay" => $_POST["pickupBarangay"],
-        "street" => $_POST["pickupStreet"],
-        "description" => $_POST["pickupDescription"],
-        "latitude" => $_POST["pickupLatitude"],
-        "longitude" => $_POST["pickupLongitude"]
+        "province" => $_POST["pickupProvince"] ?? null,
+        "city" => $_POST["pickupCity"] ?? null,
+        "barangay" => $_POST["pickupBarangay"] ?? null,
+        "street" => $_POST["pickupStreet"] ?? null,
+        "description" => $_POST["pickupDescription"] ?? null,
+        "latitude" => $_POST["pickupLatitude"] ?? null,
+        "longitude" => $_POST["pickupLongitude"] ?? null
       ),
+
       "destination" => array(
-        "province" => $_POST["destinationProvince"],
-        "city" => $_POST["destinationCity"],
-        "barangay" => $_POST["destinationBarangay"],
-        "street" => $_POST["destinationStreet"],
-        "description" => $_POST["destinationDescription"],
-        "latitude" => $_POST["destinationLatitude"],
-        "longitude" => $_POST["destinationLongitude"]
+        "province" => $_POST["destinationProvince"] ?? null,
+        "city" => $_POST["destinationCity"] ?? null,
+        "barangay" => $_POST["destinationBarangay"] ?? null,
+        "street" => $_POST["destinationStreet"] ?? null,
+        "description" => $_POST["destinationDescription"] ?? null,
+        "latitude" => $_POST["destinationLatitude"] ?? null,
+        "longitude" => $_POST["destinationLongitude"] ?? null
       )
     );
 

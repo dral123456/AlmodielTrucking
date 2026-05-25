@@ -6,19 +6,18 @@ $companies = ControllerCustomer::ctrCompanyList();
 $companyMapData = array();
 
 foreach ($companies as $company) {
-  if ($company["warehouseLatitude"] !== null && $company["warehouseLongitude"] !== null) {
+  if (!empty($company["latitude"]) && !empty($company["longitude"])) {
     $companyName = trim($company["customerFName"]);
     if ($companyName === "") {
       $companyName = $company["contactPerson"];
     }
 
     $companyMapData[] = array(
-      "name" => $companyName,
+      "name"          => $companyName,
       "contactPerson" => $company["contactPerson"],
-      "latitude" => (float) $company["warehouseLatitude"],
-      "longitude" => (float) $company["warehouseLongitude"],
-      "address" => implode(", ", array_filter(array(
-        $company["houseNumber"],
+      "latitude"      => (float) $company["latitude"],
+      "longitude"     => (float) $company["longitude"],
+      "address"       => implode(", ", array_filter(array(
         $company["street"],
         $company["barangay"],
         $company["city"],
@@ -87,14 +86,13 @@ foreach ($companies as $company) {
                   $companyName = $company["contactPerson"];
                 }
                 $address = implode(", ", array_filter(array(
-                  $company["houseNumber"],
                   $company["street"],
                   $company["barangay"],
                   $company["city"],
                   $company["province"]
                 )));
-                $coords = ($company["warehouseLatitude"] !== null && $company["warehouseLongitude"] !== null)
-                  ? $company["warehouseLatitude"] . ", " . $company["warehouseLongitude"]
+                $coords = (!empty($company["latitude"]) && !empty($company["longitude"]))
+                  ? $company["latitude"] . ", " . $company["longitude"]
                   : "Not pinned";
               ?>
               <tr
@@ -105,13 +103,14 @@ foreach ($companies as $company) {
                 data-contact-person="<?php echo htmlspecialchars($company["contactPerson"]); ?>"
                 data-email="<?php echo htmlspecialchars($company["email"]); ?>"
                 data-phone-number="<?php echo htmlspecialchars($company["phoneNumber"]); ?>"
-                data-province="<?php echo htmlspecialchars($company["province"]); ?>"
-                data-city="<?php echo htmlspecialchars($company["city"]); ?>"
-                data-barangay="<?php echo htmlspecialchars($company["barangay"]); ?>"
-                data-street="<?php echo htmlspecialchars($company["street"]); ?>"
-                data-house-number="<?php echo htmlspecialchars($company["houseNumber"]); ?>"
-                data-warehouse-latitude="<?php echo htmlspecialchars($company["warehouseLatitude"] ?? ""); ?>"
-                data-warehouse-longitude="<?php echo htmlspecialchars($company["warehouseLongitude"] ?? ""); ?>"
+                data-province="<?php echo htmlspecialchars($company["province"] ?? ''); ?>"
+                data-city="<?php echo htmlspecialchars($company["city"] ?? ''); ?>"
+                data-barangay="<?php echo htmlspecialchars($company["barangay"] ?? ''); ?>"
+                data-street="<?php echo htmlspecialchars($company["street"] ?? ''); ?>"
+                data-description="<?php echo htmlspecialchars($company["description"] ?? ''); ?>"
+                data-latitude="<?php echo htmlspecialchars($company["latitude"] ?? ''); ?>"
+                data-longitude="<?php echo htmlspecialchars($company["longitude"] ?? ''); ?>"
+                data-location-id="<?php echo htmlspecialchars($company["locationID"] ?? ''); ?>"
               >
                 <td>
                   <strong><?php echo htmlspecialchars($companyName); ?></strong>

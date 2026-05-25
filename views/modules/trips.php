@@ -76,6 +76,13 @@ foreach ($trips as $trip) {
             </select>
           </div>
           <div>
+            <label class="form-label">Trip Number</label>
+            <div class="form-icon">
+              <i class="ri-hashtag text-muted"></i>
+              <input type="text" class="form-control form-control-icon" id="tripNumberFilter" placeholder="Search trip #">
+            </div>
+          </div>
+          <div>
             <label class="form-label">Trip Date Range</label>
             <div class="form-icon">
               <i class="ri-calendar-line text-muted"></i>
@@ -95,22 +102,29 @@ foreach ($trips as $trip) {
         <section class="trip-list-panel">
           <div class="trip-panel-heading">
             <div>
-              <h6 class="mb-0">Trip Queue</h6>
-              <p class="text-muted small mb-0" id="tripListSummary">Select a trip to inspect its route.</p>
+              <h6 class="mb-0">Trip List</h6>
+              <p class="text-muted small mb-0" id="tripListSummary">Select a row to view route and booking details.</p>
             </div>
           </div>
-          <div id="tripList" class="trip-list"></div>
+          <div class="table-responsive mt-3">
+            <table class="table align-middle trip-table mb-0">
+              <thead>
+                <tr>
+                  <th>Trip</th>
+                  <th>Date & Time</th>
+                  <th>Customer</th>
+                  <th>Crew</th>
+                  <th class="text-center">Bookings</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="tripTableBody"></tbody>
+            </table>
+          </div>
         </section>
-        <section class="trip-map-panel">
-          <div class="trip-map-shell">
-            <div class="trip-panel-heading mb-3">
-              <div>
-                <h6 class="mb-0"><i class="ri-road-map-line me-1"></i> Route Map</h6>
-                <p class="text-muted small mb-0" id="tripMapStatus">Select a trip to view pickup and destination pins.</p>
-              </div>
-              <span class="badge bg-secondary-subtle text-secondary" id="tripMapBadge">No trip selected</span>
-            </div>
-            <div id="tripMap"></div>
+        <section class="trip-detail-panel">
+          <div id="tripDetails" class="trip-detail-shell">
+            <div class="text-muted text-center p-4">Select a trip to view details.</div>
           </div>
         </section>
       </div>
@@ -180,7 +194,7 @@ foreach ($trips as $trip) {
 
   .trip-filter-panel,
   .trip-list-panel,
-  .trip-map-shell {
+  .trip-detail-shell {
     border: 1px solid var(--bs-border-color);
     border-radius: 0.5rem;
     background: var(--bs-body-bg);
@@ -188,13 +202,13 @@ foreach ($trips as $trip) {
 
   .trip-filter-panel,
   .trip-list-panel,
-  .trip-map-shell {
+  .trip-detail-shell {
     padding: 1rem;
   }
 
   .trip-filter-grid {
     display: grid;
-    grid-template-columns: minmax(180px, 0.9fr) minmax(160px, 0.75fr) minmax(280px, 1.3fr) minmax(150px, 180px);
+    grid-template-columns: minmax(170px, 0.8fr) minmax(150px, 0.7fr) minmax(170px, 0.75fr) minmax(260px, 1.2fr) minmax(150px, 180px);
     align-items: start;
     gap: 1rem;
   }
@@ -206,13 +220,13 @@ foreach ($trips as $trip) {
 
   .trip-workspace {
     display: grid;
-    grid-template-columns: minmax(360px, 440px) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
     align-items: start;
     gap: 1rem;
   }
 
   .trip-list-panel,
-  .trip-map-panel {
+  .trip-detail-panel {
     min-width: 0;
   }
 
@@ -224,65 +238,44 @@ foreach ($trips as $trip) {
     gap: 0.75rem;
   }
 
-  .trip-list {
-    display: grid;
-    gap: 0.75rem;
-    max-height: 640px;
-    overflow: auto;
-    padding-right: 0.25rem;
-    margin-top: 1rem;
-  }
-
-  .trip-item {
-    border: 1px solid var(--bs-border-color);
-    border-radius: 0.5rem;
-    background: var(--bs-body-bg);
-    padding: 1rem;
-    text-align: left;
-    width: 100%;
-    min-width: 0;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
-  }
-
-  .trip-item:hover {
-    transform: translateY(-1px);
-    border-color: rgba(105, 108, 255, 0.45);
-  }
-
-  .trip-item.active {
-    border-color: var(--bs-primary);
-    box-shadow: 0 0 0 3px rgba(105, 108, 255, 0.12);
-  }
-
-  .trip-item-title {
-    min-width: 0;
-  }
-
-  .trip-item-title h6 {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
-
-  .trip-meta,
-  .trip-route-meta {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 0.5rem;
+  .trip-table th {
     color: var(--bs-secondary-color);
     font-size: 0.8125rem;
+    text-transform: uppercase;
+    white-space: nowrap;
   }
 
-  .trip-route-meta {
-    margin-top: 0.625rem;
+  .trip-row {
+    cursor: pointer;
+  }
+
+  .trip-row:hover {
+    background: var(--bs-tertiary-bg);
+  }
+
+  .trip-row.active {
+    background: var(--bs-primary-bg-subtle);
+  }
+
+  .trip-row-main {
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .trip-row-sub {
+    color: var(--bs-secondary-color);
+    font-size: 0.8125rem;
+    max-width: 360px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .trip-booking-row {
-    border-top: 1px solid var(--bs-border-color);
-    padding-top: 0.75rem;
-    margin-top: 0.75rem;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.5rem;
+    padding: 0.875rem;
+    background: var(--bs-body-bg);
   }
 
   .trip-booking-locations {
@@ -321,9 +314,24 @@ foreach ($trips as $trip) {
     background: #fff;
   }
 
+  .trip-detail-shell {
+    padding: 1rem;
+  }
+
+  .trip-detail-grid {
+    display: grid;
+    grid-template-columns: minmax(320px, 0.8fr) minmax(0, 1.2fr);
+    gap: 1rem;
+    align-items: start;
+  }
+
+  .trip-booking-list {
+    display: grid;
+    gap: 0.75rem;
+  }
+
   .trip-map-shell {
-    position: sticky;
-    top: 90px;
+    min-width: 0;
   }
 
   #tripMap {
@@ -340,10 +348,6 @@ foreach ($trips as $trip) {
     .trip-stat-grid {
       grid-template-columns: repeat(3, minmax(0, 1fr));
     }
-
-    .trip-workspace {
-      grid-template-columns: minmax(340px, 410px) minmax(0, 1fr);
-    }
   }
 
   @media (max-width: 1199.98px) {
@@ -356,17 +360,8 @@ foreach ($trips as $trip) {
       align-self: end;
     }
 
-    .trip-workspace {
+    .trip-detail-grid {
       grid-template-columns: 1fr;
-    }
-
-    .trip-list {
-      max-height: none;
-      overflow: visible;
-    }
-
-    .trip-map-shell {
-      position: static;
     }
 
     #tripMap {
@@ -385,10 +380,6 @@ foreach ($trips as $trip) {
       align-self: stretch;
     }
 
-    .trip-map-panel {
-      order: -1;
-    }
-
     #tripMap {
       height: 360px;
       min-height: 360px;
@@ -397,12 +388,8 @@ foreach ($trips as $trip) {
 
   @media (max-width: 575.98px) {
     .trip-list-panel,
-    .trip-map-shell,
+    .trip-detail-shell,
     .trip-filter-panel {
-      padding: 0.875rem;
-    }
-
-    .trip-item {
       padding: 0.875rem;
     }
   }

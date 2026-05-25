@@ -140,6 +140,7 @@
           'staff-login',
           'driver-login',
           'admin-login',
+          'assistant-login',
           'map',  
           // 'home',
           // 'staffclinic',
@@ -164,6 +165,8 @@
       $modulePaths = include "configs/module-paths.php";
 
       $allowedRoutes = $routeMap[$role] ?? [];
+      echo '<script>console.log("User role: ' . $role . '")</script>';
+      echo '<script>console.log("Allowed routes for this role: ' . implode(", ", $allowedRoutes) . '")</script>';
       echo '<div class="layout-wrapper layout-content-navbar">';
         echo '<div class="layout-container">';
           include "partials/sidebar.php";
@@ -243,17 +246,17 @@
     $routeScripts = [
       "customer-reg" => ["customer-reg.js"],
       "employee-reg" => ["employee-reg.js"],
-      "truck-reg" => ["truck-reg.js"],
+      "truck-reg" => ["admin/truck-reg.js"],
       "booking-reg" => ["booking-reg.js"],
       "signup" => ["customer-individual/signup.js"],
       "trips" => ["trips.js"],
       "driver-trips" => ["driver-trips.js"],
-      "reports" => ["reports.js"],
       "sales" => ["sales.js"],
-      "manage-company" => ["manage.js"],
-      "manage-employee" => ["manage.js"],
       "manage-tariff" => ["manage.js", "manage-tariff.js"],
-      "manage-truck" => ["manage.js"]
+      "reports" => ["admin/reports.js"],
+      "manage-company" => ["admin/manage.js"],
+      "manage-employee" => ["admin/manage.js"],
+      "manage-truck" => ["admin/manage.js"]
     ];
 
     if (array_key_exists($route, $routeScripts)) {
