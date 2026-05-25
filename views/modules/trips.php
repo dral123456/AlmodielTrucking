@@ -3,6 +3,9 @@ require_once "controllers/booking.controller.php";
 require_once "models/booking.model.php";
 
 $trips = ControllerBooking::ctrTripOverviewList();
+$trucks = ControllerBooking::ctrTruckList();
+$drivers = ControllerBooking::ctrEmployeeListByType("driver");
+$assistants = ControllerBooking::ctrEmployeeListByType("assistant");
 $tripStats = array(
   "total" => count($trips),
   "pending" => 0,
@@ -134,6 +137,9 @@ foreach ($trips as $trip) {
 
 <script>
   window.tripOverviewData = <?php echo json_encode($trips, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
+  window.tripTruckOptions = <?php echo json_encode($trucks, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
+  window.tripDriverOptions = <?php echo json_encode($drivers, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
+  window.tripAssistantOptions = <?php echo json_encode($assistants, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
 </script>
 
 <style>

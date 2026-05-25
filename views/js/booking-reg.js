@@ -19,9 +19,22 @@ $(document).ready(function () {
   initLocationSearch('destination');
 
   $(document).on('change', 'input[name="bookingMapMode"]', updateMapStatus);
-  $(document).on('change', '#bookingTruck',    function () { applyTruckDefaultCrew($(this).val()); });
-  $(document).on('change', '#bookingCustomer', function () { applyCompanyWarehousePickup(); });
-  $(document).on('change', '#bookingDriver, .booking-assistant', syncAssistantOptions);
+
+  $(document).on('change', '#bookingTruck', function () {
+    applyTruckDefaultCrew($(this).val());
+    lookupTariffPrice();
+  });
+
+  $(document).on('change', '#bookingCustomer', function () {
+    applyCompanyWarehousePickup();
+    lookupTariffPrice();
+  });
+
+  $(document).on('input change', '#bookingFuelPrice', lookupTariffPrice);
+
+  $(document).on('change', '#bookingDriver, .booking-assistant', function () {
+    syncAssistantOptions();
+  });
 
   $(document).on('click', '#bookingAddAssistant', function () {
     addAssistantSelect('');
@@ -64,14 +77,20 @@ $(document).ready(function () {
   $(document).on('input',
     '#pickupProvince, #pickupCity, #pickupBarangay, #pickupStreet, #pickupDescription, ' +
     '#destinationProvince, #destinationCity, #destinationBarangay, #destinationStreet, #destinationDescription',
-    function () { $(this).data('autofilled', false); }
+    function () {
+      $(this).data('autofilled', false);
+      if (this.id.indexOf('destination') === 0) {
+        lookupTariffPrice();
+      }
+    }
   );
 
   $(document).on('click', '#bookingBtnReset', function () {
-    $('#bookingCustomer, #bookingPickupDateTime, #bookingPrice, #bookingTruck, #bookingDriver').val('');
+    $('#bookingCustomer, #bookingPickupDateTime, #bookingPrice, #bookingFuelPrice, #bookingTruck, #bookingDriver').val('');
     $('#bookingAssistantList .booking-assistant-item').slice(2).remove();
     $('.booking-assistant').val('');
-    $('#cargoType, #cargoQuantity, #cargoCondition, #cargoDescription, #cargoSpecialHandling').val('');
+    $('#bookingCargoList .booking-cargo-item').slice(1).remove();
+    $('#bookingCargoList .cargo-type, #bookingCargoList .cargo-quantity, #cargoCondition, #cargoDescription, #cargoSpecialHandling').val('');
     $('#pickupProvince, #pickupCity, #pickupBarangay, #pickupStreet, #pickupDescription, #pickupLatitude, #pickupLongitude').val('');
     $('#destinationProvince, #destinationCity, #destinationBarangay, #destinationStreet, #destinationDescription, #destinationLatitude, #destinationLongitude').val('');
     setPickupLocked(false);
@@ -203,6 +222,7 @@ $(document).ready(function () {
       }
       setDestinationCoordinates(loc.lat, loc.lng);
       pickedDestinationLocationID = loc.locationID;
+      lookupTariffPrice();
     }
 
     map.setView(latlng, Math.max(map.getZoom(), 15));
@@ -335,9 +355,13 @@ $(document).ready(function () {
     return $option.length && $option.val() ? $option : $();
   }
 
+  function selectedCustomerIsCompany() {
+    return getSelectedCustomerOption().data('type') === 'company';
+  }
+
   function applyCompanyWarehousePickup() {
     const $option = getSelectedCustomerOption();
-    const isCompany = $option.data('type') === 'company';
+    const isCompany = selectedCustomerIsCompany();
 
     setPickupLocked(isCompany);
 
@@ -473,7 +497,8 @@ $(document).ready(function () {
 
   function updateMapStatus() {
     const mode = getMapMode();
-    const customerIsCompany = getSelectedCustomerOption().data('type') === 'company';
+    const customerIsCompany = selectedCustomerIsCompany();
+
     if (customerIsCompany) {
       $('#bookingMapStatus').text('Company warehouse is fixed as pickup. Click the map to place the destination pin.');
       return;
@@ -487,7 +512,9 @@ $(document).ready(function () {
 
   function setActiveMarker(latlng) {
     const mode = getMapMode();
-    if (getSelectedCustomerOption().data('type') === 'company' && mode === 'pickup') {
+    const customerIsCompany = selectedCustomerIsCompany();
+
+    if (customerIsCompany && mode === 'pickup') {
       $('#mapModeDestination').prop('checked', true);
       updateMapStatus();
       return;
@@ -558,6 +585,7 @@ $(document).ready(function () {
     $('#destinationLongitude').val(fLng);
     $('#destinationCoordinateText').text(fLat + ', ' + fLng);
     $('#destinationLatitude, #destinationLongitude').removeClass('is-invalid');
+    lookupTariffPrice();
   }
 
   function fillAddressFromPin(type, lat, lng) {
@@ -579,6 +607,7 @@ $(document).ready(function () {
         setIfEmptyOrAutofilled(type + 'Description', data.display_name || '');
         $('#' + type + 'Province, #' + type + 'City, #' + type + 'Barangay, #' + type + 'Street').removeClass('is-invalid');
         updateMapStatus();
+        if (type === 'destination') lookupTariffPrice();
       })
       .catch(function () { updateMapStatus(); });
   }
@@ -591,10 +620,74 @@ $(document).ready(function () {
     }
   }
 
-  // ─── Validation ─────────────────────────────────────────────────────────────
+  function lookupTariffPrice() {
+    const customerID = $('#bookingCustomer').val();
+    const $customer = getSelectedCustomerOption();
+    const truckType = $('#bookingTruck option:selected').data('type') || '';
+    const fuelPrice = $('#bookingFuelPrice').val();
+    const destinationText = [
+      $('#destinationStreet').val(),
+      $('#destinationBarangay').val(),
+      $('#destinationCity').val(),
+      $('#destinationProvince').val(),
+      $('#destinationDescription').val()
+    ].filter(Boolean).join(' ');
+
+    if (!customerID || !$customer.length || $customer.data('type') !== 'company' || !truckType || !destinationText.trim()) {
+      $('#bookingTariffHint').text('Select company, truck, and destination to use tariff pricing.');
+      return;
+    }
+
+    $('#bookingTariffHint').text('Checking tariff for this destination...');
+
+    $.ajax({
+      url: 'ajax/tariff_lookup.ajax.php',
+      method: 'POST',
+      dataType: 'json',
+      data: {
+        customerID: customerID,
+        truckType: truckType,
+        destinationText: destinationText,
+        fuelPrice: fuelPrice
+      },
+      success: function (response) {
+        if (!response || response.status !== 'success') {
+          $('#bookingTariffHint').text('No tariff matched. You may enter the booking price manually.');
+          return;
+        }
+
+        const totalRate = Number(response.totalRate || response.baseRate || 0);
+        const fuelSubsidy = Number(response.fuelSubsidy || 0);
+        $('#bookingPrice').val(totalRate.toFixed(2)).removeClass('is-invalid');
+        const fuelBaseMin = Number(response.fuelBaseMin || 0);
+        const fuelBaseMax = Number(response.fuelBaseMax || 0);
+        const fuelBaseRange = fuelBaseMin > 0 && fuelBaseMax > 0 ? fuelBaseMin + '-' + fuelBaseMax : '';
+        const fuelNote = fuelSubsidy > 0
+          ? ' + fuel subsidy PHP ' + fuelSubsidy.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+          : ' + no fuel subsidy' + (fuelBaseRange ? ' because fuel is within base range ' + fuelBaseRange : '');
+
+        $('#bookingTariffHint').text(
+          'Tariff matched: ' + response.origin + ' to ' + response.destination +
+          ' | ' + response.distanceKm + ' km | base PHP ' + Number(response.baseRate || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) +
+          fuelNote +
+          ' = PHP ' + totalRate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+        );
+      },
+      error: function () {
+        $('#bookingTariffHint').text('Tariff lookup failed. You may enter the booking price manually.');
+      }
+    });
+  }
+
   function validateInputs() {
     const allMissing = [];
-    for (let step = 0; step < totalSteps - 1; step++) allMissing.push(...validateStep(step));
+
+    for (let step = 0; step < totalSteps - 1; step++) {
+      allMissing.push(...validateStep(step));
+    }
+
+    checkFinalPrice(allMissing);
+
     return [...new Set(allMissing)];
   }
 
@@ -608,11 +701,11 @@ $(document).ready(function () {
     };
 
     if (step === 0) {
-      check('bookingCustomer',     'Customer');
-      check('bookingTruck',        'Truck');
-      check('bookingDriver',       'Driver');
-      check('bookingPickupDateTime','Pickup Date & Time');
-      check('bookingPrice',        'Price');
+      check('bookingCustomer', 'Customer');
+      check('bookingTruck', 'Truck');
+      check('bookingDriver', 'Driver');
+      check('bookingPickupDateTime', 'Pickup Date & Time');
+
       const assistantIDs = getAssistantIDs();
       if (assistantIDs.length < 2) {
         missing.push('At least 2 assistants');
@@ -622,11 +715,7 @@ $(document).ready(function () {
         missing.push('Assistants must be different employees');
         $('.booking-assistant').addClass('is-invalid');
       }
-      const price = Number($('#bookingPrice').val());
-      if ($('#bookingPrice').val() !== '' && (Number.isNaN(price) || price < 0)) {
-        missing.push('Price must be a valid number');
-        $('#bookingPrice').addClass('is-invalid');
-      }
+
     }
 
     if (step === 1) {
@@ -657,24 +746,84 @@ $(document).ready(function () {
     }
 
     if (step === 2) {
-      check('pickupProvince',    'Pickup Province');
-      check('pickupCity',        'Pickup City');
-      check('pickupBarangay',    'Pickup Barangay');
-      check('pickupStreet',      'Pickup Street');
-      check('pickupLatitude',    'Pickup Map Pin');
-      check('pickupLongitude',   'Pickup Map Pin');
+      checkMapPin('pickup', 'Pickup Map Pin', missing);
+      if (hasValidNegrosPin('pickup')) {
+        $('#pickupProvince, #pickupCity, #pickupBarangay, #pickupStreet').removeClass('is-invalid');
+      } else {
+        check('pickupProvince', 'Pickup Province');
+        check('pickupCity', 'Pickup City');
+        check('pickupBarangay', 'Pickup Barangay');
+        check('pickupStreet', 'Pickup Street');
+      }
+
       check('destinationProvince', 'Destination Province');
       check('destinationCity',     'Destination City');
       check('destinationBarangay', 'Destination Barangay');
-      check('destinationStreet',   'Destination Street');
-      check('destinationLatitude', 'Destination Map Pin');
-      check('destinationLongitude','Destination Map Pin');
+      check('destinationStreet', 'Destination Street');
+      checkMapPin('destination', 'Destination Map Pin', missing);
+      check('bookingPrice', selectedCustomerIsCompany() ? 'Company tariff price' : 'Price');
+      checkPriceValue(missing);
     }
 
     return [...new Set(missing)];
   }
 
-  // ─── Review ─────────────────────────────────────────────────────────────────
+  function checkMapPin(prefix, label, missing) {
+    const $lat = $('#' + prefix + 'Latitude');
+    const $lng = $('#' + prefix + 'Longitude');
+
+    if (!hasValidNegrosPin(prefix)) {
+      missing.push(label + ' must be within Negros');
+      $lat.add($lng).addClass('is-invalid');
+      return;
+    }
+
+    $lat.add($lng).removeClass('is-invalid');
+  }
+
+  function hasValidNegrosPin(prefix) {
+    const latRaw = String($('#' + prefix + 'Latitude').val() || '').trim();
+    const lngRaw = String($('#' + prefix + 'Longitude').val() || '').trim();
+    const lat = Number(latRaw);
+    const lng = Number(lngRaw);
+
+    return latRaw !== '' &&
+      lngRaw !== '' &&
+      Number.isFinite(lat) &&
+      Number.isFinite(lng) &&
+      lat >= 9 &&
+      lat <= 11.2 &&
+      lng >= 122 &&
+      lng <= 123.6;
+  }
+
+  function checkFinalPrice(missing) {
+    if (String($('#bookingPrice').val() || '').trim() === '') {
+      missing.push(selectedCustomerIsCompany() ? 'Company tariff price' : 'Price');
+      $('#bookingPrice').addClass('is-invalid');
+
+      if (selectedCustomerIsCompany()) {
+        $('#bookingTariffHint').text('Select a matching destination and truck so the company tariff can fill the price.');
+      }
+      return;
+    }
+
+    checkPriceValue(missing);
+  }
+
+  function checkPriceValue(missing) {
+    const price = Number($('#bookingPrice').val());
+    if ($('#bookingPrice').val() !== '' && (Number.isNaN(price) || price < 0)) {
+      missing.push('Price must be a valid number');
+      $('#bookingPrice').addClass('is-invalid');
+      return;
+    }
+
+    if ($('#bookingPrice').val() !== '') {
+      $('#bookingPrice').removeClass('is-invalid');
+    }
+  }
+
   function updateReview() {
     const assistantNames = $('.booking-assistant').map(function () {
       return $(this).find('option:selected').text().trim();

@@ -94,21 +94,6 @@ foreach ($trucks as $truck) {
                   Generated on save
                 </div>
               </div>
-              <div class="col-12 col-md-6 col-lg-3 mb-3">
-                <label class="form-label">Price <span class="text-danger">*</span></label>
-                <div class="form-icon">
-                  <i class="ri-money-dollar-circle-line text-muted"></i>
-                  <input type="number" class="form-control form-control-icon" id="bookingPrice" min="0" step="0.01" placeholder="0.00">
-                </div>
-                <div class="form-text" id="bookingTariffHint">Select company, truck, and destination to use tariff pricing.</div>
-              </div>
-              <div class="col-12 col-md-6 col-lg-3 mb-3">
-                <label class="form-label">Fuel Pump Price</label>
-                <div class="form-icon">
-                  <i class="ri-gas-station-line text-muted"></i>
-                  <input type="number" class="form-control form-control-icon" id="bookingFuelPrice" min="0" step="0.01" placeholder="60.00">
-                </div>
-              </div>
               <div class="col-12 col-md-6 mb-3">
                 <label class="form-label">Pickup Date & Time <span class="text-danger">*</span></label>
                 <input type="datetime-local" class="form-control" id="bookingPickupDateTime">
@@ -283,6 +268,27 @@ foreach ($trucks as $truck) {
                   </div>
                   <input type="hidden" id="destinationLatitude">
                   <input type="hidden" id="destinationLongitude">
+                </div>
+
+                <h6 class="text-uppercase text-muted mb-3">
+                  <i class="ri-money-dollar-circle-line me-1"></i> Pricing
+                </h6>
+                <div class="row">
+                  <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Fuel Pump Price</label>
+                    <div class="form-icon">
+                      <i class="ri-gas-station-line text-muted"></i>
+                      <input type="number" class="form-control form-control-icon" id="bookingFuelPrice" min="0" step="0.01" placeholder="60.00">
+                    </div>
+                  </div>
+                  <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Price <span class="text-danger">*</span></label>
+                    <div class="form-icon">
+                      <i class="ri-money-dollar-circle-line text-muted"></i>
+                      <input type="number" class="form-control form-control-icon" id="bookingPrice" min="0" step="0.01" placeholder="0.00">
+                    </div>
+                    <div class="form-text" id="bookingTariffHint">Select company, truck, and destination to use tariff pricing.</div>
+                  </div>
                 </div>
               </div>
 
