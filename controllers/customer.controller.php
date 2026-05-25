@@ -50,18 +50,4 @@ class ControllerCustomer{
 
     return hash_equals($storedPassword, $plainPassword);
   }
-
-	// static public function ctrEditClinicStaff($data){
-	//   $answer = (new ModelClinicStaff)->mdlEditClinicStaff($data);
-	// }
-
-    // static public function ctrClinicStaffList() {
-    //     $answer = (new ModelClinicStaff) -> mdlClinicStaffList();
-    //     return $answer;
-    // }
-
-    // static public function ctrSearchClinicStaff($empid) {
-    //     $answer = (new ModelClinicStaff) -> mdlSearchClinicStaff($empid);
-    //     return $answer;
-    // }
 }
