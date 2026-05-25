@@ -32,6 +32,10 @@ class ControllerBooking {
     return (new ModelBooking)->mdlUpdateTripDeliveryStatus($tripID, $status, $driverID, $showAll);
   }
 
+  static public function ctrUpdateTripInfo($tripID, $data) {
+    return (new ModelBooking)->mdlUpdateTripInfo($tripID, $data);
+  }
+
   static public function ctrSaveBooking($data) {
     return (new ModelBooking)->mdlSaveBooking($data);
   }

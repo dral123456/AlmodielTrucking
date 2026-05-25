@@ -194,6 +194,7 @@ class ModelBooking {
       $trips[$tripID]["customers"][$row["customerID"]] = $customerName;
       $trips[$tripID]["bookings"][] = array(
         "bookingID" => (int) $row["bookingID"],
+        "customerID" => (int) $row["customerID"],
         "customerName" => $customerName,
         "customerType" => $row["customerType"],
         "pickupDateTime" => $row["pickupDateTime"],
@@ -208,8 +209,13 @@ class ModelBooking {
           "longitude" => (float) $row["pickupLongitude"]
         ),
         "destination" => array(
+          "locationID" => (int) $row["destinationLocationID"],
           "address" => self::formatAddress($row["destinationStreet"], $row["destinationBarangay"], $row["destinationCity"], $row["destinationProvince"]),
           "description" => $row["destinationDescription"],
+          "province" => $row["destinationProvince"],
+          "city" => $row["destinationCity"],
+          "barangay" => $row["destinationBarangay"],
+          "street" => $row["destinationStreet"],
           "latitude" => (float) $row["destinationLatitude"],
           "longitude" => (float) $row["destinationLongitude"]
         )
@@ -373,8 +379,150 @@ class ModelBooking {
     return "success";
   }
 
+  static public function mdlUpdateTripInfo($tripID, $data) {
+    $pdo = (new Connection)->connect();
+    $allowedStatuses = array("pending", "in-transit", "stopover", "completed");
+    $status = trim($data["status"] ?? "");
+    $pickupDateTime = trim($data["pickupDateTime"] ?? "");
+    $truckID = (int) ($data["truckID"] ?? 0);
+    $driverID = (int) ($data["driverID"] ?? 0);
+    $assistantIDs = $data["assistantIDs"] ?? array();
+    $bookingID = (int) ($data["bookingID"] ?? 0);
+    $price = $data["price"] ?? null;
+    $destination = $data["destination"] ?? array();
+    $tripID = (int) $tripID;
+
+    if ($tripID <= 0 || !in_array($status, $allowedStatuses, true) || $pickupDateTime === "" || $truckID <= 0 || $driverID <= 0 || $bookingID <= 0) {
+      return "error";
+    }
+
+    if (!is_array($assistantIDs)) {
+      return "error";
+    }
+
+    $assistantIDs = array_values(array_unique(array_filter(array_map("intval", $assistantIDs))));
+    $assistantIDs = array_values(array_filter($assistantIDs, function ($assistantID) use ($driverID) {
+      return $assistantID > 0 && $assistantID !== $driverID;
+    }));
+
+    if (count($assistantIDs) < 2 || !self::tableExists($pdo, "tripemployee")) {
+      return "error";
+    }
+
+    if (!self::tripHasBooking($pdo, $tripID, $bookingID) || !self::isValidPrice($price) || !self::isValidLocationPayload($destination)) {
+      return "error";
+    }
+
+    $timestamp = strtotime($pickupDateTime);
+    if ($timestamp === false) {
+      return "error";
+    }
+
+    $pickupDateTime = date("Y-m-d H:i:s", $timestamp);
+
+    try {
+      $pdo->beginTransaction();
+
+      $stmt = $pdo->prepare("
+        UPDATE booking
+        SET pickupDateTime = :pickupDateTime,
+            status = :status
+        WHERE tripID = :tripID
+      ");
+
+      $stmt->bindParam(":pickupDateTime", $pickupDateTime, PDO::PARAM_STR);
+      $stmt->bindParam(":status", $status, PDO::PARAM_STR);
+      $stmt->bindParam(":tripID", $tripID, PDO::PARAM_INT);
+      $stmt->execute();
+
+      $destinationLocationID = self::insertLocation($pdo, $destination);
+
+      $bookingUpdate = $pdo->prepare("
+        UPDATE booking
+        SET destinationLocationID = :destinationLocationID,
+            price = :price
+        WHERE bookingID = :bookingID
+          AND tripID = :tripID
+      ");
+      $bookingUpdate->bindParam(":destinationLocationID", $destinationLocationID, PDO::PARAM_INT);
+      $bookingUpdate->bindParam(":price", $price);
+      $bookingUpdate->bindParam(":bookingID", $bookingID, PDO::PARAM_INT);
+      $bookingUpdate->bindParam(":tripID", $tripID, PDO::PARAM_INT);
+      $bookingUpdate->execute();
+
+      $delete = $pdo->prepare("DELETE FROM tripemployee WHERE tripID = :tripID");
+      $delete->bindParam(":tripID", $tripID, PDO::PARAM_INT);
+      $delete->execute();
+
+      $insert = $pdo->prepare("
+        INSERT INTO tripemployee (tripID, truckID, empID, role, dateCreated)
+        VALUES (:tripID, :truckID, :empID, :role, NOW())
+      ");
+
+      self::insertTripEmployee($insert, $tripID, $truckID, $driverID, "driver");
+      foreach ($assistantIDs as $assistantID) {
+        self::insertTripEmployee($insert, $tripID, $truckID, $assistantID, "assistant");
+      }
+
+      if ($status === "completed") {
+        ModelSales::mdlSyncSalesForTrip($pdo, $tripID);
+      }
+
+      $pdo->commit();
+    } catch (PDOException $e) {
+      if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+      }
+
+      return "error";
+    }
+
+    return "success";
+  }
+
   static private function formatAddress($street, $barangay, $city, $province) {
     return implode(", ", array_filter(array($street, $barangay, $city, $province)));
+  }
+
+  static private function tripHasBooking($pdo, $tripID, $bookingID) {
+    $stmt = $pdo->prepare("
+      SELECT COUNT(*)
+      FROM booking
+      WHERE tripID = :tripID
+        AND bookingID = :bookingID
+    ");
+    $stmt->bindParam(":tripID", $tripID, PDO::PARAM_INT);
+    $stmt->bindParam(":bookingID", $bookingID, PDO::PARAM_INT);
+    $stmt->execute();
+
+    return (int) $stmt->fetchColumn() > 0;
+  }
+
+  static private function isValidPrice($price) {
+    return $price !== null && $price !== "" && is_numeric($price) && (float) $price >= 0;
+  }
+
+  static private function isValidLocationPayload($location) {
+    if (!is_array($location)) {
+      return false;
+    }
+
+    $latitude = $location["latitude"] ?? null;
+    $longitude = $location["longitude"] ?? null;
+
+    if ($latitude === null || $longitude === null || $latitude === "" || $longitude === "") {
+      return false;
+    }
+
+    $lat = (float) $latitude;
+    $lng = (float) $longitude;
+
+    return is_finite($lat) &&
+      is_finite($lng) &&
+      $lat >= 9 &&
+      $lat <= 11.2 &&
+      $lng >= 122 &&
+      $lng <= 123.6;
   }
 
   static private function deriveTripStatus($bookings) {
@@ -402,6 +550,8 @@ class ModelBooking {
 
     $stmt = $pdo->prepare("
       SELECT
+        te.truckID,
+        te.empID,
         te.role,
         e.empFName,
         e.empLName,
