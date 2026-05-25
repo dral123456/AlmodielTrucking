@@ -19,4 +19,8 @@ class ControllerReport {
     static public function ctrSalaryRows() {
         return ModelReport::mdlSalaryRows();
     }
+
+    static public function ctrSaveDeliveryCharge($data) {
+        return ModelReport::mdlSaveDeliveryCharge($data);
+    }
 }

@@ -90,6 +90,26 @@ INSERT INTO `cargo` (`cargoID`, `bookingID`, `cargoType`, `quantity`, `condition
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `deliverycharge`
+--
+
+CREATE TABLE `deliverycharge` (
+  `deliveryChargeID` int NOT NULL AUTO_INCREMENT,
+  `bookingID` int NOT NULL,
+  `tripID` int NOT NULL,
+  `chargeType` enum('hauling','others') NOT NULL DEFAULT 'hauling',
+  `amount` double NOT NULL DEFAULT '0',
+  `notes` text,
+  `createdBy` int DEFAULT NULL,
+  `dateCreated` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`deliveryChargeID`),
+  KEY `idx_deliverycharge_bookingID` (`bookingID`),
+  KEY `idx_deliverycharge_tripID` (`tripID`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `customer`
 --
 

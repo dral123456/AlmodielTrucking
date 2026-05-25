@@ -7,6 +7,9 @@ $billingRows = ControllerReport::ctrBillingRows();
 $expenseRows = ControllerReport::ctrExpenseRows();
 $staffRows = ControllerReport::ctrStaffRows();
 $salaryRows = ControllerReport::ctrSalaryRows();
+$billingBaseTotal = array_sum(array_map(function ($row) { return (float) ($row["price"] ?? 0); }, $billingRows));
+$billingExtraTotal = array_sum(array_map(function ($row) { return (float) ($row["extraAmount"] ?? 0); }, $billingRows));
+$billingGrossTotal = array_sum(array_map(function ($row) { return (float) ($row["grossAmount"] ?? 0); }, $billingRows));
 
 function reportMoney($value) {
     return "PHP " . number_format((float) $value, 2);
@@ -35,13 +38,13 @@ function reportDateValue($value) {
     return $timestamp ? date("Y-m-d", $timestamp) : "";
 }
 
-function reportDateOnly($value) {
-    if (!$value) {
-        return "-";
-    }
-
-    $timestamp = strtotime($value);
-    return $timestamp ? date("M d, Y", $timestamp) : $value;
+function reportAddress($row) {
+    return implode(", ", array_filter(array(
+        $row["destinationStreet"] ?? "",
+        $row["destinationBarangay"] ?? "",
+        $row["destinationCity"] ?? "",
+        $row["destinationProvince"] ?? ""
+    ))) ?: "-";
 }
 
 function reportStaffName($employee) {
@@ -149,29 +152,49 @@ function reportStaffName($employee) {
             <table class="table align-middle report-table">
               <thead>
                 <tr>
-                  <th>Booking</th>
+                  <th>Delivery Date</th>
+                  <th>Destination</th>
+                  <th>Plate No.</th>
+                  <th>Truck Size</th>
                   <th>Customer</th>
-                  <th>Trip</th>
-                  <th>Pickup Date</th>
                   <th>Status</th>
                   <th class="text-end">Amount</th>
+                  <th class="text-end">Hauling/Others</th>
+                  <th class="text-end">Row Total</th>
                 </tr>
               </thead>
               <tbody>
                 <?php foreach ($billingRows as $row): ?>
                   <tr class="report-data-row" data-report-date="<?php echo htmlspecialchars(reportDateValue($row["pickupDateTime"])); ?>" data-report-specific="<?php echo htmlspecialchars(strtolower($row["customerType"])); ?>">
-                    <td>#<?php echo (int) $row["bookingID"]; ?></td>
+                    <td>
+                      <?php echo htmlspecialchars(reportDate($row["pickupDateTime"])); ?>
+                      <div class="small text-muted">Booking #<?php echo (int) $row["bookingID"]; ?> | Trip #<?php echo (int) $row["tripID"]; ?></div>
+                    </td>
+                    <td><?php echo reportText(reportAddress($row)); ?></td>
+                    <td><?php echo reportText($row["plateNumber"] ?? ""); ?></td>
+                    <td><?php echo reportText($row["truckSize"] ?? ""); ?></td>
                     <td>
                       <strong><?php echo reportText($row["customerName"], "Customer"); ?></strong>
                       <div class="small text-muted"><?php echo reportText(ucfirst($row["customerType"])); ?></div>
                     </td>
-                    <td>Trip #<?php echo (int) $row["tripID"]; ?></td>
-                    <td><?php echo htmlspecialchars(reportDate($row["pickupDateTime"])); ?></td>
                     <td><span class="badge bg-secondary-subtle text-secondary"><?php echo reportText($row["status"]); ?></span></td>
                     <td class="text-end fw-semibold"><?php echo reportMoney($row["price"]); ?></td>
+                    <td class="text-end">
+                      <strong><?php echo reportMoney($row["extraAmount"] ?? 0); ?></strong>
+                      <div class="small text-muted"><?php echo reportText($row["extraTypes"] ?? "", "None"); ?></div>
+                    </td>
+                    <td class="text-end fw-semibold"><?php echo reportMoney($row["grossAmount"] ?? $row["price"]); ?></td>
                   </tr>
                 <?php endforeach; ?>
               </tbody>
+              <tfoot>
+                <tr>
+                  <th colspan="6" class="text-end">Gross Totals</th>
+                  <th class="text-end"><?php echo reportMoney($billingBaseTotal); ?></th>
+                  <th class="text-end"><?php echo reportMoney($billingExtraTotal); ?></th>
+                  <th class="text-end"><?php echo reportMoney($billingGrossTotal); ?></th>
+                </tr>
+              </tfoot>
             </table>
           </div>
         </div>
