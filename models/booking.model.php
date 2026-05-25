@@ -10,34 +10,15 @@ class ModelBooking {
 
     $stmt = $pdo->prepare("
       SELECT
-        c.id,
-        c.customerType,
-        c.customerFName,
-        c.customerLName,
-        c.customerMI,
-        c.contactPerson,
-        c.email,
-        c.phoneNumber,
-        c.locationID,
-
-        l.province,
-        l.city,
-        l.barangay,
-        l.street,
-        l.description,
-        l.latitude,
-        l.longitude
-
-      FROM customer c
-      INNER JOIN location l
-        ON l.locationID = c.locationID
-
-      WHERE c.status = 'active'
-
-      ORDER BY
-        c.customerFName,
-        c.customerLName,
-        c.contactPerson
+        id,
+        customerType,
+        customerFName,
+        customerLName,
+        contactPerson,
+        {$warehouseSelect}
+      FROM customer
+      WHERE status = 'active'
+      ORDER BY customerFName, customerLName, contactPerson
     ");
 
     $stmt->execute();
