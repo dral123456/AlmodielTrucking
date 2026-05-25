@@ -13,6 +13,10 @@ foreach ($trucks as $truck) {
 }
 ?>
 
+<script>
+  window.bookingTruckCrew = <?php echo json_encode($truckCrewMap); ?>;
+</script>
+
 <div class="row justify-content-center booking-page">
   <div class="col-12 col-xxl-10">
     <div class="card">
@@ -51,6 +55,7 @@ foreach ($trucks as $truck) {
             <div class="progress-bar" id="bookingStepProgress" role="progressbar" style="width: 0%"></div>
           </div>
 
+          <!-- ===== STEP 0: BOOKING DETAILS ===== -->
           <div class="booking-step active" data-step="0">
             <h6 class="text-uppercase text-muted mb-3">
               <i class="ri-clipboard-line me-1"></i> Booking Details
@@ -74,9 +79,9 @@ foreach ($trucks as $truck) {
                       data-city="<?php echo htmlspecialchars($customer["city"] ?? ""); ?>"
                       data-barangay="<?php echo htmlspecialchars($customer["barangay"] ?? ""); ?>"
                       data-street="<?php echo htmlspecialchars($customer["street"] ?? ""); ?>"
-                      data-house="<?php echo htmlspecialchars($customer["houseNumber"] ?? ""); ?>"
-                      data-latitude="<?php echo htmlspecialchars($customer["warehouseLatitude"] ?? ""); ?>"
-                      data-longitude="<?php echo htmlspecialchars($customer["warehouseLongitude"] ?? ""); ?>"
+                      data-latitude="<?php echo htmlspecialchars($customer["latitude"] ?? ""); ?>"
+                      data-longitude="<?php echo htmlspecialchars($customer["longitude"] ?? ""); ?>"
+                      data-location-id="<?php echo htmlspecialchars($customer["locationID"] ?? ""); ?>"
                     >
                       <?php echo htmlspecialchars($customerName); ?>
                     </option>
@@ -87,21 +92,6 @@ foreach ($trucks as $truck) {
                 <label class="form-label">Trip ID</label>
                 <div class="form-control bg-light text-muted" id="bookingTripDisplay">
                   Generated on save
-                </div>
-              </div>
-              <div class="col-12 col-md-6 col-lg-3 mb-3">
-                <label class="form-label">Price <span class="text-danger">*</span></label>
-                <div class="form-icon">
-                  <i class="ri-money-dollar-circle-line text-muted"></i>
-                  <input type="number" class="form-control form-control-icon" id="bookingPrice" min="0" step="0.01" placeholder="0.00">
-                </div>
-                <div class="form-text" id="bookingTariffHint">Select company, truck, and destination to use tariff pricing.</div>
-              </div>
-              <div class="col-12 col-md-6 col-lg-3 mb-3">
-                <label class="form-label">Fuel Pump Price</label>
-                <div class="form-icon">
-                  <i class="ri-gas-station-line text-muted"></i>
-                  <input type="number" class="form-control form-control-icon" id="bookingFuelPrice" min="0" step="0.01" placeholder="60.00">
                 </div>
               </div>
               <div class="col-12 col-md-6 mb-3">
@@ -169,6 +159,7 @@ foreach ($trucks as $truck) {
             </div>
           </div>
 
+          <!-- ===== STEP 1: CARGO ===== -->
           <div class="booking-step" data-step="1">
             <h6 class="text-uppercase text-muted mb-3">
               <i class="ri-box-3-line me-1"></i> Cargo Details
@@ -214,9 +205,14 @@ foreach ($trucks as $truck) {
             </div>
           </div>
 
+          <!-- ===== STEP 2: LOCATIONS ===== -->
           <div class="booking-step" data-step="2">
             <div class="row g-4">
+
+              <!-- Left column: address fields -->
               <div class="col-12 col-xl-5">
+
+                <!-- Pickup -->
                 <h6 class="text-uppercase text-muted mb-3">
                   <i class="ri-map-pin-2-line me-1"></i> Pickup Location
                 </h6>
@@ -245,6 +241,7 @@ foreach ($trucks as $truck) {
                   <input type="hidden" id="pickupLongitude">
                 </div>
 
+                <!-- Destination -->
                 <h6 class="text-uppercase text-muted mb-3">
                   <i class="ri-flag-line me-1"></i> Destination Location
                 </h6>
@@ -272,10 +269,33 @@ foreach ($trucks as $truck) {
                   <input type="hidden" id="destinationLatitude">
                   <input type="hidden" id="destinationLongitude">
                 </div>
+
+                <h6 class="text-uppercase text-muted mb-3">
+                  <i class="ri-money-dollar-circle-line me-1"></i> Pricing
+                </h6>
+                <div class="row">
+                  <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Fuel Pump Price</label>
+                    <div class="form-icon">
+                      <i class="ri-gas-station-line text-muted"></i>
+                      <input type="number" class="form-control form-control-icon" id="bookingFuelPrice" min="0" step="0.01" placeholder="60.00">
+                    </div>
+                  </div>
+                  <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Price <span class="text-danger">*</span></label>
+                    <div class="form-icon">
+                      <i class="ri-money-dollar-circle-line text-muted"></i>
+                      <input type="number" class="form-control form-control-icon" id="bookingPrice" min="0" step="0.01" placeholder="0.00">
+                    </div>
+                    <div class="form-text" id="bookingTariffHint">Select company, truck, and destination to use tariff pricing.</div>
+                  </div>
+                </div>
               </div>
 
+              <!-- Right column: map -->
               <div class="col-12 col-xl-7">
                 <div class="booking-map-panel">
+
                   <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
                     <div>
                       <h6 class="text-uppercase text-muted mb-1">
@@ -295,6 +315,26 @@ foreach ($trucks as $truck) {
                     </div>
                   </div>
 
+                  <!-- Pickup search with suggestions -->
+                  <div class="booking-map-search-wrap mb-2">
+                    <div class="input-group">
+                      <span class="input-group-text"><i class="ri-map-pin-2-line text-primary"></i></span>
+                      <input type="text" class="form-control" id="pickupMapSearch" placeholder="Search pickup location…">
+                      <button type="button" class="btn btn-outline-primary" id="pickupMapSearchBtn">Search</button>
+                    </div>
+                    <div id="pickupMapSuggestions" class="location-suggestions-box"></div>
+                  </div>
+
+                  <!-- Destination search with suggestions -->
+                  <div class="booking-map-search-wrap mb-3">
+                    <div class="input-group">
+                      <span class="input-group-text"><i class="ri-flag-line text-danger"></i></span>
+                      <input type="text" class="form-control" id="destinationMapSearch" placeholder="Search destination location…">
+                      <button type="button" class="btn btn-outline-danger" id="destinationMapSearchBtn">Search</button>
+                    </div>
+                    <div id="destinationMapSuggestions" class="location-suggestions-box"></div>
+                  </div>
+
                   <div id="bookingMap"></div>
 
                   <div class="row mt-3">
@@ -311,11 +351,14 @@ foreach ($trucks as $truck) {
                       </div>
                     </div>
                   </div>
+
                 </div>
               </div>
+
             </div>
           </div>
 
+          <!-- ===== STEP 3: REVIEW ===== -->
           <div class="booking-step" data-step="3">
             <h6 class="text-uppercase text-muted mb-3">
               <i class="ri-check-double-line me-1"></i> Review Booking
@@ -384,6 +427,7 @@ foreach ($trucks as $truck) {
               </button>
             </div>
           </div>
+
         </div>
       </div>
     </div>
@@ -398,17 +442,14 @@ foreach ($trucks as $truck) {
   .booking-step {
     display: none;
   }
-
   .booking-step.active {
     display: block;
   }
-
   .booking-step-nav {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 0.75rem;
   }
-
   .booking-step-pill {
     border: 1px solid var(--bs-border-color);
     border-radius: 0.5rem;
@@ -420,7 +461,6 @@ foreach ($trucks as $truck) {
     color: var(--bs-body-color);
     text-align: left;
   }
-
   .booking-step-pill span {
     width: 32px;
     height: 32px;
@@ -433,19 +473,16 @@ foreach ($trucks as $truck) {
     flex-shrink: 0;
     font-weight: 700;
   }
-
   .booking-step-pill.active {
     border-color: var(--bs-primary);
     background: var(--bs-primary-bg-subtle);
     color: var(--bs-primary);
   }
-
   .booking-step-pill.active span,
   .booking-step-pill.complete span {
     background: var(--bs-primary);
     color: #fff;
   }
-
   .booking-step-pill.complete {
     border-color: var(--bs-primary);
   }
@@ -469,12 +506,10 @@ foreach ($trucks as $truck) {
     border-radius: 0.5rem;
     overflow: hidden;
   }
-
   .booking-map-panel {
     position: sticky;
     top: 90px;
   }
-
   .booking-coordinates,
   .booking-review-box {
     border: 1px solid var(--bs-border-color);
@@ -483,7 +518,6 @@ foreach ($trucks as $truck) {
     min-height: 64px;
     background: var(--bs-body-bg);
   }
-
   .booking-review-box span {
     display: block;
     color: var(--bs-secondary-color);
@@ -491,72 +525,72 @@ foreach ($trucks as $truck) {
     margin-bottom: 0.25rem;
   }
 
+  /* ── Location search suggestions ── */
+  .booking-map-search-wrap {
+    position: relative;
+  }
+  .location-suggestions-box {
+    background-color: #fff;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 1050;
+    border: 1px solid var(--bs-border-color);
+    border-top: none;
+    border-radius: 0 0 0.375rem 0.375rem;
+    max-height: 220px;
+    overflow-y: auto;
+    display: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  [data-bs-theme="dark"] .location-suggestions-box {
+    background-color: #2b2c40;
+  }
+
+  .location-suggestion-item {
+    background-color: inherit;
+    background: var(--bs-body-bg); /* add this */
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    font-size: 0.875rem;
+    border-bottom: 1px solid var(--bs-border-color);
+  }
+  .location-suggestion-item:last-child {
+    border-bottom: none;
+  }
+  .location-suggestion-item:hover {
+    background: var(--bs-primary-bg-subtle);
+    color: var(--bs-primary);
+  }
+
   @media (max-width: 1199.98px) {
-    .booking-map-panel {
-      position: static;
-    }
-
-    #bookingMap {
-      min-height: 460px;
-    }
+    .booking-map-panel { position: static; }
+    #bookingMap { min-height: 460px; }
   }
-
   @media (max-width: 767.98px) {
-    .booking-step-nav {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
+    .booking-step-nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
-
   @media (max-width: 575.98px) {
-    .booking-page .card-header {
-      align-items: flex-start !important;
-    }
-
-    .booking-title {
-      width: 100%;
-      min-width: 0;
-    }
-
-    .booking-title h5 {
-      font-size: 1rem;
-      line-height: 1.25;
-      overflow-wrap: anywhere;
-    }
-
-    .booking-title p {
-      max-width: 100%;
-      line-height: 1.35;
-    }
-
-    .booking-badge {
-      font-size: 0.75rem !important;
-      white-space: normal;
-      line-height: 1.25;
-    }
-
-    .booking-step-nav {
-      grid-template-columns: 1fr;
-    }
-
-    #bookingMap {
-      min-height: 340px;
-    }
-
+    .booking-page .card-header { align-items: flex-start !important; }
+    .booking-title { width: 100%; min-width: 0; }
+    .booking-title h5 { font-size: 1rem; line-height: 1.25; overflow-wrap: anywhere; }
+    .booking-title p { max-width: 100%; line-height: 1.35; }
+    .booking-badge { font-size: 0.75rem !important; white-space: normal; line-height: 1.25; }
+    .booking-step-nav { grid-template-columns: 1fr; }
+    #bookingMap { min-height: 340px; }
     .booking-map-panel .btn-group {
       display: grid;
       grid-template-columns: 1fr 1fr;
       width: 100%;
     }
-
     .booking-map-panel .btn-group .btn {
       width: 100%;
       padding-left: 0.5rem;
       padding-right: 0.5rem;
     }
-
     .booking-coordinates,
-    .booking-review-box {
-      padding: 0.65rem 0.75rem;
-    }
+    .booking-review-box { padding: 0.65rem 0.75rem; }
   }
 </style>

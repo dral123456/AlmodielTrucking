@@ -112,29 +112,31 @@
                   left:50%;
                   transform:translateX(-50%);
                   z-index:1000;
-                  display:flex;
-                  gap:6px;
                   width:70%;
                   min-width:220px;
                 ">
-                  <input type="text" id="mapSearchInput" placeholder="Search location…" style="
-                    flex:1;
-                    padding:6px 12px;
-                    border-radius:6px;
-                    border:1px solid #ccc;
-                    font-size:13px;
-                    box-shadow:0 2px 6px rgba(0,0,0,0.15);
-                  ">
-                  <button type="button" id="mapSearchBtn" style="
-                    padding:6px 12px;
-                    border-radius:6px;
-                    border:none;
-                    background:#696cff;
-                    color:#fff;
-                    font-size:13px;
-                    cursor:pointer;
-                    box-shadow:0 2px 6px rgba(0,0,0,0.15);
-                  "><i class="ri-search-line"></i></button>
+                  <div style="display:flex; gap:6px;">
+                    <input type="text" id="mapSearchInput" placeholder="Search location…" style="
+                      flex:1;
+                      padding:6px 12px;
+                      border-radius:6px;
+                      border:1px solid #ccc;
+                      font-size:13px;
+                      box-shadow:0 2px 6px rgba(0,0,0,0.15);
+                    ">
+                    <button type="button" id="mapSearchBtn" style="
+                      padding:6px 12px;
+                      border-radius:6px;
+                      border:none;
+                      background:#696cff;
+                      color:#fff;
+                      font-size:13px;
+                      cursor:pointer;
+                      box-shadow:0 2px 6px rgba(0,0,0,0.15);
+                    "><i class="ri-search-line"></i></button>
+                  </div>
+                  <!-- Suggestions dropdown -->
+                  <div id="regLocationSuggestions" class="reg-suggestions-box"></div>
                 </div>
                 <div id="regMap" style="height:320px; width:100%;"></div>
               </div>
@@ -180,6 +182,16 @@
                   <input type="text" class="form-control form-control-icon" id="houseIndiv" placeholder="House No.">
                 </div>
               </div>
+              <div class="col-12 mb-3">
+                <label class="form-label">Description / Landmark</label>
+                <div class="desc-field-wrap">
+                  <i class="ri-sticky-note-line text-muted desc-icon"></i>
+                  <textarea class="form-control desc-textarea" id="locationDescription" rows="2"
+                    placeholder="e.g. Near the church, blue gate, beside 7-Eleven…"
+                    style="resize:none;"></textarea>
+                </div>
+                <div class="form-text">Optional — helps identify your location more precisely.</div>
+              </div>
             </div>
 
             <div class="d-flex justify-content-between gap-2 mt-3">
@@ -214,9 +226,13 @@
                 </div>
                 <div class="col-12 col-md-6 mb-3">
                   <label class="form-label">Confirm Password <span class="text-danger">*</span></label>
-                  <div class="form-icon">
+                  <div class="form-icon position-relative">
                     <i class="ri-lock-2-line text-muted"></i>
-                    <input type="password" class="form-control form-control-icon" id="custPasswordConfirm" placeholder="Re-enter password" autocomplete="new-password">
+                    <input type="password" class="form-control form-control-icon pe-5" id="custPasswordConfirm" placeholder="Re-enter password" autocomplete="new-password">
+                    <button type="button" class="btn btn-link p-0 text-muted position-absolute" id="toggleCustPasswordConfirm"
+                            style="right:.75rem; top:50%; transform:translateY(-50%); text-decoration:none;">
+                      <i class="ri-eye-line"></i>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -296,10 +312,89 @@
   .reg-step-line.done {
     background: #696cff;
   }
+
+  .reg-suggestions-box {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 36px;
+    background-color: var(--bs-body-bg, #fff);
+    border: 1px solid var(--bs-border-color, #ccc);
+    border-top: none;
+    border-radius: 0 0 6px 6px;
+    max-height: 200px;
+    overflow-y: auto;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1001;
+  }
+  .reg-suggestion-item {
+    padding: 8px 12px;
+    font-size: 13px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--bs-border-color, #eee);
+    background-color: var(--bs-body-bg, #fff);
+    color: var(--bs-body-color, #333);
+  }
+  .reg-suggestion-item:last-child {
+    border-bottom: none;
+  }
+  .reg-suggestion-item:hover {
+    background-color: var(--bs-primary-bg-subtle);
+    color: var(--bs-primary);
+  }
+
+  .reg-suggestions-box,
+  .reg-suggestion-item {
+    --bs-body-bg: #fff;
+    --bs-body-color: #212529;
+    --bs-border-color: #dee2e6;
+  }
+
+  [data-bs-theme="dark"] .reg-suggestions-box,
+  [data-bs-theme="dark"] .reg-suggestion-item {
+    --bs-body-bg: #2b2c40;
+    --bs-body-color: #a8aaae;
+    --bs-border-color: #434968;
+  }
+
   .card {
     overflow-x: hidden;
   }
   .card-header {
     border-bottom: none;
+  }
+
+  /* Description / Landmark field */
+  .desc-field-wrap {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.375rem;
+    background: var(--bs-body-bg);
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  }
+  .desc-field-wrap:focus-within {
+    border-color: #696cff;
+    box-shadow: 0 0 0 0.2rem rgba(105, 108, 255, 0.25);
+  }
+  .desc-icon {
+    padding: 0.5rem 0.65rem 0;
+    font-size: 1rem;
+    pointer-events: none;
+    flex-shrink: 0;
+  }
+  .desc-textarea {
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    padding-left: 0;
+    border-radius: 0 0.375rem 0.375rem 0;
+    flex: 1;
+  }
+  .desc-textarea:focus {
+    outline: none;
+    box-shadow: none !important;
   }
 </style>

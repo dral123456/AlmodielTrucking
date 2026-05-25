@@ -80,6 +80,131 @@ $(document).ready(function () {
     }
   });
 
+    // ===== WAREHOUSE LOCATION SUGGESTIONS =====
+
+  let warehouseSuggestTimer = null;
+
+  $(document).on('input', '#warehouseMapSearch', function () {
+
+    clearTimeout(warehouseSuggestTimer);
+
+    const query = $(this).val().trim();
+
+    if (query.length < 2) {
+      $('#warehouseLocationSuggestions').hide().empty();
+      return;
+    }
+
+    warehouseSuggestTimer = setTimeout(function () {
+      fetchWarehouseSuggestions(query);
+    }, 300);
+
+  });
+
+  function fetchWarehouseSuggestions(query) {
+
+    $.ajax({
+      url: '/almodieltrucking/ajax/location_search.ajax.php',
+      method: 'GET',
+      data: { q: query },
+      dataType: 'json',
+
+      success: function (results) {
+
+        const $box = $('#warehouseLocationSuggestions');
+
+        $box.empty();
+
+        if (!results || results.length === 0) {
+          $box.hide();
+          return;
+        }
+
+        results.forEach(function (loc) {
+
+          const $item = $('<div class="warehouse-suggestion-item"></div>')
+            .text(loc.label);
+
+          $item.on('click', function () {
+
+            // Fill search field
+            $('#warehouseMapSearch').val(loc.label);
+
+            // Hide suggestions
+            $box.hide().empty();
+
+            // Place marker on map
+            if (loc.lat && loc.lng) {
+
+              initWarehouseMap();
+
+              const latlng = {
+                lat: parseFloat(loc.lat),
+                lng: parseFloat(loc.lng)
+              };
+
+              setWarehousePin(latlng);
+
+              warehouseMap.setView(latlng, 16);
+            }
+
+            // Fill fields
+            $('#provinceCorp')
+              .val(loc.province || '')
+              .removeClass('is-invalid');
+
+            $('#cityCorp')
+              .val(loc.city || '')
+              .removeClass('is-invalid');
+
+            $('#barangayCorp')
+              .val(loc.barangay || '')
+              .removeClass('is-invalid');
+
+            $('#streetCorp')
+              .val(loc.street || '');
+
+            $('#houseCorp')
+              .val(loc.houseNumber || '');
+
+            $('#warehouseLatitude')
+              .val(loc.lat || '');
+
+            $('#warehouseLongitude')
+              .val(loc.lng || '');
+
+            // Update coordinate text
+            if (loc.lat && loc.lng) {
+              $('#customerCoordinateText').text(
+                parseFloat(loc.lat).toFixed(8) +
+                ', ' +
+                parseFloat(loc.lng).toFixed(8)
+              );
+            }
+
+          });
+
+          $box.append($item);
+
+        });
+
+        $box.show();
+
+      }
+
+    });
+
+  }
+
+  // Hide suggestions when clicking outside
+  $(document).on('click', function (e) {
+
+    if (!$(e.target).closest('.warehouse-map-search').length) {
+      $('#warehouseLocationSuggestions').hide().empty();
+    }
+
+  });
+
   // Register
   $(document).on('click', '#btnRegisterCustomer', function () {
     const missing = validateInputs();
