@@ -746,7 +746,6 @@ $(document).ready(function () {
     }
 
     if (step === 2) {
-<<<<<<< HEAD
       checkMapPin('pickup', 'Pickup Map Pin', missing);
       if (hasValidNegrosPin('pickup')) {
         $('#pickupProvince, #pickupCity, #pickupBarangay, #pickupStreet').removeClass('is-invalid');
@@ -757,37 +756,18 @@ $(document).ready(function () {
         check('pickupStreet', 'Pickup Street');
       }
 
-=======
-      check('pickupLatitude',    'Pickup Map Pin');
-      check('pickupLongitude',   'Pickup Map Pin');
-      if (hasPinnedLocation('pickup')) {
-        $('#pickupProvince, #pickupCity, #pickupBarangay, #pickupStreet').removeClass('is-invalid');
-      } else {
-        check('pickupProvince',  'Pickup Province');
-        check('pickupCity',      'Pickup City');
-        check('pickupBarangay',  'Pickup Barangay');
-        check('pickupStreet',    'Pickup Street');
-      }
->>>>>>> booking
       check('destinationProvince', 'Destination Province');
       check('destinationCity',     'Destination City');
       check('destinationBarangay', 'Destination Barangay');
-<<<<<<< HEAD
       check('destinationStreet', 'Destination Street');
       checkMapPin('destination', 'Destination Map Pin', missing);
-=======
-      check('destinationStreet',   'Destination Street');
-      check('destinationLatitude', 'Destination Map Pin');
-      check('destinationLongitude', 'Destination Map Pin');
       check('bookingPrice', selectedCustomerIsCompany() ? 'Company tariff price' : 'Price');
       checkPriceValue(missing);
->>>>>>> booking
     }
 
     return [...new Set(missing)];
   }
 
-<<<<<<< HEAD
   function checkMapPin(prefix, label, missing) {
     const $lat = $('#' + prefix + 'Latitude');
     const $lng = $('#' + prefix + 'Longitude');
@@ -815,11 +795,6 @@ $(document).ready(function () {
       lat <= 11.2 &&
       lng >= 122 &&
       lng <= 123.6;
-=======
-  function hasPinnedLocation(prefix) {
-    const lat = Number($('#' + prefix + 'Latitude').val());
-    const lng = Number($('#' + prefix + 'Longitude').val());
-    return Number.isFinite(lat) && Number.isFinite(lng);
   }
 
   function checkFinalPrice(missing) {
@@ -847,7 +822,6 @@ $(document).ready(function () {
     if ($('#bookingPrice').val() !== '') {
       $('#bookingPrice').removeClass('is-invalid');
     }
->>>>>>> booking
   }
 
   function updateReview() {
