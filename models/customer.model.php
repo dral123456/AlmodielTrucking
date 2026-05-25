@@ -125,7 +125,7 @@ class ModelCustomer {
         return "existing";
       }
 
-      return "error";
+      return $e->getMessage();
     }
   }
 
