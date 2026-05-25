@@ -746,12 +746,16 @@ $(document).ready(function () {
     }
 
     if (step === 2) {
-      check('pickupProvince',    'Pickup Province');
-      check('pickupCity',        'Pickup City');
-      check('pickupBarangay',    'Pickup Barangay');
-      check('pickupStreet',      'Pickup Street');
       check('pickupLatitude',    'Pickup Map Pin');
       check('pickupLongitude',   'Pickup Map Pin');
+      if (hasPinnedLocation('pickup')) {
+        $('#pickupProvince, #pickupCity, #pickupBarangay, #pickupStreet').removeClass('is-invalid');
+      } else {
+        check('pickupProvince',  'Pickup Province');
+        check('pickupCity',      'Pickup City');
+        check('pickupBarangay',  'Pickup Barangay');
+        check('pickupStreet',    'Pickup Street');
+      }
       check('destinationProvince', 'Destination Province');
       check('destinationCity',     'Destination City');
       check('destinationBarangay', 'Destination Barangay');
@@ -763,6 +767,12 @@ $(document).ready(function () {
     }
 
     return [...new Set(missing)];
+  }
+
+  function hasPinnedLocation(prefix) {
+    const lat = Number($('#' + prefix + 'Latitude').val());
+    const lng = Number($('#' + prefix + 'Longitude').val());
+    return Number.isFinite(lat) && Number.isFinite(lng);
   }
 
   function checkFinalPrice(missing) {
