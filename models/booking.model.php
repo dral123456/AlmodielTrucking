@@ -18,11 +18,6 @@ class ModelBooking {
         customerFName,
         customerLName,
         contactPerson,
-        province,
-        city,
-        barangay,
-        street,
-        houseNumber,
         {$warehouseSelect}
       FROM customer
       WHERE status = 'active'
