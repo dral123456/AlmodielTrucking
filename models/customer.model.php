@@ -5,30 +5,42 @@ class ModelCustomer {
 
   static public function mdlCompanyList() {
     $pdo = (new Connection)->connect();
-    $warehouseSelect = self::columnExists($pdo, "customer", "warehouseLatitude") &&
-      self::columnExists($pdo, "customer", "warehouseLongitude")
-      ? "warehouseLatitude, warehouseLongitude"
-      : "NULL AS warehouseLatitude, NULL AS warehouseLongitude";
+    $hasLocationID = self::columnExists($pdo, "customer", "locationID") && self::tableExists($pdo, "location");
+    $hasProvince = self::columnExists($pdo, "customer", "province");
+    $hasCity = self::columnExists($pdo, "customer", "city");
+    $hasBarangay = self::columnExists($pdo, "customer", "barangay");
+    $hasStreet = self::columnExists($pdo, "customer", "street");
+    $hasHouseNumber = self::columnExists($pdo, "customer", "houseNumber");
+    $hasWarehouseLatitude = self::columnExists($pdo, "customer", "warehouseLatitude");
+    $hasWarehouseLongitude = self::columnExists($pdo, "customer", "warehouseLongitude");
+
+    $addressSelect = array(
+      $hasLocationID ? "c.locationID" : "NULL AS locationID",
+      $hasLocationID ? "COALESCE(l.province, " . ($hasProvince ? "c.province" : "NULL") . ") AS province" : ($hasProvince ? "c.province" : "NULL AS province"),
+      $hasLocationID ? "COALESCE(l.city, " . ($hasCity ? "c.city" : "NULL") . ") AS city" : ($hasCity ? "c.city" : "NULL AS city"),
+      $hasLocationID ? "COALESCE(l.barangay, " . ($hasBarangay ? "c.barangay" : "NULL") . ") AS barangay" : ($hasBarangay ? "c.barangay" : "NULL AS barangay"),
+      $hasLocationID ? "COALESCE(l.street, " . ($hasStreet ? "c.street" : "NULL") . ") AS street" : ($hasStreet ? "c.street" : "NULL AS street"),
+      $hasHouseNumber ? "c.houseNumber" : "NULL AS houseNumber",
+      $hasLocationID ? "l.description" : "NULL AS description",
+      $hasLocationID ? "l.latitude AS warehouseLatitude" : ($hasWarehouseLatitude ? "c.warehouseLatitude" : "NULL AS warehouseLatitude"),
+      $hasLocationID ? "l.longitude AS warehouseLongitude" : ($hasWarehouseLongitude ? "c.warehouseLongitude" : "NULL AS warehouseLongitude")
+    );
 
     $stmt = $pdo->prepare("
       SELECT
-        id,
-        customerFName,
-        contactPerson,
-        email,
-        phoneNumber,
-        province,
-        city,
-        barangay,
-        street,
-        houseNumber,
-        companyDocument,
-        dateRegistered,
-        status,
-        {$warehouseSelect}
-      FROM customer
-      WHERE customerType = 'company'
-      ORDER BY customerFName, contactPerson
+        c.id,
+        c.customerFName,
+        c.contactPerson,
+        c.email,
+        c.phoneNumber,
+        " . implode(",\n        ", $addressSelect) . ",
+        c.companyDocument,
+        c.dateRegistered,
+        c.status
+      FROM customer c
+      " . ($hasLocationID ? "LEFT JOIN location l ON l.locationID = c.locationID" : "") . "
+      WHERE c.customerType = 'company'
+      ORDER BY c.customerFName, c.contactPerson
     ");
 
     $stmt->execute();
@@ -173,6 +185,20 @@ class ModelCustomer {
 
     $stmt->bindParam(":tableName", $tableName, PDO::PARAM_STR);
     $stmt->bindParam(":columnName", $columnName, PDO::PARAM_STR);
+    $stmt->execute();
+
+    return (int) $stmt->fetchColumn() > 0;
+  }
+
+  static private function tableExists($pdo, $tableName) {
+    $stmt = $pdo->prepare("
+      SELECT COUNT(*)
+      FROM INFORMATION_SCHEMA.TABLES
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = :tableName
+    ");
+
+    $stmt->bindParam(":tableName", $tableName, PDO::PARAM_STR);
     $stmt->execute();
 
     return (int) $stmt->fetchColumn() > 0;

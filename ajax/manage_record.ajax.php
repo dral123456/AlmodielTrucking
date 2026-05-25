@@ -56,15 +56,40 @@ class ManageRecordAjax {
         "contactPerson = :contactPerson",
         "email = :email",
         "phoneNumber = :phoneNumber",
-        "province = :province",
-        "city = :city",
-        "barangay = :barangay",
-        "street = :street",
-        "houseNumber = :houseNumber",
         "status = :status"
       );
+      $hasProvince = $this->columnExists($pdo, "customer", "province");
+      $hasCity = $this->columnExists($pdo, "customer", "city");
+      $hasBarangay = $this->columnExists($pdo, "customer", "barangay");
+      $hasStreet = $this->columnExists($pdo, "customer", "street");
+      $hasHouseNumber = $this->columnExists($pdo, "customer", "houseNumber");
+      $hasLocationID = $this->columnExists($pdo, "customer", "locationID");
       $hasWarehouseColumns = $this->columnExists($pdo, "customer", "warehouseLatitude") &&
         $this->columnExists($pdo, "customer", "warehouseLongitude");
+
+      if ($hasProvince) {
+        $setFields[] = "province = :province";
+      }
+      if ($hasCity) {
+        $setFields[] = "city = :city";
+      }
+      if ($hasBarangay) {
+        $setFields[] = "barangay = :barangay";
+      }
+      if ($hasStreet) {
+        $setFields[] = "street = :street";
+      }
+      if ($hasHouseNumber) {
+        $setFields[] = "houseNumber = :houseNumber";
+      }
+
+      $locationID = null;
+      if ($hasLocationID && $this->tableExists($pdo, "location")) {
+        $locationID = $this->saveCompanyLocation($pdo, $id);
+        if ($locationID !== null) {
+          $setFields[] = "locationID = :locationID";
+        }
+      }
 
       if ($hasWarehouseColumns) {
         $setFields[] = "warehouseLatitude = :warehouseLatitude";
@@ -80,12 +105,25 @@ class ManageRecordAjax {
       $stmt->bindValue(":contactPerson", $_POST["contactPerson"] ?? "", PDO::PARAM_STR);
       $stmt->bindValue(":email", $_POST["email"] ?? "", PDO::PARAM_STR);
       $stmt->bindValue(":phoneNumber", $_POST["phoneNumber"] ?? "", PDO::PARAM_STR);
-      $stmt->bindValue(":province", $_POST["province"] ?? "", PDO::PARAM_STR);
-      $stmt->bindValue(":city", $_POST["city"] ?? "", PDO::PARAM_STR);
-      $stmt->bindValue(":barangay", $_POST["barangay"] ?? "", PDO::PARAM_STR);
-      $stmt->bindValue(":street", $_POST["street"] ?? "", PDO::PARAM_STR);
-      $stmt->bindValue(":houseNumber", $_POST["houseNumber"] ?? "", PDO::PARAM_STR);
       $stmt->bindValue(":status", $_POST["status"] ?? "active", PDO::PARAM_STR);
+      if ($hasProvince) {
+        $stmt->bindValue(":province", $_POST["province"] ?? "", PDO::PARAM_STR);
+      }
+      if ($hasCity) {
+        $stmt->bindValue(":city", $_POST["city"] ?? "", PDO::PARAM_STR);
+      }
+      if ($hasBarangay) {
+        $stmt->bindValue(":barangay", $_POST["barangay"] ?? "", PDO::PARAM_STR);
+      }
+      if ($hasStreet) {
+        $stmt->bindValue(":street", $_POST["street"] ?? "", PDO::PARAM_STR);
+      }
+      if ($hasHouseNumber) {
+        $stmt->bindValue(":houseNumber", $_POST["houseNumber"] ?? "", PDO::PARAM_STR);
+      }
+      if ($locationID !== null) {
+        $stmt->bindValue(":locationID", $locationID, PDO::PARAM_INT);
+      }
       if ($hasWarehouseColumns) {
         $warehouseLatitude = $_POST["warehouseLatitude"] ?? "";
         $warehouseLongitude = $_POST["warehouseLongitude"] ?? "";
@@ -133,6 +171,81 @@ class ManageRecordAjax {
     $stmt->bindParam(":id", $id, PDO::PARAM_INT);
     $stmt->execute();
     return "success";
+  }
+
+  private function saveCompanyLocation($pdo, $companyID) {
+    $latitude = trim($_POST["warehouseLatitude"] ?? "");
+    $longitude = trim($_POST["warehouseLongitude"] ?? "");
+
+    if ($latitude === "" || $longitude === "") {
+      return null;
+    }
+
+    $province = trim($_POST["province"] ?? "");
+    $city = trim($_POST["city"] ?? "");
+    $barangay = trim($_POST["barangay"] ?? "");
+    $street = trim($_POST["street"] ?? "");
+    $houseNumber = trim($_POST["houseNumber"] ?? "");
+    $description = implode(", ", array_filter(array($houseNumber, $street, $barangay, $city, $province)));
+    $currentLocationID = $this->currentCompanyLocationID($pdo, $companyID);
+
+    if ($currentLocationID !== null && $this->locationUsageCount($pdo, $currentLocationID) <= 1) {
+      $stmt = $pdo->prepare("
+        UPDATE location
+        SET province = :province,
+            city = :city,
+            barangay = :barangay,
+            street = :street,
+            description = :description,
+            latitude = :latitude,
+            longitude = :longitude
+        WHERE locationID = :locationID
+      ");
+      $stmt->bindValue(":locationID", $currentLocationID, PDO::PARAM_INT);
+    } else {
+      $stmt = $pdo->prepare("
+        INSERT INTO location (province, city, barangay, street, description, latitude, longitude)
+        VALUES (:province, :city, :barangay, :street, :description, :latitude, :longitude)
+      ");
+    }
+
+    $stmt->bindValue(":province", $province, PDO::PARAM_STR);
+    $stmt->bindValue(":city", $city, PDO::PARAM_STR);
+    $stmt->bindValue(":barangay", $barangay, PDO::PARAM_STR);
+    $stmt->bindValue(":street", $street, PDO::PARAM_STR);
+    $stmt->bindValue(":description", $description, PDO::PARAM_STR);
+    $stmt->bindValue(":latitude", $latitude);
+    $stmt->bindValue(":longitude", $longitude);
+    $stmt->execute();
+
+    return $currentLocationID !== null && $this->locationUsageCount($pdo, $currentLocationID) <= 1
+      ? $currentLocationID
+      : (int) $pdo->lastInsertId();
+  }
+
+  private function currentCompanyLocationID($pdo, $companyID) {
+    if (!$this->columnExists($pdo, "customer", "locationID")) {
+      return null;
+    }
+
+    $stmt = $pdo->prepare("SELECT locationID FROM customer WHERE id = :id AND customerType = 'company'");
+    $stmt->bindParam(":id", $companyID, PDO::PARAM_INT);
+    $stmt->execute();
+
+    $locationID = $stmt->fetchColumn();
+    return $locationID ? (int) $locationID : null;
+  }
+
+  private function locationUsageCount($pdo, $locationID) {
+    if (!$this->columnExists($pdo, "customer", "locationID")) {
+      return 0;
+    }
+
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM customer WHERE locationID = :locationID");
+    $stmt->bindParam(":locationID", $locationID, PDO::PARAM_INT);
+    $stmt->execute();
+
+    return (int) $stmt->fetchColumn();
   }
 
   private function reassignCrew($pdo, $entity, $id) {
@@ -211,6 +324,20 @@ class ManageRecordAjax {
 
     $stmt->bindParam(":tableName", $tableName, PDO::PARAM_STR);
     $stmt->bindParam(":columnName", $columnName, PDO::PARAM_STR);
+    $stmt->execute();
+
+    return (int) $stmt->fetchColumn() > 0;
+  }
+
+  private function tableExists($pdo, $tableName) {
+    $stmt = $pdo->prepare("
+      SELECT COUNT(*)
+      FROM INFORMATION_SCHEMA.TABLES
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = :tableName
+    ");
+
+    $stmt->bindParam(":tableName", $tableName, PDO::PARAM_STR);
     $stmt->execute();
 
     return (int) $stmt->fetchColumn() > 0;
