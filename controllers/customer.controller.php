@@ -23,6 +23,10 @@ class ControllerCustomer{
         
         $_SESSION["customerType"] = $answer["customerType"];
         $_SESSION["role"] = "customer" . "-" . $_SESSION["customerType"];
+        $_SESSION["fname"] = $answer["customerFName"];
+        $_SESSION["MI"] = $answer["customerMI"];
+        $_SESSION["lname"] = $answer["customerLName"];
+        $_SESSION["fullname"] = $answer["customerFName"] . " " . $answer["customerMI"] . " " . $answer["customerLName"];
         
         // $empid = $_SESSION["empid"];
         //$answer = (new ModelUserRights)->mdlAddLogin($empid);

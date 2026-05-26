@@ -579,11 +579,11 @@ class ModelBooking {
       $pdo->beginTransaction();
 
       // ✅ FIX: ensure arrays exist (prevents undefined index + null location IDs)
-      $pickupData = $data["pickup"] ?? [];
-      $destinationData = $data["destination"] ?? [];
+      $pickupLocationID = $data["pickupLocationID"] ?? 0;
+      $destinationLocationID = $data["destinationLocationID"] ?? 0;
 
-      if (empty($pickupData) || empty($destinationData)) {
-        throw new Exception("Pickup or Destination data is missing.");
+      if (!$pickupLocationID || !$destinationLocationID) {
+          throw new Exception("Missing location IDs");
       }
 
       $pickupLocationID = $data["pickupLocationID"];
@@ -1059,5 +1059,111 @@ class ModelBooking {
     $stmt->execute();
 
     return (int) $stmt->fetchColumn() > 0;
+  }
+
+  static public function mdlCustomerBookingList($customerID) {
+    $pdo = (new Connection)->connect();
+
+    $stmt = $pdo->prepare("
+      SELECT
+        b.bookingID,
+        b.tripID,
+        b.customerID,
+        b.pickupDateTime,
+        b.price,
+        b.status,
+
+        c.customerType,
+        c.customerFName,
+        c.customerLName,
+        c.contactPerson,
+
+        pickup.province AS pickupProvince,
+        pickup.city AS pickupCity,
+        pickup.barangay AS pickupBarangay,
+        pickup.street AS pickupStreet,
+        pickup.description AS pickupDescription,
+        pickup.latitude AS pickupLatitude,
+        pickup.longitude AS pickupLongitude,
+
+        destination.province AS destinationProvince,
+        destination.city AS destinationCity,
+        destination.barangay AS destinationBarangay,
+        destination.street AS destinationStreet,
+        destination.description AS destinationDescription,
+        destination.latitude AS destinationLatitude,
+        destination.longitude AS destinationLongitude
+
+      FROM booking b
+
+      INNER JOIN customer c
+        ON c.id = b.customerID
+
+      INNER JOIN location pickup
+        ON pickup.locationID = b.pickupLocationID
+
+      INNER JOIN location destination
+        ON destination.locationID = b.destinationLocationID
+
+      WHERE b.customerID = :customerID
+
+      ORDER BY b.pickupDateTime ASC,
+              b.tripID ASC,
+              b.bookingID ASC
+    ");
+
+    $stmt->bindParam(":customerID", $customerID, PDO::PARAM_INT);
+
+    $stmt->execute();
+
+    $bookings = array();
+
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+
+      $customerName = trim(
+        $row["customerFName"] . " " . $row["customerLName"]
+      );
+
+      if ($customerName === "") {
+        $customerName = $row["contactPerson"];
+      }
+
+      $bookings[] = array(
+        "bookingID" => (int) $row["bookingID"],
+        "tripID" => (int) $row["tripID"],
+        "customerID" => (int) $row["customerID"],
+
+        "customerName" => $customerName,
+        "customerType" => $row["customerType"],
+
+        "pickupDateTime" => $row["pickupDateTime"],
+        "price" => $row["price"],
+        "status" => $row["status"],
+
+        "pickupAddress" => self::formatAddress(
+          $row["pickupStreet"],
+          $row["pickupBarangay"],
+          $row["pickupCity"],
+          $row["pickupProvince"]
+        ),
+
+        "pickupDescription" => $row["pickupDescription"],
+        "pickupLatitude" => (float) $row["pickupLatitude"],
+        "pickupLongitude" => (float) $row["pickupLongitude"],
+
+        "destinationAddress" => self::formatAddress(
+          $row["destinationStreet"],
+          $row["destinationBarangay"],
+          $row["destinationCity"],
+          $row["destinationProvince"]
+        ),
+
+        "destinationDescription" => $row["destinationDescription"],
+        "destinationLatitude" => (float) $row["destinationLatitude"],
+        "destinationLongitude" => (float) $row["destinationLongitude"]
+      );
+    }
+
+    return $bookings;
   }
 }

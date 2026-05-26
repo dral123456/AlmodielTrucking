@@ -35,6 +35,7 @@ $customerRoutes = [
     'customer-individual/bookings',
     'booking-reg',
     'logout',
+    'bookings',
 ];
 
 return [
