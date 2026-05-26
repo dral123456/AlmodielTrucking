@@ -36,6 +36,11 @@ $(document).ready(function () {
     });
 
     $(document).on('input change', '#bookingFuelPrice', lookupTariffPrice);
+    $(document).on('input change', '#bookingPrice', function () {
+      if (!$(this).data('settingTariffPrice')) {
+        $(this).data('tariffAutofilled', false);
+      }
+    });
 
     $(document).on('change', '#bookingDriver, .booking-assistant', function () {
       syncAssistantOptions();
@@ -94,6 +99,7 @@ $(document).ready(function () {
   $(document).on('click', '#bookingBtnReset', function () {
     if (!IS_CUSTOMER_INDIVIDUAL) {
       $('#bookingCustomer, #bookingPrice, #bookingFuelPrice, #bookingTruck, #bookingDriver').val('');
+      $('#bookingPrice').data('tariffAutofilled', false).data('settingTariffPrice', false);
       $('#bookingAssistantList .booking-assistant-item').slice(2).remove();
       $('.booking-assistant').val('');
     }
@@ -634,6 +640,7 @@ $(document).ready(function () {
     ].filter(Boolean).join(' ');
 
     if (!customerID || !$customer.length || $customer.data('type') !== 'company' || !truckType || !destinationText.trim()) {
+      clearAutofilledTariffPrice();
       $('#bookingTariffHint').text('Select company, truck, and destination to use tariff pricing.');
       return;
     }
@@ -652,13 +659,19 @@ $(document).ready(function () {
       },
       success: function (response) {
         if (!response || response.status !== 'success') {
-          $('#bookingTariffHint').text('No tariff matched. You may enter the booking price manually.');
+          clearAutofilledTariffPrice();
+          $('#bookingTariffHint').text('No matching tariff was found for the selected company, truck, and destination. You may enter the booking price manually.');
           return;
         }
 
         const totalRate = Number(response.totalRate || response.baseRate || 0);
         const fuelSubsidy = Number(response.fuelSubsidy || 0);
-        $('#bookingPrice').val(totalRate.toFixed(2)).removeClass('is-invalid');
+        $('#bookingPrice')
+          .data('settingTariffPrice', true)
+          .val(totalRate.toFixed(2))
+          .removeClass('is-invalid')
+          .data('tariffAutofilled', true)
+          .data('settingTariffPrice', false);
         const fuelBaseMin = Number(response.fuelBaseMin || 0);
         const fuelBaseMax = Number(response.fuelBaseMax || 0);
         const fuelBaseRange = fuelBaseMin > 0 && fuelBaseMax > 0 ? fuelBaseMin + '-' + fuelBaseMax : '';
@@ -674,9 +687,18 @@ $(document).ready(function () {
         );
       },
       error: function () {
+        clearAutofilledTariffPrice();
         $('#bookingTariffHint').text('Tariff lookup failed. You may enter the booking price manually.');
       }
     });
+  }
+
+  function clearAutofilledTariffPrice() {
+    const $price = $('#bookingPrice');
+
+    if ($price.data('tariffAutofilled')) {
+      $price.val('').removeClass('is-invalid').data('tariffAutofilled', false);
+    }
   }
 
   function validateInputs() {
