@@ -19,12 +19,13 @@ $adminRoutes = [
 
 $driverRoutes = [
     'sample',
-    'trips',
+     'driver-trips',
     'logout',
 ];
 
 $assistantRoutes = [
     'sample',
+
     'trips',
     'logout',
 ];
