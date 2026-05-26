@@ -88,11 +88,11 @@ function driverTripMoney($value) {
                       </div>
                       <div class="small">
                         <div><i class="ri-map-pin-2-line text-primary me-1"></i><?php echo driverTripText($booking["pickupAddress"]); ?></div>
-                        <?php if (!empty($booking["pickupDescription"])): ?>
+                        <?php if (!empty($booking["pickupDescription"]) && trim((string) $booking["pickupDescription"]) !== trim((string) $booking["pickupAddress"])): ?>
                           <div class="text-muted ms-4"><?php echo driverTripText($booking["pickupDescription"]); ?></div>
                         <?php endif; ?>
                         <div class="mt-1"><i class="ri-flag-line text-danger me-1"></i><?php echo driverTripText($booking["destinationAddress"]); ?></div>
-                        <?php if (!empty($booking["destinationDescription"])): ?>
+                        <?php if (!empty($booking["destinationDescription"]) && trim((string) $booking["destinationDescription"]) !== trim((string) $booking["destinationAddress"])): ?>
                           <div class="text-muted ms-4"><?php echo driverTripText($booking["destinationDescription"]); ?></div>
                         <?php endif; ?>
                       </div>

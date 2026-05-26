@@ -53,6 +53,19 @@ class ManageRecordAjax {
     if ($entity === "company") {
       $pdo->beginTransaction();
 
+      $province = trim($_POST["province"] ?? "");
+      $city     = trim($_POST["city"] ?? "");
+      $barangay = trim($_POST["barangay"] ?? "");
+      $street   = trim($_POST["street"] ?? "");
+      $lat      = trim($_POST["latitude"] ?? "");
+      $lng      = trim($_POST["longitude"] ?? "");
+
+      $parts = array_filter([$street, $barangay, $city, $province, "Philippines"]);
+      $description = trim($_POST["description"] ?? "");
+      if ($description === "") {
+        $description = implode(", ", $parts);
+      }
+
       // 1. Update customer fields
       $stmt = $pdo->prepare("
         UPDATE customer
@@ -60,6 +73,9 @@ class ManageRecordAjax {
             contactPerson = :contactPerson,
             email         = :email,
             phoneNumber   = :phoneNumber,
+            province      = :province,
+            warehouseLatitude  = :warehouseLatitude,
+            warehouseLongitude = :warehouseLongitude,
             status        = :status
         WHERE id = :id AND customerType = 'company'
       ");
@@ -67,6 +83,9 @@ class ManageRecordAjax {
       $stmt->bindValue(":contactPerson", $_POST["contactPerson"] ?? "", PDO::PARAM_STR);
       $stmt->bindValue(":email",         $_POST["email"]         ?? "", PDO::PARAM_STR);
       $stmt->bindValue(":phoneNumber",   $_POST["phoneNumber"]   ?? "", PDO::PARAM_STR);
+      $stmt->bindValue(":province",      $province, PDO::PARAM_STR);
+      $stmt->bindValue(":warehouseLatitude",  $lat !== "" ? (float) $lat : null);
+      $stmt->bindValue(":warehouseLongitude", $lng !== "" ? (float) $lng : null);
       $stmt->bindValue(":status",        $_POST["status"]        ?? "active", PDO::PARAM_STR);
       $stmt->bindParam(":id", $id, PDO::PARAM_INT);
       $stmt->execute();
@@ -79,9 +98,6 @@ class ManageRecordAjax {
 
       if ($locationID > 0) {
         // 3. Update the existing location row
-        $lat = $_POST["latitude"]  ?? "";
-        $lng = $_POST["longitude"] ?? "";
-
         $locUpdate = $pdo->prepare("
           UPDATE location
           SET province    = :province,
@@ -93,28 +109,17 @@ class ManageRecordAjax {
               longitude   = :longitude
           WHERE locationID = :locationID
         ");
-        $locUpdate->bindValue(":province",    $_POST["province"]    ?? "", PDO::PARAM_STR);
-        $locUpdate->bindValue(":city",        $_POST["city"]        ?? "", PDO::PARAM_STR);
-        $locUpdate->bindValue(":barangay",    $_POST["barangay"]    ?? "", PDO::PARAM_STR);
-        $locUpdate->bindValue(":street",      $_POST["street"]      ?? "", PDO::PARAM_STR);
-        $locUpdate->bindValue(":description", $_POST["description"] ?? "", PDO::PARAM_STR);
+        $locUpdate->bindValue(":province",    $province, PDO::PARAM_STR);
+        $locUpdate->bindValue(":city",        $city, PDO::PARAM_STR);
+        $locUpdate->bindValue(":barangay",    $barangay, PDO::PARAM_STR);
+        $locUpdate->bindValue(":street",      $street, PDO::PARAM_STR);
+        $locUpdate->bindValue(":description", $description, PDO::PARAM_STR);
         $locUpdate->bindValue(":latitude",    $lat !== "" ? (float) $lat : null);
         $locUpdate->bindValue(":longitude",   $lng !== "" ? (float) $lng : null);
         $locUpdate->bindParam(":locationID",  $locationID, PDO::PARAM_INT);
         $locUpdate->execute();
       } else {
         // 4. No location yet — insert one and link it
-        $lat = $_POST["latitude"]  ?? "";
-        $lng = $_POST["longitude"] ?? "";
-
-        $province = $_POST["province"] ?? "";
-        $city     = $_POST["city"]     ?? "";
-        $barangay = $_POST["barangay"] ?? "";
-        $street   = $_POST["street"]   ?? "";
-
-        $parts = array_filter([$street, $barangay, $city, $province, "Philippines"]);
-        $description = $_POST["description"] ?? implode(", ", $parts);
-
         $locInsert = $pdo->prepare("
           INSERT INTO location (province, city, barangay, street, description, latitude, longitude)
           VALUES (:province, :city, :barangay, :street, :description, :latitude, :longitude)

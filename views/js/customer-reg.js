@@ -51,6 +51,7 @@ $(document).ready(function () {
   $(document).on('click', '#btnResetCustomer', function () {
     $('#individualForm input, #companyForm input').val('');
     $('#custPassword, #custPasswordConfirm').val('');
+    $('#companyForm').removeData('warehouseDescription');
     $('#customerCoordinateText').text('Not pinned');
     $('.is-invalid').removeClass('is-invalid');
     $('#customerType').val(companyOnlyMode ? 'company' : 'individual');
@@ -166,6 +167,8 @@ $(document).ready(function () {
 
             $('#houseCorp')
               .val(loc.houseNumber || '');
+
+            $('#companyForm').data('warehouseDescription', loc.description || loc.label || '');
 
             $('#warehouseLatitude')
               .val(loc.lat || '');
@@ -396,6 +399,7 @@ $(document).ready(function () {
         $('#barangayCorp').val(address.suburb || address.neighbourhood || address.quarter || address.barangay || '');
         $('#streetCorp').val(address.road || address.pedestrian || address.footway || '');
         $('#houseCorp').val(address.house_number || '');
+        $('#companyForm').data('warehouseDescription', data.display_name || '');
         $('#customerMapStatus').text('Warehouse address filled from the map pin.');
       })
       .catch(function () {
@@ -478,6 +482,24 @@ $(document).ready(function () {
 
 
   // ===== Save =====
+  function getWarehouseDescription() {
+    const storedDescription = String($('#companyForm').data('warehouseDescription') || '').trim();
+    if (storedDescription) {
+      return storedDescription;
+    }
+
+    return [
+      $('#houseCorp').val(),
+      $('#streetCorp').val(),
+      $('#barangayCorp').val(),
+      $('#cityCorp').val(),
+      $('#provinceCorp').val(),
+      'Philippines'
+    ].map(function (value) {
+      return String(value || '').trim();
+    }).filter(Boolean).join(', ');
+  }
+
   function saveCustomer() {
     const isCompany = getCustomerType() === 'company';
     const formData = new FormData();
@@ -494,6 +516,7 @@ $(document).ready(function () {
       formData.append('barangay',      $('#barangayCorp').val());
       formData.append('street',        $('#streetCorp').val());
       formData.append('houseNumber',   $('#houseCorp').val());
+      formData.append('description',   getWarehouseDescription());
       formData.append('warehouseLatitude',  $('#warehouseLatitude').val());
       formData.append('warehouseLongitude', $('#warehouseLongitude').val());
 

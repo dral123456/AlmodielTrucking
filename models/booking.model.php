@@ -260,13 +260,13 @@ class ModelBooking {
         c.customerFName,
         c.customerLName,
         c.contactPerson,
-        pickup.province AS pickupProvince,
-        pickup.city AS pickupCity,
-        pickup.barangay AS pickupBarangay,
-        pickup.street AS pickupStreet,
-        pickup.description AS pickupDescription,
-        pickup.latitude AS pickupLatitude,
-        pickup.longitude AS pickupLongitude,
+        COALESCE(NULLIF(TRIM(pickup.province), ''), customerPickup.province, c.province) AS pickupProvince,
+        COALESCE(NULLIF(TRIM(pickup.city), ''), customerPickup.city) AS pickupCity,
+        COALESCE(NULLIF(TRIM(pickup.barangay), ''), customerPickup.barangay) AS pickupBarangay,
+        COALESCE(NULLIF(TRIM(pickup.street), ''), customerPickup.street) AS pickupStreet,
+        COALESCE(NULLIF(TRIM(pickup.description), ''), customerPickup.description, CASE WHEN c.customerType = 'company' THEN 'Company warehouse pickup point' ELSE '' END) AS pickupDescription,
+        COALESCE(NULLIF(pickup.latitude, 0), NULLIF(customerPickup.latitude, 0), c.warehouseLatitude) AS pickupLatitude,
+        COALESCE(NULLIF(pickup.longitude, 0), NULLIF(customerPickup.longitude, 0), c.warehouseLongitude) AS pickupLongitude,
         destination.province AS destinationProvince,
         destination.city AS destinationCity,
         destination.barangay AS destinationBarangay,
@@ -276,8 +276,9 @@ class ModelBooking {
         destination.longitude AS destinationLongitude
       FROM booking b
       INNER JOIN customer c ON c.id = b.customerID
-      INNER JOIN location pickup ON pickup.locationID = b.pickupLocationID
-      INNER JOIN location destination ON destination.locationID = b.destinationLocationID
+      LEFT JOIN location pickup ON pickup.locationID = b.pickupLocationID
+      LEFT JOIN location customerPickup ON customerPickup.locationID = c.locationID
+      LEFT JOIN location destination ON destination.locationID = b.destinationLocationID
       WHERE b.status IN ('pending', 'in-transit', 'stopover')
       {$driverFilter}
       ORDER BY b.pickupDateTime ASC, b.tripID ASC, b.bookingID ASC
@@ -315,11 +316,11 @@ class ModelBooking {
         "customerType" => $row["customerType"],
         "status" => $row["status"],
         "pickupDateTime" => $row["pickupDateTime"],
-        "pickupAddress" => self::formatAddress($row["pickupStreet"], $row["pickupBarangay"], $row["pickupCity"], $row["pickupProvince"]),
+        "pickupAddress" => self::formatAddress($row["pickupStreet"], $row["pickupBarangay"], $row["pickupCity"], $row["pickupProvince"], $row["pickupDescription"], $row["pickupLatitude"], $row["pickupLongitude"]),
         "pickupDescription" => $row["pickupDescription"],
         "pickupLatitude" => (float) $row["pickupLatitude"],
         "pickupLongitude" => (float) $row["pickupLongitude"],
-        "destinationAddress" => self::formatAddress($row["destinationStreet"], $row["destinationBarangay"], $row["destinationCity"], $row["destinationProvince"]),
+        "destinationAddress" => self::formatAddress($row["destinationStreet"], $row["destinationBarangay"], $row["destinationCity"], $row["destinationProvince"], $row["destinationDescription"], $row["destinationLatitude"], $row["destinationLongitude"]),
         "destinationDescription" => $row["destinationDescription"],
         "destinationLatitude" => (float) $row["destinationLatitude"],
         "destinationLongitude" => (float) $row["destinationLongitude"]
@@ -481,8 +482,19 @@ class ModelBooking {
     return "success";
   }
 
-  static private function formatAddress($street, $barangay, $city, $province) {
-    return implode(", ", array_filter(array($street, $barangay, $city, $province)));
+  static private function formatAddress($street, $barangay, $city, $province, $fallback = "", $latitude = null, $longitude = null) {
+    $address = implode(", ", array_filter(array($street, $barangay, $city, $province)));
+
+    if ($address !== "") {
+      return $address;
+    }
+
+    $fallback = trim((string) $fallback);
+    if ($fallback !== "") {
+      return $fallback;
+    }
+
+    return "";
   }
 
   static private function tripHasBooking($pdo, $tripID, $bookingID) {

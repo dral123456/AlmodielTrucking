@@ -138,6 +138,8 @@ $(document).ready(function () {
 
     clearMap();
     const bounds = [];
+    let visiblePins = 0;
+    let missingPins = 0;
 
     (trip.bookings || []).forEach(function (booking, index) {
       const pickup = [
@@ -149,28 +151,52 @@ $(document).ready(function () {
         Number(booking.destinationLongitude)
       ];
 
-      if (!validPoint(pickup) || !validPoint(destination)) {
-        return;
+      const hasPickup = validPoint(pickup);
+      const hasDestination = validPoint(destination);
+
+      if (hasPickup) {
+        const pickupMarker = L.marker(pickup, { icon: markerIcon('#696cff', 'P' + (index + 1)) })
+          .bindPopup('<strong>Pickup</strong><br>Booking #' + escapeHtml(booking.bookingID) + '<br>' + escapeHtml(booking.pickupAddress || '-'));
+
+        pickupMarker.addTo(map);
+        mapLayers.push(pickupMarker);
+        bounds.push(pickup);
+        visiblePins++;
+      } else {
+        missingPins++;
       }
 
-      const pickupMarker = L.marker(pickup, { icon: markerIcon('#696cff', 'P' + (index + 1)) })
-        .bindPopup('<strong>Pickup</strong><br>Booking #' + escapeHtml(booking.bookingID) + '<br>' + escapeHtml(booking.pickupAddress || '-'));
-      const destinationMarker = L.marker(destination, { icon: markerIcon('#ff3e1d', 'D' + (index + 1)) })
-        .bindPopup('<strong>Destination</strong><br>Booking #' + escapeHtml(booking.bookingID) + '<br>' + escapeHtml(booking.destinationAddress || '-'));
-      const routeLine = L.polyline([pickup, destination], {
-        color: '#696cff',
-        weight: 3,
-        opacity: 0.75
-      });
+      if (hasDestination) {
+        const destinationMarker = L.marker(destination, { icon: markerIcon('#ff3e1d', 'D' + (index + 1)) })
+          .bindPopup('<strong>Destination</strong><br>Booking #' + escapeHtml(booking.bookingID) + '<br>' + escapeHtml(booking.destinationAddress || '-'));
 
-      pickupMarker.addTo(map);
-      destinationMarker.addTo(map);
-      routeLine.addTo(map);
-      mapLayers.push(pickupMarker, destinationMarker, routeLine);
-      bounds.push(pickup, destination);
+        destinationMarker.addTo(map);
+        mapLayers.push(destinationMarker);
+        bounds.push(destination);
+        visiblePins++;
+      } else {
+        missingPins++;
+      }
+
+      if (hasPickup && hasDestination) {
+        const routeLine = L.polyline([pickup, destination], {
+          color: '#696cff',
+          weight: 3,
+          opacity: 0.75
+        });
+
+        routeLine.addTo(map);
+        mapLayers.push(routeLine);
+      }
     });
 
-    $('#driverMapStatus').text('Showing pickup and destination pins for Trip #' + trip.tripID + '.');
+    if (visiblePins && missingPins) {
+      $('#driverMapStatus').text('Showing available pins for Trip #' + trip.tripID + '. Some pickup/destination coordinates are missing.');
+    } else if (visiblePins) {
+      $('#driverMapStatus').text('Showing pickup and destination pins for Trip #' + trip.tripID + '.');
+    } else {
+      $('#driverMapStatus').text('This trip has invalid or missing map coordinates. Please check the booking location pins.');
+    }
     $('#driverMapBadge').text((trip.bookings || []).length + ' booking(s)');
 
     if (bounds.length) {

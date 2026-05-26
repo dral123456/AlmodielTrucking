@@ -48,6 +48,10 @@ class ModelCustomer {
       $customerMI    = "";
       $contactPerson = "";
       $companyDoc    = "";
+      $locationID     = !empty($data["locationID"]) ? (int) $data["locationID"] : null;
+      $province       = trim($data["province"] ?? "");
+      $warehouseLat   = null;
+      $warehouseLng   = null;
 
       if ($data["customerType"] === "individual") {
         $customerFName = $data["firstName"];
@@ -60,6 +64,8 @@ class ModelCustomer {
         $customerLName = "";
         $customerMI    = "";
         $contactPerson = $data["contactPerson"];
+        $warehouseLat  = trim($data["warehouseLatitude"] ?? "") !== "" ? (float) $data["warehouseLatitude"] : null;
+        $warehouseLng  = trim($data["warehouseLongitude"] ?? "") !== "" ? (float) $data["warehouseLongitude"] : null;
 
         if (!empty($data["businessDoc"]["tmp_name"])) {
           $targetDir  = __DIR__ . "/../uploads/";
@@ -70,6 +76,15 @@ class ModelCustomer {
             $companyDoc = $fileName;
           }
         }
+
+        $newLocationID = self::saveCompanyLocation($pdo, $data);
+        if ($newLocationID) {
+          $locationID = $newLocationID;
+        }
+      }
+
+      if ($province === "" && $locationID) {
+        $province = self::getLocationProvince($pdo, $locationID);
       }
 
       $stmt = $pdo->prepare("
@@ -81,6 +96,9 @@ class ModelCustomer {
           contactPerson,
           email,
           phoneNumber,
+          province,
+          warehouseLatitude,
+          warehouseLongitude,
           locationID,
           companyDocument,
           password,
@@ -94,6 +112,9 @@ class ModelCustomer {
           :contactPerson,
           :email,
           :phoneNumber,
+          :province,
+          :warehouseLatitude,
+          :warehouseLongitude,
           :locationID,
           :companyDocument,
           :password,
@@ -109,7 +130,10 @@ class ModelCustomer {
       $stmt->bindParam(":contactPerson", $contactPerson,         PDO::PARAM_STR);
       $stmt->bindParam(":email",         $data["email"],         PDO::PARAM_STR);
       $stmt->bindParam(":phoneNumber",   $data["phoneNumber"],   PDO::PARAM_STR);
-      $stmt->bindParam(":locationID",    $data["locationID"],    PDO::PARAM_INT);
+      $stmt->bindParam(":province",      $province,              PDO::PARAM_STR);
+      $stmt->bindValue(":warehouseLatitude",  $warehouseLat);
+      $stmt->bindValue(":warehouseLongitude", $warehouseLng);
+      $stmt->bindValue(":locationID",    $locationID,            $locationID === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
       $stmt->bindParam(":companyDocument", $companyDoc,          PDO::PARAM_STR);
       $stmt->bindParam(":password",      $data["password"],      PDO::PARAM_STR);
 
@@ -164,5 +188,66 @@ class ModelCustomer {
     $stmt->execute();
 
     return (int) $stmt->fetchColumn() > 0;
+  }
+
+  static private function getLocationProvince($pdo, $locationID) {
+    $stmt = $pdo->prepare("SELECT province FROM location WHERE locationID = :locationID LIMIT 1");
+    $stmt->bindValue(":locationID", (int) $locationID, PDO::PARAM_INT);
+    $stmt->execute();
+
+    return trim((string) $stmt->fetchColumn());
+  }
+
+  static private function saveCompanyLocation($pdo, $data) {
+    $province = trim($data["province"] ?? "");
+    $city     = trim($data["city"] ?? "");
+    $barangay = trim($data["barangay"] ?? "");
+    $street   = trim($data["street"] ?? "");
+    $houseNo  = trim($data["houseNumber"] ?? "");
+
+    $latitude  = trim($data["warehouseLatitude"] ?? "");
+    $longitude = trim($data["warehouseLongitude"] ?? "");
+
+    if ($province === "" && $city === "" && $barangay === "" && $street === "" && $latitude === "" && $longitude === "") {
+      return null;
+    }
+
+    $streetWithHouse = trim(implode(" ", array_filter([$houseNo, $street])));
+    $description = trim($data["description"] ?? "");
+
+    if ($description === "") {
+      $description = implode(", ", array_filter([$streetWithHouse, $barangay, $city, $province, "Philippines"]));
+    }
+
+    $stmt = $pdo->prepare("
+      INSERT INTO location (
+        province,
+        city,
+        barangay,
+        street,
+        description,
+        latitude,
+        longitude
+      ) VALUES (
+        :province,
+        :city,
+        :barangay,
+        :street,
+        :description,
+        :latitude,
+        :longitude
+      )
+    ");
+
+    $stmt->bindValue(":province",    $province, PDO::PARAM_STR);
+    $stmt->bindValue(":city",        $city, PDO::PARAM_STR);
+    $stmt->bindValue(":barangay",    $barangay, PDO::PARAM_STR);
+    $stmt->bindValue(":street",      $streetWithHouse !== "" ? $streetWithHouse : $street, PDO::PARAM_STR);
+    $stmt->bindValue(":description", $description, PDO::PARAM_STR);
+    $stmt->bindValue(":latitude",    $latitude !== "" ? (float) $latitude : null);
+    $stmt->bindValue(":longitude",   $longitude !== "" ? (float) $longitude : null);
+    $stmt->execute();
+
+    return (int) $pdo->lastInsertId();
   }
 }
