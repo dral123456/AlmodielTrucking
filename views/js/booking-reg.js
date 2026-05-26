@@ -1008,9 +1008,9 @@ $(document).ready(function () {
     formData.append('customerID', IS_CUSTOMER_INDIVIDUAL ? SESSION_CUSTOMER_ID : $('#bookingCustomer').val());
 
     // Crew: empty strings for individual role
-    formData.append('truckID',      IS_CUSTOMER_INDIVIDUAL ? '' : $('#bookingTruck').val());
-    formData.append('driverID',     IS_CUSTOMER_INDIVIDUAL ? '' : $('#bookingDriver').val());
-    formData.append('assistantIDs', IS_CUSTOMER_INDIVIDUAL ? JSON.stringify([]) : JSON.stringify(getAssistantIDs()));
+    formData.append('truckID',      IS_CUSTOMER_INDIVIDUAL ? null : $('#bookingTruck').val());
+    formData.append('driverID',     IS_CUSTOMER_INDIVIDUAL ? null : $('#bookingDriver').val());
+    formData.append('assistantIDs', IS_CUSTOMER_INDIVIDUAL ? JSON.stringify([null, null]) : JSON.stringify(getAssistantIDs()));
 
     formData.append('pickupDateTime', $('#bookingPickupDateTime').val().replace('T', ' '));
 
@@ -1030,6 +1030,10 @@ $(document).ready(function () {
     formData.append('cargoSpecialHandling', $('#cargoSpecialHandling').val());
     formData.append('pickupLocationID',      pickupLocationID);
     formData.append('destinationLocationID', destinationLocationID);
+
+
+    console.log("Pickup ID:", pickupLocationID);
+    console.log("Destination ID:", destinationLocationID);
 
     $.ajax({
       url: 'ajax/booking_save_record.ajax.php',

@@ -182,8 +182,8 @@ foreach ($trucks as $truck) {
                   </div>
                 </div>
               <?php else: ?>
-                <input type="hidden" id="bookingTruck" value="">
-                <input type="hidden" id="bookingDriver" value="">
+                <input type="hidden" id="bookingTruck" value=0>
+                <input type="hidden" id="bookingDriver" value=0>
               <?php endif; ?>
 
             </div>
@@ -240,7 +240,7 @@ foreach ($trucks as $truck) {
             <div class="row g-4">
 
               <!-- Left column: address fields -->
-              <div class="col-12 <?php echo $isCustomerIndividual ? 'col-xl-12' : 'col-xl-5'; ?>">
+              <div class="col-12 <?php echo $isCustomerIndividual ? 'col-xl-5' : 'col-xl-5'; ?>">
 
                 <!-- Pickup -->
                 <h6 class="text-uppercase text-muted mb-3">
