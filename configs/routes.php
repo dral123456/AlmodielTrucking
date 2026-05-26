@@ -18,8 +18,8 @@ $adminRoutes = [
 ];
 
 $driverRoutes = [
-    'sample',
     'trips',
+    'driver-trips',
     'logout',
 ];
 
