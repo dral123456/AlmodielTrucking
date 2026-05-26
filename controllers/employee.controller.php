@@ -72,7 +72,7 @@ class ControllerEmployee {
 
         echo '<script>
           window.location = "sample";
-        </script>'; 
+        </script>';
       } else {
         echo '<br><div style="text-align:center;" class="alert alert-danger">User or password incorrect</div>';
       }

@@ -24,7 +24,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <meta content="Admin & Dashboards Template" name="description" />
   <meta content="Pixeleyez" name="author" />
-  
+
   <!-- layout setup -->
   <script type="module" src="views/assets/js/layout-setup.js"></script>
   <script>
@@ -44,7 +44,7 @@
       }
     });
   </script>
-  
+
   <!-- App favicon -->
   <link rel="shortcut icon" href="views/assets/images/favicon.png">  <!-- Simplebar Css -->
   <link rel="stylesheet" href="views/assets/libs/simplebar/simplebar.min.css">
@@ -131,7 +131,7 @@
 
 <body>
 
-  <?php 
+  <?php
     if(!(isset($_SESSION["loggedIn"]) && $_SESSION["loggedIn"] == "ok") && isset($_GET["route"])){
       $route = basename($_GET["route"]);
       $allowedRoutes = [
@@ -141,7 +141,7 @@
           'driver-login',
           'admin-login',
           'assistant-login',
-          'map',  
+          'map',
           // 'home',
           // 'staffclinic',
           // 'logout'

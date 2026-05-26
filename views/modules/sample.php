@@ -1,31 +1,152 @@
+<?php
+include 'connection.php';
+
+$empID = $_SESSION['id'];
+
+/* =========================
+  COUNTERS
+========================= */
+
+/* PENDING */
+$pending = mysqli_num_rows(mysqli_query($conn, "
+SELECT b.tripID
+FROM booking b
+INNER JOIN tripEmployee t
+ON b.tripID = t.tripID
+WHERE t.empID = '$empID'
+AND t.role = 'assistant'
+AND b.status = 'pending'
+"));
+
+/* COMPLETED */
+$completed = mysqli_num_rows(mysqli_query($conn, "
+SELECT b.tripID
+FROM booking b
+INNER JOIN tripEmployee t
+ON b.tripID = t.tripID
+WHERE t.empID = '$empID'
+AND t.role = 'assistant'
+AND b.status = 'completed'
+"));
+
+/* =========================
+   BOOKINGS
+========================= */
+
+$bookings = mysqli_query($conn, "
+SELECT b.*
+FROM booking b
+INNER JOIN tripEmployee t
+ON b.tripID = t.tripID
+WHERE t.empID = '$empID'
+AND t.role = 'assistant'
+ORDER BY b.tripID DESC
+");
+?>
+
 <body>
 
-<!-- START -->
-<div class="position-fixed top-0 bottom-0 end-0 start-0 z-0 bg-pattern"></div>
-<div class="auth-pattern-shapes d-none d-lg-block"></div>
-<div class="auth-pattern-outline d-none d-lg-block"></div>
-<div class="auth-pattern-shape extra d-none d-lg-block"></div>
-<div class="auth-pattern-extra d-none d-lg-block"></div><header class="px-3 px-md-8 py-5 position-absolute top-0 d-flex justify-content-between align-items-center w-100 z-1">
-  
-  
-</header>
-<div class="container">
-  <div class="row justify-content-center align-items-center min-vh-100 pt-20 pb-10">
-    <div class="col-12 col-md-8 col-lg-6 col-xl-5">
-      <div class="card mx-xxl-8 shadow-none">
-        <div class="card-body p-8">
-          <h3 class="fw-medium text-center">Welcome back!</h3>
-          <p class="mb-8 text-muted text-center">This is a sample!</p>
-          <p class="text-center mt-6 mb-0 text-muted fs-13">This is a sample! <a href="auth-signup.html" class="link fw-semibold">Sign up here</a></p>
-        </div>
-      </div>
-      <p class="position-relative text-center fs-13 mb-0">©
-        <script>document.write(new Date().getFullYear())</script> Urbix. Crafted with by Pixeleyez
-      </p>
+<div class="container py-5">
+
+    <!-- TITLE -->
+    <div class="text-center mb-4">
+        <h2>Assistant Dashboard</h2>
+        <p class="text-muted">Assigned Deliveries</p>
     </div>
-  </div>
+
+    <!-- COUNTER CARDS -->
+    <div class="row mb-4">
+
+        <div class="col-md-6 mb-3">
+            <div class="card shadow-sm border-0 text-center p-4">
+                <h5 class="text-warning">Pending</h5>
+                <h1><?php echo $pending; ?></h1>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <div class="card shadow-sm border-0 text-center p-4">
+                <h5 class="text-success">Completed</h5>
+                <h1><?php echo $completed; ?></h1>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- BOOKINGS TABLE -->
+    <div class="card shadow-sm border-0">
+
+        <div class="card-body">
+
+            <h5 class="mb-3">My Bookings</h5>
+
+            <div class="table-responsive">
+
+                <table class="table table-hover align-middle">
+
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Trip ID</th>
+                            <th>Booking No</th>
+                            <th>Price</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+
+                    <?php while($row = mysqli_fetch_assoc($bookings)) { ?>
+
+                        <tr>
+
+                            <td>
+                                <?php echo $row['tripID']; ?>
+                            </td>
+
+                            <td>
+                                <?php echo $row['booking_no']; ?>
+                            </td>
+
+                            <td>
+                                ₱<?php echo number_format($row['price'], 2); ?>
+                            </td>
+
+                            <td>
+                                <?php echo $row['date_time']; ?>
+                            </td>
+
+                            <td>
+                                <?php if($row['status'] == "completed"){ ?>
+
+                                    <span class="badge bg-success">
+                                        Completed
+                                    </span>
+
+                                <?php } else { ?>
+
+                                    <span class="badge bg-warning text-dark">
+                                        Pending
+                                    </span>
+
+                                <?php } ?>
+                            </td>
+
+                        </tr>
+
+                    <?php } ?>
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    </div>
+
 </div>
 
 </body>
-
 </html>
