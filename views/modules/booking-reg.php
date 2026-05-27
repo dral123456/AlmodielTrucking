@@ -109,15 +109,7 @@ foreach ($trucks as $truck) {
                 </div>
               <?php endif; ?>
 
-              <?php if (!$isCustomerIndividual): ?>
-              <div class="col-12 col-md-6 col-lg-3 mb-3">
-                  <label class="form-label">Trip ID</label>
-                  <div class="form-control bg-light text-muted" id="bookingTripDisplay">
-                    Generated on save
-                  </div>
-              </div>
-              <?php endif; ?>
-              <div class="col-12 col-md-6 mb-3">
+              <div class="col-12 <?php echo $isCustomerIndividual ? 'col-lg-6' : 'col-lg-6'; ?> mb-3">
                 <label class="form-label">Pickup Date & Time <span class="text-danger">*</span></label>
                 <input type="datetime-local" class="form-control" id="bookingPickupDateTime">
               </div>

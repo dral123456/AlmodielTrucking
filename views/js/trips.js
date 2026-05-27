@@ -1,5 +1,7 @@
 $(document).ready(function () {
   const trips = Array.isArray(window.tripOverviewData) ? window.tripOverviewData : [];
+  const canModifyTripInfo = window.tripCanModifyInfo === true;
+  const canUpdateTripStatus = window.tripCanUpdateStatus === true;
   let filteredTrips = [];
   let selectedTripID = null;
   let map = null;
@@ -53,10 +55,36 @@ $(document).ready(function () {
     });
 
     $(document).on('click', '#tripModifyBtn', function () {
+      if (!canModifyTripInfo) {
+        return;
+      }
+
       const trip = getTripByID(selectedTripID);
       if (trip) {
         showTripEditModal(trip);
       }
+    });
+
+    $(document).on('click', '.trip-status-action', function () {
+      const button = $(this);
+      const status = button.data('status');
+      const tripID = selectedTripID;
+      const labels = {
+        'in-transit': 'start this delivery',
+        'stopover': 'mark this trip as stopover',
+        'completed': 'mark this trip as delivered'
+      };
+
+      if (!canUpdateTripStatus || !tripID) {
+        return;
+      }
+
+      if (!window.confirm('Are you sure you want to ' + (labels[status] || 'update this trip') + '?')) {
+        return;
+      }
+
+      button.prop('disabled', true);
+      updateTripDeliveryStatus(tripID, status, button);
     });
 
     $(document).on('click', '#toggleSidebar', function () {
@@ -303,15 +331,17 @@ $(document).ready(function () {
       );
     }).join('');
 
+    const actionHtml = buildTripActionHtml(trip);
+
     $('#tripDetails').html(
       '<div class="trip-panel-heading mb-3">' +
         '<div>' +
           '<h6 class="mb-1">Trip #' + escapeHtml(trip.tripID) + '</h6>' +
           '<p class="text-muted small mb-0">' + escapeHtml(formatDateTime(trip.firstPickupDateTime)) + ' | ' + escapeHtml(trip.bookingCount) + ' booking(s)</p>' +
         '</div>' +
-        '<div class="d-flex align-items-center gap-2 flex-wrap justify-content-end">' +
+        '<div class="d-flex align-items-center gap-2 flex-wrap justify-content-end" id="tripActionArea">' +
           '<span class="badge ' + status.className + '">' + status.label + '</span>' +
-          '<button type="button" class="btn btn-sm btn-primary" id="tripModifyBtn"><i class="ri-edit-line me-1"></i> Modify</button>' +
+          actionHtml +
         '</div>' +
       '</div>' +
       '<div class="row g-3 mb-3">' +
@@ -341,6 +371,29 @@ $(document).ready(function () {
     renderTripMap(trip);
   }
 
+  function buildTripActionHtml(trip) {
+    if (canModifyTripInfo) {
+      return '<button type="button" class="btn btn-sm btn-primary" id="tripModifyBtn"><i class="ri-edit-line me-1"></i> Modify</button>';
+    }
+
+    if (!canUpdateTripStatus) {
+      return '';
+    }
+
+    let html = '';
+
+    if (trip.status === 'pending') {
+      html += '<button type="button" class="btn btn-sm btn-primary trip-status-action" data-status="in-transit"><i class="ri-play-circle-line me-1"></i> Start Delivery</button>';
+    }
+
+    if (trip.status !== 'completed') {
+      html += '<button type="button" class="btn btn-sm btn-info trip-status-action" data-status="stopover"><i class="ri-map-pin-time-line me-1"></i> Stopover</button>';
+      html += '<button type="button" class="btn btn-sm btn-success trip-status-action" data-status="completed"><i class="ri-check-double-line me-1"></i> Delivered</button>';
+    }
+
+    return html;
+  }
+
   function showTripEditModal(trip) {
     const status = trip.status || 'pending';
     const truckID = getTripTruckID(trip);
@@ -350,78 +403,11 @@ $(document).ready(function () {
 
     Swal.fire({
       title: 'Modify Trip #' + trip.tripID,
-      html:
-        '<div class="text-start">' +
-          '<div class="row g-3">' +
-            '<div class="col-12 col-md-6">' +
-              '<label class="form-label">Trip Schedule</label>' +
-              '<input type="datetime-local" class="form-control" id="editTripPickupDateTime" value="' + escapeAttr(toDateTimeLocalValue(trip.firstPickupDateTime)) + '">' +
-            '</div>' +
-            '<div class="col-12 col-md-6">' +
-              '<label class="form-label">Status</label>' +
-              '<select class="form-select" id="editTripStatus">' +
-                '<option value="pending"' + (status === 'pending' ? ' selected' : '') + '>Pending</option>' +
-                '<option value="in-transit"' + (status === 'in-transit' ? ' selected' : '') + '>On Transit</option>' +
-                '<option value="stopover"' + (status === 'stopover' ? ' selected' : '') + '>Stopover</option>' +
-                '<option value="completed"' + (status === 'completed' ? ' selected' : '') + '>Delivered</option>' +
-              '</select>' +
-            '</div>' +
-            '<div class="col-12">' +
-              '<label class="form-label">Truck</label>' +
-              '<select class="form-select" id="editTripTruck">' + buildTruckOptions(truckID) + '</select>' +
-            '</div>' +
-            '<div class="col-12 col-md-6">' +
-              '<label class="form-label">Driver</label>' +
-              '<select class="form-select" id="editTripDriver">' + buildEmployeeOptions(window.tripDriverOptions || [], driverID, 'Select driver') + '</select>' +
-            '</div>' +
-            '<div class="col-12 col-md-6">' +
-              '<label class="form-label">Assistants</label>' +
-              '<select class="form-select" id="editTripAssistants" multiple size="5">' + buildEmployeeOptions(window.tripAssistantOptions || [], assistantIDs, 'Select assistants') + '</select>' +
-            '</div>' +
-            '<div class="col-12">' +
-              '<hr class="my-1">' +
-              '<label class="form-label">Booking Destination To Modify</label>' +
-              '<select class="form-select" id="editTripBooking">' + buildBookingOptions(trip.bookings || []) + '</select>' +
-            '</div>' +
-            '<div class="col-12 col-md-6">' +
-              '<label class="form-label">Fuel Pump Price</label>' +
-              '<input type="number" min="0" step="0.01" class="form-control" id="editTripFuelPrice" placeholder="e.g. 76">' +
-            '</div>' +
-            '<div class="col-12 col-md-6">' +
-              '<label class="form-label">Price</label>' +
-              '<input type="number" min="0" step="0.01" class="form-control" id="editTripPrice">' +
-              '<div class="form-text" id="editTripTariffHint">Fuel pump is used to recalculate tariff price when available.</div>' +
-            '</div>' +
-            '<div class="col-12 col-md-6">' +
-              '<label class="form-label">Province</label>' +
-              '<input type="text" class="form-control edit-trip-destination-field" id="editTripDestinationProvince">' +
-            '</div>' +
-            '<div class="col-12 col-md-6">' +
-              '<label class="form-label">City</label>' +
-              '<input type="text" class="form-control edit-trip-destination-field" id="editTripDestinationCity">' +
-            '</div>' +
-            '<div class="col-12 col-md-6">' +
-              '<label class="form-label">Barangay</label>' +
-              '<input type="text" class="form-control edit-trip-destination-field" id="editTripDestinationBarangay">' +
-            '</div>' +
-            '<div class="col-12 col-md-6">' +
-              '<label class="form-label">Street</label>' +
-              '<input type="text" class="form-control edit-trip-destination-field" id="editTripDestinationStreet">' +
-            '</div>' +
-            '<div class="col-12">' +
-              '<label class="form-label">Destination Notes</label>' +
-              '<textarea class="form-control edit-trip-destination-field" id="editTripDestinationDescription" rows="2"></textarea>' +
-            '</div>' +
-            '<div class="col-12">' +
-              '<label class="form-label">Destination Map</label>' +
-              '<div id="editTripDestinationMap" style="height:320px;border:1px solid var(--bs-border-color);border-radius:8px;overflow:hidden;"></div>' +
-              '<input type="hidden" id="editTripDestinationLatitude">' +
-              '<input type="hidden" id="editTripDestinationLongitude">' +
-            '</div>' +
-          '</div>' +
-          '<p class="text-muted small mb-0 mt-3">Schedule, status, and crew apply to the trip. Destination and price apply to the selected booking.</p>' +
-        '</div>',
-      width: 980,
+      html: buildTripEditModalHtml(trip, status, truckID, driverID, assistantIDs),
+      width: 1180,
+      customClass: {
+        popup: 'trip-edit-modal'
+      },
       showCancelButton: true,
       confirmButtonText: 'Save Changes',
       confirmButtonColor: '#696cff',
@@ -432,7 +418,15 @@ $(document).ready(function () {
         $('#editTripBooking').on('change', function () {
           const booking = getTripBookingByID(trip, $(this).val());
           populateTripBookingFields(booking);
-          setEditTripDestinationMarker(booking.destination.latitude, booking.destination.longitude, true);
+          const destination = booking.destination || {};
+          if (isValidTripCoordinate([destination.latitude, destination.longitude])) {
+            setEditTripDestinationMarker(destination.latitude, destination.longitude, true);
+          } else {
+            clearEditTripDestinationMarker('This booking has no valid destination pin yet. Search or click the map inside Negros.');
+            if (editTripMap) {
+              editTripMap.setView([10.6765, 122.9509], 11);
+            }
+          }
         });
         $('#editTripFuelPrice, #editTripTruck').on('input change', function () {
           lookupTripEditTariff(trip);
@@ -444,6 +438,15 @@ $(document).ready(function () {
         });
         $('.edit-trip-destination-field').on('input', function () {
           lookupTripEditTariff(trip);
+        });
+        $('#editTripDestinationSearchBtn').on('click', function () {
+          searchTripEditDestination();
+        });
+        $('#editTripDestinationSearch').on('keydown', function (event) {
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            searchTripEditDestination();
+          }
         });
       },
       didClose: function () {
@@ -474,8 +477,19 @@ $(document).ready(function () {
           return false;
         }
 
-        if (!bookingID || !price || !isValidTripCoordinate([destinationLatitude, destinationLongitude])) {
-          Swal.showValidationMessage('Select a booking, enter price, and pin a valid destination inside Negros.');
+        if (!bookingID) {
+          Swal.showValidationMessage('Please choose which booking destination you want to modify.');
+          return false;
+        }
+
+        const priceNumber = Number(price);
+        if (price === '' || !Number.isFinite(priceNumber) || priceNumber < 0) {
+          Swal.showValidationMessage('Please enter a valid booking price.');
+          return false;
+        }
+
+        if (!isValidTripCoordinate([destinationLatitude, destinationLongitude])) {
+          Swal.showValidationMessage('Please click the map or search an address to pin a valid destination inside Negros.');
           return false;
         }
 
@@ -505,6 +519,113 @@ $(document).ready(function () {
     });
   }
 
+  function buildTripEditModalHtml(trip, status, truckID, driverID, assistantIDs) {
+    const bookingCount = (trip.bookings || []).length;
+
+    return '' +
+      '<div class="trip-edit-shell text-start">' +
+        '<div class="trip-edit-summary">' +
+          '<span><i class="ri-file-list-3-line me-1"></i>' + escapeHtml(bookingCount) + ' booking(s)</span>' +
+          '<span><i class="ri-map-pin-line me-1"></i>Destination and price update the selected booking only</span>' +
+        '</div>' +
+        '<div class="trip-edit-grid trip-edit-main">' +
+          '<div class="trip-edit-form">' +
+            '<div class="trip-edit-card trip-edit-primary-card">' +
+              '<div class="trip-edit-card-title"><span>1</span><div><strong>Destination And Price</strong><small>Choose the booking, search the address, then place the pin.</small></div></div>' +
+              '<div class="row g-3">' +
+                '<div class="col-12">' +
+                  '<label class="form-label">Booking To Modify</label>' +
+                  '<select class="form-select" id="editTripBooking">' + buildBookingOptions(trip.bookings || []) + '</select>' +
+                '</div>' +
+                '<div class="col-12">' +
+                  '<label class="form-label">Search Destination</label>' +
+                  '<div class="input-group">' +
+                    '<input type="text" class="form-control" id="editTripDestinationSearch" placeholder="Search street, barangay, city">' +
+                    '<button type="button" class="btn btn-primary" id="editTripDestinationSearchBtn"><i class="ri-search-line me-1"></i> Search</button>' +
+                  '</div>' +
+                '</div>' +
+                '<div class="col-12 col-md-6">' +
+                  '<label class="form-label">Fuel Pump Price</label>' +
+                  '<input type="number" min="0" step="0.01" class="form-control" id="editTripFuelPrice" placeholder="e.g. 76">' +
+                '</div>' +
+                '<div class="col-12 col-md-6">' +
+                  '<label class="form-label">Booking Price</label>' +
+                  '<input type="number" min="0" step="0.01" class="form-control" id="editTripPrice">' +
+                  '<div class="form-text" id="editTripTariffHint">Fuel pump is used to recalculate tariff price when available.</div>' +
+                '</div>' +
+              '</div>' +
+            '</div>' +
+            '<div class="trip-edit-card">' +
+              '<div class="trip-edit-card-title"><span>2</span><div><strong>Address Details</strong><small>Saved with the selected destination.</small></div></div>' +
+              '<div class="row g-3">' +
+                '<div class="col-12 col-md-6">' +
+                  '<label class="form-label">Province</label>' +
+                  '<input type="text" class="form-control edit-trip-destination-field" id="editTripDestinationProvince">' +
+                '</div>' +
+                '<div class="col-12 col-md-6">' +
+                  '<label class="form-label">City</label>' +
+                  '<input type="text" class="form-control edit-trip-destination-field" id="editTripDestinationCity">' +
+                '</div>' +
+                '<div class="col-12 col-md-6">' +
+                  '<label class="form-label">Barangay</label>' +
+                  '<input type="text" class="form-control edit-trip-destination-field" id="editTripDestinationBarangay">' +
+                '</div>' +
+                '<div class="col-12 col-md-6">' +
+                  '<label class="form-label">Street</label>' +
+                  '<input type="text" class="form-control edit-trip-destination-field" id="editTripDestinationStreet">' +
+                '</div>' +
+                '<div class="col-12">' +
+                  '<label class="form-label">Destination Notes</label>' +
+                  '<textarea class="form-control edit-trip-destination-field" id="editTripDestinationDescription" rows="2"></textarea>' +
+                '</div>' +
+              '</div>' +
+            '</div>' +
+            '<details class="trip-edit-card trip-edit-details">' +
+              '<summary><span>3</span><div><strong>Trip Schedule And Crew</strong><small>Optional trip-wide details. Leave as-is if you only want to update destination.</small></div><i class="ri-arrow-down-s-line"></i></summary>' +
+              '<div class="row g-3">' +
+                '<div class="col-12 col-md-6">' +
+                  '<label class="form-label">Trip Schedule</label>' +
+                  '<input type="datetime-local" class="form-control" id="editTripPickupDateTime" value="' + escapeAttr(toDateTimeLocalValue(trip.firstPickupDateTime)) + '">' +
+                '</div>' +
+                '<div class="col-12 col-md-6">' +
+                  '<label class="form-label">Status</label>' +
+                  '<select class="form-select" id="editTripStatus">' +
+                    '<option value="pending"' + (status === 'pending' ? ' selected' : '') + '>Pending</option>' +
+                    '<option value="in-transit"' + (status === 'in-transit' ? ' selected' : '') + '>On Transit</option>' +
+                    '<option value="stopover"' + (status === 'stopover' ? ' selected' : '') + '>Stopover</option>' +
+                    '<option value="completed"' + (status === 'completed' ? ' selected' : '') + '>Delivered</option>' +
+                  '</select>' +
+                '</div>' +
+                '<div class="col-12">' +
+                  '<label class="form-label">Truck</label>' +
+                  '<select class="form-select" id="editTripTruck">' + buildTruckOptions(truckID) + '</select>' +
+                '</div>' +
+                '<div class="col-12 col-lg-6">' +
+                  '<label class="form-label">Driver</label>' +
+                  '<select class="form-select" id="editTripDriver">' + buildEmployeeOptions(window.tripDriverOptions || [], driverID, 'Select driver') + '</select>' +
+                '</div>' +
+                '<div class="col-12 col-lg-6">' +
+                  '<label class="form-label">Assistants</label>' +
+                  '<select class="form-select" id="editTripAssistants" multiple size="4">' + buildEmployeeOptions(window.tripAssistantOptions || [], assistantIDs, 'Select assistants') + '</select>' +
+                  '<div class="form-text">Select at least two assistants.</div>' +
+                '</div>' +
+              '</div>' +
+            '</details>' +
+          '</div>' +
+          '<div class="trip-edit-map-card">' +
+            '<div class="trip-edit-map-heading">' +
+              '<div><strong>Destination Pin</strong><small id="editTripMapStatus">Choose a booking to load its destination pin.</small></div>' +
+              '<span class="badge bg-label-primary" id="editTripCoordinateText">No pin selected</span>' +
+            '</div>' +
+            '<div id="editTripDestinationMap"></div>' +
+            '<div class="trip-edit-map-help"><i class="ri-information-line me-1"></i> Click the map to move the pin, or drag the marker for a precise destination.</div>' +
+            '<input type="hidden" id="editTripDestinationLatitude">' +
+            '<input type="hidden" id="editTripDestinationLongitude">' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+  }
+
   function buildBookingOptions(bookings) {
     return bookings.map(function (booking) {
       return '<option value="' + escapeAttr(booking.bookingID) + '">Booking #' + escapeHtml(booking.bookingID) + ' - ' + escapeHtml(booking.customerName || '-') + '</option>';
@@ -519,15 +640,20 @@ $(document).ready(function () {
 
   function populateTripBookingFields(booking) {
     const destination = booking.destination || {};
-    $('#editTripPrice').val(booking.price || '');
+    const price = booking.price !== undefined && booking.price !== null ? booking.price : '';
+    const hasValidDestination = isValidTripCoordinate([destination.latitude, destination.longitude]);
+
+    $('#editTripPrice').val(price);
     $('#editTripDestinationProvince').val(destination.province || '');
     $('#editTripDestinationCity').val(destination.city || '');
     $('#editTripDestinationBarangay').val(destination.barangay || '');
     $('#editTripDestinationStreet').val(destination.street || '');
     $('#editTripDestinationDescription').val(destination.description || '');
-    $('#editTripDestinationLatitude').val(destination.latitude || '');
-    $('#editTripDestinationLongitude').val(destination.longitude || '');
+    $('#editTripDestinationLatitude').val(hasValidDestination ? destination.latitude : '');
+    $('#editTripDestinationLongitude').val(hasValidDestination ? destination.longitude : '');
+    $('#editTripDestinationSearch').val(destination.address || destination.description || '');
     $('#editTripTariffHint').text('Fuel pump is used to recalculate tariff price when available.');
+    updateEditTripCoordinateText(destination.latitude, destination.longitude);
   }
 
   function initTripEditDestinationMap(booking) {
@@ -542,10 +668,11 @@ $(document).ready(function () {
     }
 
     const destination = booking.destination || {};
-    const lat = Number(destination.latitude || 10.6765);
-    const lng = Number(destination.longitude || 122.9509);
+    const hasValidDestination = isValidTripCoordinate([destination.latitude, destination.longitude]);
+    const lat = hasValidDestination ? Number(destination.latitude) : 10.6765;
+    const lng = hasValidDestination ? Number(destination.longitude) : 122.9509;
 
-    editTripMap = L.map('editTripDestinationMap').setView([lat, lng], isValidTripCoordinate([lat, lng]) ? 14 : 11);
+    editTripMap = L.map('editTripDestinationMap').setView([lat, lng], hasValidDestination ? 14 : 11);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '&copy; OpenStreetMap contributors'
@@ -556,7 +683,11 @@ $(document).ready(function () {
       reverseTripEditDestination(event.latlng.lat, event.latlng.lng);
     });
 
-    setEditTripDestinationMarker(lat, lng, true);
+    if (hasValidDestination) {
+      setEditTripDestinationMarker(lat, lng, true);
+    } else {
+      clearEditTripDestinationMarker('No valid destination pin yet. Search or click the map inside Negros.');
+    }
 
     setTimeout(function () {
       editTripMap.invalidateSize();
@@ -568,6 +699,7 @@ $(document).ready(function () {
     const lngNum = Number(lng);
 
     if (!isValidTripCoordinate([latNum, lngNum]) || !editTripMap) {
+      setEditTripMapStatus('That pin is outside the supported Negros area. Please choose another point.');
       return;
     }
 
@@ -585,29 +717,101 @@ $(document).ready(function () {
 
     $('#editTripDestinationLatitude').val(latNum.toFixed(8));
     $('#editTripDestinationLongitude').val(lngNum.toFixed(8));
+    updateEditTripCoordinateText(latNum, lngNum);
+    setEditTripMapStatus('Destination pin ready. Drag it or click another point to adjust.');
     if (moveMap) {
       editTripMap.setView(latlng, Math.max(editTripMap.getZoom(), 14));
     }
     lookupTripEditTariff(getTripByID(selectedTripID));
   }
 
+  function clearEditTripDestinationMarker(message) {
+    if (editTripMarker && editTripMap) {
+      editTripMap.removeLayer(editTripMarker);
+      editTripMarker = null;
+    }
+
+    $('#editTripDestinationLatitude').val('');
+    $('#editTripDestinationLongitude').val('');
+    $('#editTripCoordinateText').text('No pin selected');
+    setEditTripMapStatus(message || 'No valid destination pin yet.');
+  }
+
+  function updateEditTripCoordinateText(lat, lng) {
+    if (!isValidTripCoordinate([lat, lng])) {
+      $('#editTripCoordinateText').text('No pin selected');
+      return;
+    }
+
+    $('#editTripCoordinateText').text(Number(lat).toFixed(6) + ', ' + Number(lng).toFixed(6));
+  }
+
+  function setEditTripMapStatus(message) {
+    $('#editTripMapStatus').text(message);
+  }
+
+  function searchTripEditDestination() {
+    const typedSearch = ($('#editTripDestinationSearch').val() || '').trim();
+    const fieldSearch = [
+      $('#editTripDestinationStreet').val(),
+      $('#editTripDestinationBarangay').val(),
+      $('#editTripDestinationCity').val(),
+      $('#editTripDestinationProvince').val()
+    ].filter(Boolean).join(', ');
+    const query = typedSearch || fieldSearch;
+
+    if (!query) {
+      setEditTripMapStatus('Type an address first, then search.');
+      return;
+    }
+
+    const normalizedQuery = /philippines/i.test(query) ? query : query + ', Negros Occidental, Philippines';
+    const url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=ph&addressdetails=1&q=' + encodeURIComponent(normalizedQuery);
+
+    setEditTripMapStatus('Searching destination address...');
+    fetch(url, { headers: { 'Accept': 'application/json' } })
+      .then(function (response) { return response.ok ? response.json() : []; })
+      .then(function (results) {
+        const match = Array.isArray(results) && results.length ? results[0] : null;
+
+        if (!match || !isValidTripCoordinate([match.lat, match.lon])) {
+          setEditTripMapStatus('No valid Negros destination found. Try a more specific street, barangay, or city.');
+          return;
+        }
+
+        setEditTripDestinationMarker(match.lat, match.lon, true);
+        reverseTripEditDestination(match.lat, match.lon);
+      })
+      .catch(function () {
+        setEditTripMapStatus('Address search failed. You can still click the map to set the pin.');
+      });
+  }
+
   function reverseTripEditDestination(lat, lng) {
     const url = 'https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=' +
       encodeURIComponent(lat) + '&lon=' + encodeURIComponent(lng) + '&addressdetails=1';
 
+    setEditTripMapStatus('Loading address for selected pin...');
     fetch(url, { headers: { 'Accept': 'application/json' } })
       .then(function (response) { return response.ok ? response.json() : null; })
       .then(function (data) {
-        if (!data || !data.address) return;
+        if (!data || !data.address) {
+          setEditTripMapStatus('Destination pin ready, but no address was found. You can type the address manually.');
+          return;
+        }
         const address = data.address;
         $('#editTripDestinationProvince').val(address.state || address.region || address.province || '');
         $('#editTripDestinationCity').val(address.city || address.town || address.municipality || address.county || '');
         $('#editTripDestinationBarangay').val(address.suburb || address.village || address.neighbourhood || address.quarter || '');
         $('#editTripDestinationStreet').val([address.road, address.house_number].filter(Boolean).join(' '));
         $('#editTripDestinationDescription').val(data.display_name || '');
+        $('#editTripDestinationSearch').val(data.display_name || '');
+        setEditTripMapStatus('Address loaded for the selected destination pin.');
         lookupTripEditTariff(getTripByID(selectedTripID));
       })
-      .catch(function () {});
+      .catch(function () {
+        setEditTripMapStatus('Destination pin ready, but address lookup failed. You can type the address manually.');
+      });
   }
 
   function lookupTripEditTariff(trip) {
@@ -726,6 +930,45 @@ $(document).ready(function () {
       error: function () {
         showTripSaveError('Something went wrong while saving trip information.');
       }
+    });
+  }
+
+  function updateTripDeliveryStatus(tripID, status, button) {
+    $.ajax({
+      url: 'ajax/driver_trip_status.ajax.php',
+      method: 'POST',
+      dataType: 'json',
+      data: {
+        tripID: tripID,
+        status: status
+      },
+      success: function (response) {
+        if (!response || response.status !== 'success') {
+          showTripSaveError(response && response.message ? response.message : 'Unable to update trip.');
+          button.prop('disabled', false);
+          return;
+        }
+
+        applyTripStatus(tripID, status);
+        renderTrips();
+      },
+      error: function () {
+        showTripSaveError('Unable to update trip status.');
+        button.prop('disabled', false);
+      }
+    });
+  }
+
+  function applyTripStatus(tripID, status) {
+    const trip = getTripByID(tripID);
+
+    if (!trip) {
+      return;
+    }
+
+    trip.status = status;
+    (trip.bookings || []).forEach(function (booking) {
+      booking.status = status;
     });
   }
 

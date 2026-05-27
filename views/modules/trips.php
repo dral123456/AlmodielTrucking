@@ -2,10 +2,14 @@
 require_once "controllers/booking.controller.php";
 require_once "models/booking.model.php";
 
-$trips = ControllerBooking::ctrTripOverviewList();
+$role = $_SESSION["role"] ?? "";
+$employeeID = isset($_SESSION["id"]) ? (int) $_SESSION["id"] : 0;
+$trips = ControllerBooking::ctrTripOverviewList($employeeID, $role);
 $trucks = ControllerBooking::ctrTruckList();
 $drivers = ControllerBooking::ctrEmployeeListByType("driver");
 $assistants = ControllerBooking::ctrEmployeeListByType("assistant");
+$canModifyTrips = $role === "admin";
+$canUpdateTripStatus = $role === "driver";
 $tripStats = array(
   "total" => count($trips),
   "pending" => 0,
@@ -26,7 +30,9 @@ foreach ($trips as $trip) {
     <div class="card-header border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
       <div>
         <h5 class="mb-0">Trips</h5>
-        <p class="text-muted small mb-0">Monitor generated trips, route points, booking groups, and delivery status.</p>
+        <p class="text-muted small mb-0">
+          <?php echo $role === "driver" ? "View only trips assigned to you and update delivery progress." : "Monitor generated trips, route points, booking groups, and delivery status."; ?>
+        </p>
       </div>
       <span class="badge bg-primary-subtle text-primary fs-6">
         <i class="ri-route-line me-1"></i> Trip Monitoring
@@ -140,6 +146,8 @@ foreach ($trips as $trip) {
   window.tripTruckOptions = <?php echo json_encode($trucks, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
   window.tripDriverOptions = <?php echo json_encode($drivers, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
   window.tripAssistantOptions = <?php echo json_encode($assistants, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
+  window.tripCanModifyInfo = <?php echo $canModifyTrips ? "true" : "false"; ?>;
+  window.tripCanUpdateStatus = <?php echo $canUpdateTripStatus ? "true" : "false"; ?>;
 </script>
 
 <style>
@@ -350,6 +358,242 @@ foreach ($trips as $trip) {
     background: #dbeafe;
   }
 
+  .trip-edit-modal {
+    width: calc(100vw - 1rem) !important;
+    max-width: calc(100vw - 1rem) !important;
+    height: calc(100vh - 1rem) !important;
+    max-height: calc(100vh - 1rem) !important;
+    padding: 1.25rem !important;
+    display: flex !important;
+    flex-direction: column;
+  }
+
+  .trip-edit-modal .swal2-title {
+    margin: 0 0 0.75rem;
+    font-size: clamp(1.3rem, 1.8vw, 1.65rem);
+    flex: 0 0 auto;
+  }
+
+  .trip-edit-modal .swal2-html-container {
+    flex: 1 1 auto !important;
+    min-height: 0;
+    margin: 0;
+    width: 100%;
+    height: calc(100vh - 150px) !important;
+    max-height: calc(100vh - 150px) !important;
+    overflow: hidden;
+    padding: 0;
+  }
+
+  .trip-edit-modal .swal2-actions {
+    flex: 0 0 auto;
+    margin: 0.875rem 0 0;
+  }
+
+  .trip-edit-modal .swal2-confirm,
+  .trip-edit-modal .swal2-cancel {
+    min-width: 132px;
+    min-height: 46px;
+    border-radius: 0.65rem;
+  }
+
+  .trip-edit-shell {
+    color: var(--bs-body-color);
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 0.75rem;
+    height: 100% !important;
+    min-height: 0;
+  }
+
+  .trip-edit-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: center;
+    color: var(--bs-secondary-color);
+    font-size: 0.8125rem;
+  }
+
+  .trip-edit-summary span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 999px;
+    background: var(--bs-tertiary-bg);
+    padding: 0.32rem 0.625rem;
+  }
+
+  .trip-edit-grid {
+    display: grid;
+    grid-template-columns: minmax(500px, 0.9fr) minmax(680px, 1.1fr);
+    gap: 1rem;
+    align-items: stretch;
+    height: 100% !important;
+    min-height: 0;
+  }
+
+  .trip-edit-main {
+    height: 100% !important;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .trip-edit-form {
+    display: grid;
+    align-content: start;
+    gap: 0.75rem;
+    min-height: 0;
+    overflow: auto;
+    padding-right: 0;
+  }
+
+  .trip-edit-card,
+  .trip-edit-map-card {
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.65rem;
+    background: var(--bs-body-bg);
+    padding: 0.875rem;
+  }
+
+  .trip-edit-primary-card {
+    border-color: rgba(105, 108, 255, 0.45);
+    box-shadow: 0 0 0 3px rgba(105, 108, 255, 0.08);
+  }
+
+  .trip-edit-card-title,
+  .trip-edit-map-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.625rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .trip-edit-card-title {
+    justify-content: flex-start;
+  }
+
+  .trip-edit-card-title span {
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 28px;
+    border-radius: 50%;
+    background: var(--bs-primary-bg-subtle);
+    color: var(--bs-primary);
+    font-weight: 700;
+  }
+
+  .trip-edit-card-title small,
+  .trip-edit-map-heading small {
+    display: block;
+    color: var(--bs-secondary-color);
+    font-size: 0.78rem;
+  }
+
+  .trip-edit-map-card {
+    min-height: 0;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .trip-edit-map-heading {
+    align-items: flex-start;
+  }
+
+  .trip-edit-map-heading .badge {
+    white-space: nowrap;
+    margin-top: 0.125rem;
+  }
+
+  #editTripDestinationMap {
+    width: 100%;
+    flex: 1 1 auto;
+    height: 100% !important;
+    min-height: 520px;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.75rem;
+    overflow: hidden;
+    background: #dbeafe;
+  }
+
+  .trip-edit-map-help {
+    margin-top: 0.625rem;
+    color: var(--bs-secondary-color);
+    font-size: 0.875rem;
+  }
+
+  .trip-edit-details {
+    padding: 0;
+  }
+
+  .trip-edit-details summary {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.875rem;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .trip-edit-details summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .trip-edit-details summary > span {
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 28px;
+    border-radius: 50%;
+    background: var(--bs-primary-bg-subtle);
+    color: var(--bs-primary);
+    font-weight: 700;
+  }
+
+  .trip-edit-details summary > div {
+    flex: 1 1 auto;
+  }
+
+  .trip-edit-details summary small {
+    display: block;
+    color: var(--bs-secondary-color);
+    font-size: 0.8125rem;
+  }
+
+  .trip-edit-details summary i {
+    transition: transform 0.15s ease;
+  }
+
+  .trip-edit-details[open] summary i {
+    transform: rotate(180deg);
+  }
+
+  .trip-edit-details .row {
+    padding: 0 0.875rem 0.875rem;
+  }
+
+  .trip-edit-modal .form-label {
+    margin-bottom: 0.3rem;
+    font-weight: 600;
+  }
+
+  .trip-edit-modal .form-control,
+  .trip-edit-modal .form-select {
+    min-height: 42px;
+  }
+
+  .trip-edit-modal textarea.form-control {
+    min-height: 70px;
+  }
+
   @media (max-width: 1399.98px) {
     .trip-stat-grid {
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -374,6 +618,20 @@ foreach ($trips as $trip) {
       height: 460px;
       min-height: 460px;
     }
+
+    .trip-edit-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .trip-edit-main {
+      height: auto;
+      overflow: auto;
+    }
+
+    #editTripDestinationMap {
+      height: 560px;
+      min-height: 560px;
+    }
   }
 
   @media (max-width: 767.98px) {
@@ -389,6 +647,16 @@ foreach ($trips as $trip) {
     #tripMap {
       height: 360px;
       min-height: 360px;
+    }
+
+    #editTripDestinationMap {
+      height: 340px;
+      flex: 0 0 340px;
+      min-height: 340px;
+    }
+
+    .trip-edit-summary {
+      justify-content: flex-start;
     }
   }
 

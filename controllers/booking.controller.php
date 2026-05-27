@@ -20,8 +20,8 @@ class ControllerBooking {
     return (new ModelBooking)->mdlTruckDefaultCrew($truckID);
   }
 
-  static public function ctrTripOverviewList() {
-    return (new ModelBooking)->mdlTripOverviewList();
+  static public function ctrTripOverviewList($employeeID = 0, $employeeRole = "") {
+    return (new ModelBooking)->mdlTripOverviewList($employeeID, $employeeRole);
   }
 
   static public function ctrDriverTripList($driverID, $showAll = false) {

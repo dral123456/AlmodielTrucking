@@ -6,7 +6,6 @@ $adminRoutes = [
     'truck-reg',
     'booking-reg',
     'trips',
-    'driver-trips',
     'reports',
     'sales',
     'manage-company',
@@ -19,7 +18,6 @@ $adminRoutes = [
 
 $driverRoutes = [
     'trips',
-    'driver-trips',
     'logout',
 ];
 

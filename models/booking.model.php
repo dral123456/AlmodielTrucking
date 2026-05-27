@@ -105,8 +105,23 @@ class ModelBooking {
     return $crew;
   }
 
-  static public function mdlTripOverviewList() {
+  static public function mdlTripOverviewList($employeeID = 0, $employeeRole = "") {
     $pdo = (new Connection)->connect();
+    $employeeID = (int) $employeeID;
+    $employeeRole = trim((string) $employeeRole);
+    $crewFilter = "";
+
+    if ($employeeID > 0 && in_array($employeeRole, array("driver", "assistant"), true) && self::tableExists($pdo, "tripemployee")) {
+      $crewFilter = "
+        WHERE EXISTS (
+          SELECT 1
+          FROM tripemployee te
+          WHERE te.tripID = b.tripID
+            AND te.empID = :employeeID
+            AND te.role = :employeeRole
+        )
+      ";
+    }
 
     $stmt = $pdo->prepare("
       SELECT
@@ -145,8 +160,14 @@ class ModelBooking {
       INNER JOIN customer c ON c.id = b.customerID
       INNER JOIN location pickup ON pickup.locationID = b.pickupLocationID
       INNER JOIN location destination ON destination.locationID = b.destinationLocationID
+      {$crewFilter}
       ORDER BY b.pickupDateTime DESC, b.tripID DESC, b.bookingID ASC
     ");
+
+    if ($crewFilter !== "") {
+      $stmt->bindParam(":employeeID", $employeeID, PDO::PARAM_INT);
+      $stmt->bindParam(":employeeRole", $employeeRole, PDO::PARAM_STR);
+    }
 
     $stmt->execute();
     $trips = array();
@@ -538,6 +559,39 @@ class ModelBooking {
       $lng <= 123.6;
   }
 
+  static private function insertLocation($pdo, $location) {
+    $stmt = $pdo->prepare("
+      INSERT INTO location (
+        province,
+        city,
+        barangay,
+        street,
+        description,
+        latitude,
+        longitude
+      ) VALUES (
+        :province,
+        :city,
+        :barangay,
+        :street,
+        :description,
+        :latitude,
+        :longitude
+      )
+    ");
+
+    $stmt->bindValue(":province", trim($location["province"] ?? ""), PDO::PARAM_STR);
+    $stmt->bindValue(":city", trim($location["city"] ?? ""), PDO::PARAM_STR);
+    $stmt->bindValue(":barangay", trim($location["barangay"] ?? ""), PDO::PARAM_STR);
+    $stmt->bindValue(":street", trim($location["street"] ?? ""), PDO::PARAM_STR);
+    $stmt->bindValue(":description", trim($location["description"] ?? ""), PDO::PARAM_STR);
+    $stmt->bindValue(":latitude", (float) ($location["latitude"] ?? 0));
+    $stmt->bindValue(":longitude", (float) ($location["longitude"] ?? 0));
+    $stmt->execute();
+
+    return (int) $pdo->lastInsertId();
+  }
+
   static private function deriveTripStatus($bookings) {
     $statuses = array_column($bookings, "status");
 
@@ -602,6 +656,14 @@ class ModelBooking {
       $destinationLocationID = $data["destinationLocationID"];  
       if (!$pickupLocationID || !$destinationLocationID) {
         throw new Exception("Missing location IDs");
+      }
+
+      if (self::isValidLocationPayload($data["pickup"] ?? array()) && !self::storedLocationHasValidCoordinates($pdo, $pickupLocationID)) {
+        $pickupLocationID = self::insertLocation($pdo, $data["pickup"]);
+      }
+
+      if (self::isValidLocationPayload($data["destination"] ?? array()) && !self::storedLocationHasValidCoordinates($pdo, $destinationLocationID)) {
+        $destinationLocationID = self::insertLocation($pdo, $data["destination"]);
       }
 
       $tripID = self::assignTripID($pdo, $data, $pickupLocationID, $destinationLocationID);
@@ -931,6 +993,19 @@ class ModelBooking {
     $stmt->execute();
 
     return $stmt->fetch(PDO::FETCH_ASSOC);
+  }
+
+  static private function storedLocationHasValidCoordinates($pdo, $locationID) {
+    $location = self::getLocationByID($pdo, (int) $locationID);
+
+    if (!$location) {
+      return false;
+    }
+
+    return self::isValidLocationPayload(array(
+      "latitude" => $location["latitude"],
+      "longitude" => $location["longitude"]
+    ));
   }
 
   static private function distanceInKilometers($lat1, $lng1, $lat2, $lng2) {

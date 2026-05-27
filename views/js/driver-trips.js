@@ -8,19 +8,19 @@ $(document).ready(function () {
     selectTrip(trips[0].tripID);
   }
 
-  $(document).on('click', '.driver-map-focus, .driver-trip-card', function (event) {
+  $(document).on('click', '.driver-map-focus, .driver-trip-row', function (event) {
     if ($(event.target).closest('.driver-status-action').length) {
       return;
     }
 
-    const card = $(this).hasClass('driver-trip-card') ? $(this) : $(this).closest('.driver-trip-card');
-    selectTrip(card.data('trip-id'));
+    const row = $(this).hasClass('driver-trip-row') ? $(this) : $(this).closest('.driver-trip-row');
+    selectTrip(row.data('trip-id'));
   });
 
   $(document).on('click', '.driver-status-action', function () {
     const button = $(this);
-    const card = button.closest('.driver-trip-card');
-    const tripID = card.data('trip-id');
+    const row = button.closest('.driver-trip-row');
+    const tripID = row.data('trip-id');
     const status = button.data('status');
     const labels = {
       'in-transit': 'start this delivery',
@@ -51,22 +51,22 @@ $(document).ready(function () {
         }
 
         if (status === 'completed') {
-          card.slideUp(180, function () {
+          row.fadeOut(180, function () {
             $(this).remove();
-            if (!$('.driver-trip-card').length) {
+            if (!$('.driver-trip-row').length) {
               $('.driver-trip-list').replaceWith('<div class="driver-empty">No active trips assigned yet.</div>');
               clearMap();
               $('#driverMapStatus').text('No active trips assigned yet.');
               $('#driverMapBadge').text('No trip selected');
             } else {
-              selectTrip($('.driver-trip-card').first().data('trip-id'));
+              selectTrip($('.driver-trip-row').first().data('trip-id'));
             }
           });
           return;
         }
 
         if (status === 'in-transit') {
-          card.find('.driver-trip-status')
+          row.find('.driver-trip-status')
             .removeClass('bg-warning-subtle text-warning bg-info-subtle text-info bg-success-subtle text-success')
             .addClass('bg-primary-subtle text-primary')
             .text('In transit');
@@ -75,7 +75,7 @@ $(document).ready(function () {
           return;
         }
 
-        card.find('.driver-trip-status')
+        row.find('.driver-trip-status')
           .removeClass('bg-warning-subtle text-warning bg-primary-subtle text-primary bg-success-subtle text-success')
           .addClass('bg-info-subtle text-info')
           .text('Stopover');
@@ -107,9 +107,10 @@ $(document).ready(function () {
 
   function selectTrip(tripID) {
     const trip = getTrip(tripID);
-    $('.driver-trip-card').removeClass('active');
-    $('.driver-trip-card[data-trip-id="' + tripID + '"]').addClass('active');
+    $('.driver-trip-row').removeClass('active');
+    $('.driver-trip-row[data-trip-id="' + tripID + '"]').addClass('active');
     renderMap(trip);
+    renderTripDetails(trip);
   }
 
   function getTrip(tripID) {
@@ -206,6 +207,54 @@ $(document).ready(function () {
     setTimeout(function () {
       map.invalidateSize();
     }, 100);
+  }
+
+  function renderTripDetails(trip) {
+    const panel = $('#driverTripDetailPanel');
+
+    if (!panel.length) {
+      return;
+    }
+
+    if (!trip || !Array.isArray(trip.bookings) || !trip.bookings.length) {
+      panel.html('<div class="driver-trip-detail-empty">Select a trip to view booking details.</div>');
+      return;
+    }
+
+    const bookingCards = trip.bookings.map(function (booking, index) {
+      return '' +
+        '<div class="driver-trip-detail-card">' +
+          '<div class="driver-trip-detail-title">' +
+            '<div>' +
+              '<strong>Booking #' + escapeHtml(booking.bookingID) + ' - ' + escapeHtml(booking.customerName || 'Customer') + '</strong>' +
+              '<span>' + escapeHtml(booking.customerType || '-') + '</span>' +
+            '</div>' +
+            '<span class="badge bg-secondary-subtle text-secondary">#' + (index + 1) + '</span>' +
+          '</div>' +
+          '<div class="driver-trip-detail-grid">' +
+            '<div>' +
+              '<small><i class="ri-map-pin-2-line text-primary me-1"></i>Pickup</small>' +
+              '<p>' + escapeHtml(booking.pickupAddress || '-') + '</p>' +
+              (booking.pickupDescription && booking.pickupDescription !== booking.pickupAddress ? '<span>' + escapeHtml(booking.pickupDescription) + '</span>' : '') +
+            '</div>' +
+            '<div>' +
+              '<small><i class="ri-flag-line text-danger me-1"></i>Destination</small>' +
+              '<p>' + escapeHtml(booking.destinationAddress || '-') + '</p>' +
+              (booking.destinationDescription && booking.destinationDescription !== booking.destinationAddress ? '<span>' + escapeHtml(booking.destinationDescription) + '</span>' : '') +
+            '</div>' +
+          '</div>' +
+        '</div>';
+    }).join('');
+
+    panel.html(
+      '<div class="driver-trip-detail-heading">' +
+        '<div>' +
+          '<h6 class="mb-1">Trip #' + escapeHtml(trip.tripID) + ' Details</h6>' +
+          '<p class="text-muted small mb-0">' + escapeHtml((trip.bookings || []).length) + ' booking(s) attached to this delivery.</p>' +
+        '</div>' +
+      '</div>' +
+      '<div class="driver-trip-detail-list">' + bookingCards + '</div>'
+    );
   }
 
   function clearMap() {

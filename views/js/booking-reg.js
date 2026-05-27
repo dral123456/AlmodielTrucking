@@ -868,7 +868,7 @@ $(document).ready(function () {
     }
 
     $('#reviewCustomer').text(customerLabel);
-    $('#reviewTripSchedule').text('Generated on save / ' + ($('#bookingPickupDateTime').val() || '-'));
+    $('#reviewTripSchedule').text($('#bookingPickupDateTime').val() || '-');
 
     if (!IS_CUSTOMER_INDIVIDUAL) {
       const assistantNames = $('.booking-assistant').map(function () {
@@ -935,7 +935,6 @@ $(document).ready(function () {
         '<p class="mb-2">Please review the details before submitting:</p>' +
         '<div class="text-start bg-light rounded p-3">' +
           '<div><strong>Customer:</strong> '    + customerDisplay + '</div>' +
-          '<div><strong>Trip ID:</strong> Generated on save</div>' +
           (!IS_CUSTOMER_INDIVIDUAL
             ? '<div><strong>Truck:</strong> '  + ($('#bookingTruck option:selected').text().trim()  || '-') + '</div>' +
               '<div><strong>Driver:</strong> ' + ($('#bookingDriver option:selected').text().trim() || '-') + '</div>'
@@ -956,37 +955,25 @@ $(document).ready(function () {
 
   // ─── Save: locations first, then booking ────────────────────────────────────
   function saveLocationsAndBooking() {
-    const pickupLocationID      = pickedPickupLocationID;
-    const destinationLocationID = pickedDestinationLocationID;
+    const savePickup = saveOneLocation({
+      province:    $('#pickupProvince').val(),
+      city:        $('#pickupCity').val(),
+      barangay:    $('#pickupBarangay').val(),
+      street:      $('#pickupStreet').val(),
+      description: $('#pickupDescription').val(),
+      lat:         $('#pickupLatitude').val(),
+      lng:         $('#pickupLongitude').val(),
+    });
 
-    if (pickupLocationID && destinationLocationID) {
-      saveBooking(pickupLocationID, destinationLocationID);
-      return;
-    }
-
-    const savePickup = pickupLocationID
-      ? Promise.resolve(pickupLocationID)
-      : saveOneLocation({
-          province:    $('#pickupProvince').val(),
-          city:        $('#pickupCity').val(),
-          barangay:    $('#pickupBarangay').val(),
-          street:      $('#pickupStreet').val(),
-          description: $('#pickupDescription').val(),
-          lat:         $('#pickupLatitude').val(),
-          lng:         $('#pickupLongitude').val(),
-        });
-
-    const saveDestination = destinationLocationID
-      ? Promise.resolve(destinationLocationID)
-      : saveOneLocation({
-          province:    $('#destinationProvince').val(),
-          city:        $('#destinationCity').val(),
-          barangay:    $('#destinationBarangay').val(),
-          street:      $('#destinationStreet').val(),
-          description: $('#destinationDescription').val(),
-          lat:         $('#destinationLatitude').val(),
-          lng:         $('#destinationLongitude').val(),
-        });
+    const saveDestination = saveOneLocation({
+      province:    $('#destinationProvince').val(),
+      city:        $('#destinationCity').val(),
+      barangay:    $('#destinationBarangay').val(),
+      street:      $('#destinationStreet').val(),
+      description: $('#destinationDescription').val(),
+      lat:         $('#destinationLatitude').val(),
+      lng:         $('#destinationLongitude').val(),
+    });
 
     Promise.all([savePickup, saveDestination])
       .then(function (ids) {
@@ -1052,6 +1039,20 @@ $(document).ready(function () {
     formData.append('cargoSpecialHandling', $('#cargoSpecialHandling').val());
     formData.append('pickupLocationID',      pickupLocationID);
     formData.append('destinationLocationID', destinationLocationID);
+    formData.append('pickupProvince', $('#pickupProvince').val());
+    formData.append('pickupCity', $('#pickupCity').val());
+    formData.append('pickupBarangay', $('#pickupBarangay').val());
+    formData.append('pickupStreet', $('#pickupStreet').val());
+    formData.append('pickupDescription', $('#pickupDescription').val());
+    formData.append('pickupLatitude', $('#pickupLatitude').val());
+    formData.append('pickupLongitude', $('#pickupLongitude').val());
+    formData.append('destinationProvince', $('#destinationProvince').val());
+    formData.append('destinationCity', $('#destinationCity').val());
+    formData.append('destinationBarangay', $('#destinationBarangay').val());
+    formData.append('destinationStreet', $('#destinationStreet').val());
+    formData.append('destinationDescription', $('#destinationDescription').val());
+    formData.append('destinationLatitude', $('#destinationLatitude').val());
+    formData.append('destinationLongitude', $('#destinationLongitude').val());
 
 
     console.log("Pickup ID:", pickupLocationID);
