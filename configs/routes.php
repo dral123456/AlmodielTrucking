@@ -18,8 +18,8 @@ $adminRoutes = [
 ];
 
 $driverRoutes = [
-    'sample',
     'trips',
+    'driver-trips',
     'logout',
 ];
 
@@ -35,6 +35,7 @@ $customerRoutes = [
     'customer-individual/bookings',
     'booking-reg',
     'logout',
+    'bookings',
 ];
 
 return [

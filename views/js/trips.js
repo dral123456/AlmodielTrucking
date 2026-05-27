@@ -437,6 +437,11 @@ $(document).ready(function () {
         $('#editTripFuelPrice, #editTripTruck').on('input change', function () {
           lookupTripEditTariff(trip);
         });
+        $('#editTripPrice').on('input change', function () {
+          if (!$(this).data('settingTariffPrice')) {
+            $(this).data('tariffAutofilled', false);
+          }
+        });
         $('.edit-trip-destination-field').on('input', function () {
           lookupTripEditTariff(trip);
         });
@@ -633,15 +638,28 @@ $(document).ready(function () {
       },
       success: function (response) {
         if (!response || response.status !== 'success') {
-          $('#editTripTariffHint').text('No tariff matched. You can enter the price manually.');
+          clearAutofilledEditTripPrice();
+          $('#editTripTariffHint').text('No matching tariff was found for the selected truck and destination. You can enter the price manually.');
           return;
         }
 
         const totalRate = Number(response.totalRate || response.baseRate || 0);
-        $('#editTripPrice').val(totalRate.toFixed(2));
+        $('#editTripPrice')
+          .data('settingTariffPrice', true)
+          .val(totalRate.toFixed(2))
+          .data('tariffAutofilled', true)
+          .data('settingTariffPrice', false);
         $('#editTripTariffHint').text('Tariff matched: ' + response.destination + ' = PHP ' + totalRate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
       }
     });
+  }
+
+  function clearAutofilledEditTripPrice() {
+    const $price = $('#editTripPrice');
+
+    if ($price.data('tariffAutofilled')) {
+      $price.val('').data('tariffAutofilled', false);
+    }
   }
 
   function getTripTruckID(trip) {

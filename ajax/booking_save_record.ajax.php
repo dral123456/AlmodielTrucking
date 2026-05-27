@@ -52,19 +52,24 @@ class BookingRegistration {
     $destinationLocationID = $_POST["destinationLocationID"] ?? null;
 
     // 🔴 VALIDATION (IMPORTANT)
-    if (!$customerID || !$truckID || !$driverID || !$pickupLocationID || !$destinationLocationID) {
+    if (
+      empty($customerID) ||
+      empty($truckID) ||
+      empty($driverID) ||
+      empty($pickupLocationID) ||
+      empty($destinationLocationID)
+    ) {
       echo "Missing required booking data or location IDs.";
       return;
     }
 
-    if (
-      !$this->isValidNegrosCoordinate($_POST["pickupLatitude"] ?? null, $_POST["pickupLongitude"] ?? null) ||
-      !$this->isValidNegrosCoordinate($_POST["destinationLatitude"] ?? null, $_POST["destinationLongitude"] ?? null)
-    ) {
-      echo "error";
-      return;
-    }
-
+    // if (
+    //   !$this->isValidNegrosCoordinate($_POST["pickupLatitude"] ?? null, $_POST["pickupLongitude"] ?? null) ||
+    //   !$this->isValidNegrosCoordinate($_POST["destinationLatitude"] ?? null, $_POST["destinationLongitude"] ?? null)
+    // ) {
+    //   echo "error";
+    //   return;
+    // }
     $data = array(
       "customerID" => $_POST["customerID"],
       "truckID" => $_POST["truckID"],

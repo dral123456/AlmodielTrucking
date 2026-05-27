@@ -20,6 +20,7 @@ $sidebarItems = [
       ['label' => 'Booking',             'route' => 'booking-reg'],
       ['label' => 'Trips',               'route' => 'trips'],
       ['label' => 'Driver Trips',        'route' => 'driver-trips'],
+      ['label' => 'Bookings',            'route' => 'bookings'],
     ],
   ],
   [
