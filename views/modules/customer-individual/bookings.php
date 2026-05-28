@@ -166,12 +166,11 @@ function bookingStatusLabel($status) {
 
                   <button
                     type="button"
-                    class="btn btn-light customer-map-focus"
-                    data-lat="<?php echo $booking["destinationLatitude"]; ?>"
-                    data-lng="<?php echo $booking["destinationLongitude"]; ?>"
+                    class="btn btn-light customer-map-focus viewDetails"
+                    data-id="<?php echo (int) $booking["bookingID"]; ?>"
                   >
-                    <i class="ri-road-map-line me-1"></i>
-                    View Destination
+                    <i class="ri-road-map-line me-1" ></i>
+                    View Details
                   </button>
 
                 </div>

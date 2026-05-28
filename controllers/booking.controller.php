@@ -43,4 +43,7 @@ class ControllerBooking {
   static public function ctrCustomerBookingList($customerID) {
     return (new ModelBooking)->mdlCustomerBookingList($customerID);
   }
+  static public function ctrGetBooking($bookingID) {
+    return (new ModelBooking)->mdlGetBooking($bookingID);
+  }
 }

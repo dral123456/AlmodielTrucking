@@ -19,4 +19,5 @@ return [
     'signup'                        => 'modules/customer-individual/signup.php',
     'staff-login'                   => 'modules/staff-login.php',
     'bookings'                      => 'modules/customer-individual/bookings.php',
+    'booking-details'               => 'modules/customer-individual/booking-details.php',
 ];

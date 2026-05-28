@@ -1166,4 +1166,64 @@ class ModelBooking {
 
     return $bookings;
   }
+
+  static public function mdlGetBooking($bookingID) {
+    $pdo = (new Connection)->connect();
+
+    $stmt = $pdo->prepare("
+      SELECT
+        b.bookingID,
+        b.tripID,
+        b.customerID,
+        b.pickupDateTime,
+        b.price,
+        b.status,
+
+        c.customerType,
+        c.customerFName,
+        c.customerLName,
+        c.contactPerson,
+
+        pickup.province AS pickupProvince,
+        pickup.city AS pickupCity,
+        pickup.barangay AS pickupBarangay,
+        pickup.street AS pickupStreet,
+        pickup.description AS pickupDescription,
+        pickup.latitude AS pickupLatitude,
+        pickup.longitude AS pickupLongitude,
+
+        destination.province AS destinationProvince,
+        destination.city AS destinationCity,
+        destination.barangay AS destinationBarangay,
+        destination.street AS destinationStreet,
+        destination.description AS destinationDescription,
+        destination.latitude AS destinationLatitude,
+        destination.longitude AS destinationLongitude
+
+      FROM booking b
+
+      INNER JOIN customer c
+        ON c.id = b.customerID
+
+      INNER JOIN location pickup
+        ON pickup.locationID = b.pickupLocationID
+
+      INNER JOIN location destination
+        ON destination.locationID = b.destinationLocationID
+
+      WHERE b.bookingID = :bookingID
+
+      ORDER BY b.pickupDateTime ASC,
+              b.tripID ASC,
+              b.bookingID ASC
+    ");
+
+    $stmt->bindParam(":bookingID", $bookingID, PDO::PARAM_INT);
+
+    $stmt->execute();
+
+    $booking = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    return $booking;
+  }
 }
