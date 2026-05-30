@@ -70,7 +70,7 @@ foreach ($trips as $trip) {
                         </tr>
                     <?php else: ?>
                         <?php foreach ($trips as $trip): ?>
-                        <tr>
+                        <tr class="cursor-pointer viewDetails" data-id="<?php echo htmlspecialchars($trip["tripID"]); ?>">
                             <td><?php echo htmlspecialchars($trip["tripID"]); ?></td>
                             <td><?php echo htmlspecialchars($trip["firstPickupDateTime"]); ?></td>
                             <td><?php echo (int) $trip["bookingCount"]; ?></td>
