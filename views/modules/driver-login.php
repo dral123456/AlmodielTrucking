@@ -18,8 +18,8 @@
     <div class="col-12 col-md-8 col-lg-6 col-xl-5">
       <div class="card mx-xxl-8 shadow-none">
         <div class="card-body p-8">
-          <h3 class="fw-medium text-center">Admin Login</h3>
-          <p class="mb-8 text-muted text-center">Admin access</p>
+          <h3 class="fw-medium text-center">Driver Login</h3>
+          <p class="mb-8 text-muted text-center">Driver access</p>
           <form id="formAuthentication" method="POST" action="">
             <div class="mb-4">
               <label for="phoneNumber" class="form-label">Phone Number <span class="text-danger">*</span></label>
@@ -28,7 +28,7 @@
                 class="form-control"
                 id="phoneNumber"
                 name="phoneNumber"
-                placeholder="Enter admin phone number"
+                placeholder="Enter Driver phone number"
                 autofocus
                 required>
             </div>

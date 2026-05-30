@@ -3,9 +3,26 @@ $allRoutes   = require 'configs/routes.php';
 $modulePaths = require 'configs/module-paths.php';
 $role        = $_SESSION['role'] ?? 'customer';
 $allowed     = $allRoutes[$role] ?? [];
+$dashboardRoute = match ($role) {
+    'admin' => 'sample',
+    'assistant' => 'assistantDashboard',
+    'driver' => 'driverDashboard',
+    'customer', 'customer-individual', 'customer-company' => 'customer-individual/profile',
+    default => null,
+};
 
 // Define sidebar structure — only items whose route is in $allowed will show
 $sidebarItems = [
+  [
+    'type'  => 'title',
+    'label' => 'Main',
+  ],
+  [
+    'type'  => 'link',
+    'icon'  => 'ri-apps-line',
+    'label' => 'Dashboard',
+    'route' => $dashboardRoute,
+  ],
   [
     'type'  => 'title',
     'label' => 'Forms',
@@ -38,6 +55,7 @@ $sidebarItems = [
       ['label' => 'Truck',    'route' => 'manage-truck'],
     ],
   ],
+
   [
     'type'  => 'title',
     'label' => 'Reports',
@@ -54,6 +72,7 @@ $sidebarItems = [
     'label' => 'Reports',
     'route' => 'reports',
   ],
+  
 ];
 
 // Pre-compute which titles have visible content
@@ -89,7 +108,7 @@ foreach ($sidebarItems as $item) {
 <aside class="pe-app-sidebar" id="sidebar">
     <div class="pe-app-sidebar-logo px-6 d-flex align-items-center position-relative">
         <!--begin::Brand Image-->
-        <a href="sample" class="d-flex align-items-end logo-main">
+        <a href="<?= htmlspecialchars($dashboardRoute) ?>" class="d-flex align-items-end logo-main">
             <img height="35" width="34" class="logo-dark" alt="Dark Logo" src="views/assets/images/logo-md.png">
             <img height="35" width="34" class="logo-light" alt="Light Logo" src="views/assets/images/logo-md-light.png">
             <h3 class="text-body-emphasis fw-bolder mb-0 ms-1">Urbix</h3>

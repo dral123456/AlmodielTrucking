@@ -13,6 +13,12 @@
   var clearButton = document.getElementById("reportClearDate");
   var csvButton = document.getElementById("reportExportCsv");
   var pdfButton = document.getElementById("reportExportPdf");
+  var tcpdfButton = document.getElementById("tcpdfExportPdf");
+if (tcpdfButton) {
+  tcpdfButton.addEventListener("click", function () {
+    window.open("views/modules/reports-pdf.php", "_blank");
+  });
+}
   var specificOptions = {
     billing: [
       { value: "all", label: "All Billing" },

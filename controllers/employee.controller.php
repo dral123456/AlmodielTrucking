@@ -23,7 +23,7 @@ class ControllerEmployee {
         $_SESSION["role"] = self::sessionRoleForEmployee($answer["empType"]);
 
         echo '<script>
-          window.location = "sample";
+          window.location = "assistantDashboard";
         </script>';
       } else {
         echo '<br><div style="text-align:center;" class="alert alert-danger">User or password incorrect</div>';
@@ -46,7 +46,7 @@ class ControllerEmployee {
         $_SESSION["role"] = self::sessionRoleForEmployee($answer["empType"]);
 
         echo '<script>
-          window.location = "sample";
+          window.location = "driverDashboard";
         </script>';
       } else {
         echo '<br><div style="text-align:center;" class="alert alert-danger">User or password incorrect</div>';
@@ -72,7 +72,7 @@ class ControllerEmployee {
 
         echo '<script>
           window.location = "sample";
-        </script>'; 
+        </script>';
       } else {
         echo '<br><div style="text-align:center;" class="alert alert-danger">User or password incorrect</div>';
       }
