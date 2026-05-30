@@ -5,23 +5,35 @@ require_once "models/customer.model.php";
 $companies = ControllerCustomer::ctrCompanyList();
 $companyMapData = array();
 
+function manageCompanyText($value, $fallback = "") {
+  if ($value === null || $value === "") {
+    return $fallback;
+  }
+
+  return (string) $value;
+}
+
+function manageCompanyHtml($value, $fallback = "") {
+  return htmlspecialchars(manageCompanyText($value, $fallback), ENT_QUOTES, "UTF-8");
+}
+
 foreach ($companies as $company) {
   if (!empty($company["latitude"]) && !empty($company["longitude"])) {
-    $companyName = trim($company["customerFName"]);
+    $companyName = trim(manageCompanyText($company["customerFName"] ?? ""));
     if ($companyName === "") {
-      $companyName = $company["contactPerson"];
+      $companyName = manageCompanyText($company["contactPerson"] ?? "");
     }
 
     $companyMapData[] = array(
-      "name"          => $companyName,
+      "name" => $companyName,
       "contactPerson" => $company["contactPerson"],
-      "latitude"      => (float) $company["latitude"],
-      "longitude"     => (float) $company["longitude"],
-      "address"       => implode(", ", array_filter(array(
-        $company["street"],
-        $company["barangay"],
-        $company["city"],
-        $company["province"]
+      "latitude" => (float) $company["latitude"],
+      "longitude" => (float) $company["longitude"],
+      "address" => implode(", ", array_filter(array(
+        manageCompanyText($company["street"] ?? ""),
+        manageCompanyText($company["barangay"] ?? ""),
+        manageCompanyText($company["city"] ?? ""),
+        manageCompanyText($company["province"] ?? "")
       )))
     );
   }
@@ -81,56 +93,56 @@ foreach ($companies as $company) {
           <tbody>
             <?php foreach ($companies as $company): ?>
               <?php
-                $companyName = trim($company["customerFName"]);
+                $companyName = trim(manageCompanyText($company["customerFName"] ?? ""));
                 if ($companyName === "") {
-                  $companyName = $company["contactPerson"];
+                  $companyName = manageCompanyText($company["contactPerson"] ?? "");
                 }
                 $address = implode(", ", array_filter(array(
-                  $company["street"],
-                  $company["barangay"],
-                  $company["city"],
-                  $company["province"]
+                  manageCompanyText($company["street"] ?? ""),
+                  manageCompanyText($company["barangay"] ?? ""),
+                  manageCompanyText($company["city"] ?? ""),
+                  manageCompanyText($company["province"] ?? "")
                 )));
                 $coords = (!empty($company["latitude"]) && !empty($company["longitude"]))
                   ? $company["latitude"] . ", " . $company["longitude"]
                   : "Not pinned";
               ?>
               <tr
-                data-status="<?php echo htmlspecialchars($company["status"]); ?>"
-                data-id="<?php echo htmlspecialchars($company["id"]); ?>"
+                data-status="<?php echo manageCompanyHtml($company["status"] ?? ""); ?>"
+                data-id="<?php echo manageCompanyHtml($company["id"] ?? ""); ?>"
                 data-entity="company"
-                data-company-name="<?php echo htmlspecialchars($companyName); ?>"
-                data-contact-person="<?php echo htmlspecialchars($company["contactPerson"]); ?>"
-                data-email="<?php echo htmlspecialchars($company["email"]); ?>"
-                data-phone-number="<?php echo htmlspecialchars($company["phoneNumber"]); ?>"
-                data-province="<?php echo htmlspecialchars($company["province"] ?? ''); ?>"
-                data-city="<?php echo htmlspecialchars($company["city"] ?? ''); ?>"
-                data-barangay="<?php echo htmlspecialchars($company["barangay"] ?? ''); ?>"
-                data-street="<?php echo htmlspecialchars($company["street"] ?? ''); ?>"
-                data-description="<?php echo htmlspecialchars($company["description"] ?? ''); ?>"
-                data-latitude="<?php echo htmlspecialchars($company["latitude"] ?? ''); ?>"
-                data-longitude="<?php echo htmlspecialchars($company["longitude"] ?? ''); ?>"
-                data-location-id="<?php echo htmlspecialchars($company["locationID"] ?? ''); ?>"
+                data-company-name="<?php echo manageCompanyHtml($companyName); ?>"
+                data-contact-person="<?php echo manageCompanyHtml($company["contactPerson"] ?? ""); ?>"
+                data-email="<?php echo manageCompanyHtml($company["email"] ?? ""); ?>"
+                data-phone-number="<?php echo manageCompanyHtml($company["phoneNumber"] ?? ""); ?>"
+                data-province="<?php echo manageCompanyHtml($company["province"] ?? ""); ?>"
+                data-city="<?php echo manageCompanyHtml($company["city"] ?? ""); ?>"
+                data-barangay="<?php echo manageCompanyHtml($company["barangay"] ?? ""); ?>"
+                data-street="<?php echo manageCompanyHtml($company["street"] ?? ""); ?>"
+                data-description="<?php echo manageCompanyHtml($company["description"] ?? ""); ?>"
+                data-latitude="<?php echo manageCompanyHtml($company["latitude"] ?? ""); ?>"
+                data-longitude="<?php echo manageCompanyHtml($company["longitude"] ?? ""); ?>"
+                data-location-id="<?php echo manageCompanyHtml($company["locationID"] ?? ""); ?>"
               >
                 <td>
-                  <strong><?php echo htmlspecialchars($companyName); ?></strong>
-                  <div class="small text-muted">Registered <?php echo htmlspecialchars($company["dateRegistered"]); ?></div>
+                  <strong><?php echo manageCompanyHtml($companyName); ?></strong>
+                  <div class="small text-muted">Registered <?php echo manageCompanyHtml($company["dateRegistered"] ?? ""); ?></div>
                 </td>
                 <td>
-                  <?php echo htmlspecialchars($company["contactPerson"] ?: "-"); ?>
-                  <div class="small text-muted"><?php echo htmlspecialchars($company["email"]); ?></div>
-                  <div class="small text-muted"><?php echo htmlspecialchars($company["phoneNumber"]); ?></div>
+                  <?php echo manageCompanyHtml($company["contactPerson"] ?? "", "-"); ?>
+                  <div class="small text-muted"><?php echo manageCompanyHtml($company["email"] ?? ""); ?></div>
+                  <div class="small text-muted"><?php echo manageCompanyHtml($company["phoneNumber"] ?? ""); ?></div>
                 </td>
-                <td><?php echo htmlspecialchars($address ?: "-"); ?></td>
-                <td><?php echo htmlspecialchars($coords); ?></td>
+                <td><?php echo manageCompanyHtml($address, "-"); ?></td>
+                <td><?php echo manageCompanyHtml($coords); ?></td>
                 <td>
                   <span class="badge <?php echo $company["status"] === "active" ? "bg-success-subtle text-success" : "bg-secondary-subtle text-secondary"; ?>">
-                    <?php echo htmlspecialchars(ucfirst($company["status"])); ?>
+                    <?php echo manageCompanyHtml(ucfirst(manageCompanyText($company["status"] ?? ""))); ?>
                   </span>
                 </td>
                 <td>
                   <?php if (!empty($company["companyDocument"])): ?>
-                    <a class="btn btn-sm btn-light" href="uploads/<?php echo htmlspecialchars($company["companyDocument"]); ?>" target="_blank">
+                    <a class="btn btn-sm btn-light" href="uploads/<?php echo manageCompanyHtml($company["companyDocument"]); ?>" target="_blank">
                       <i class="ri-file-line me-1"></i> View
                     </a>
                   <?php else: ?>

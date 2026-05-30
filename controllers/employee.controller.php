@@ -16,7 +16,7 @@ class ControllerEmployee {
       $value = $_POST["phoneNumber"];
       $answer = (new ModelEmployee)->mdlGetEmployeeCredentials($table, $item, $value);
 
-      if (!empty($answer) && $answer["empPhoneNumber"] == $_POST["phoneNumber"] && self::verifyPassword($encryptpass, $answer["empPassword"])) {
+      if (!empty($answer) && $answer["empPhoneNumber"] == $_POST["phoneNumber"] && self::verifyPassword($encryptpass, $answer["empPassword"]) && strtolower(trim((string) $answer["empType"])) === "assistant") {
         $_SESSION["loggedIn"] = "ok";
         $_SESSION["id"] = $answer["id"];
         $_SESSION["empType"] = $answer["empType"];

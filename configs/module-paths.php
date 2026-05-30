@@ -6,7 +6,6 @@ return [
     'truck-reg'                     => 'modules/admin/truck-reg.php',
     'booking-reg'                   => 'modules/booking-reg.php',
     'trips'                         => 'modules/trips.php',
-    'driver-trips'                  => 'modules/driver-trips.php',
     'sales'                         => 'modules/sales.php',
     'manage-tariff'                 => 'modules/manage-tariff.php',
     'reports'                       => 'modules/admin/reports.php',
@@ -18,4 +17,7 @@ return [
     'logout'                        => 'modules/logout.php',
     'signup'                        => 'modules/customer-individual/signup.php',
     'staff-login'                   => 'modules/staff-login.php',
+    'bookings'                      => 'modules/customer-individual/bookings.php',
+    'booking-details'               => 'modules/customer-individual/booking-details.php',
+    'assistantDashboard'            => 'modules/assistant/assistantDashboard.php',
 ];

@@ -76,6 +76,7 @@ class ModelTariff {
       "distanceKm" => (float) $row["distanceKm"],
       "baseRate" => $baseRate,
       "fuelPrice" => $fuelPrice,
+      "fuelBaseMin" => (float) $row["fuelRangeStart"],
       "fuelBaseMax" => (float) $row["fuelRangeEnd"],
       "hasFuelSubsidy" => $hasFuelSubsidy,
       "fuelSubsidy" => $fuelSubsidy,

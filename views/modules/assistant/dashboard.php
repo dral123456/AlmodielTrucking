@@ -1,59 +1,4 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Driver Assistant Dashboard</title>
-
-<!-- Bootstrap -->
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-
-<!-- Bootstrap Icons -->
-<link rel="stylesheet"
-href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-
-<style>
-    body{
-    background:#f4f6f9;
-    }
-
-    .sidebar{
-    height:100vh;
-    background:#1e293b;
-    color:white;
-    padding:20px;
-    }
-
-    .sidebar a{
-    color:white;
-    text-decoration:none;
-    display:block;
-    padding:10px;
-    border-radius:10px;
-    margin-bottom:10px;
-    }
-
-    .sidebar a:hover{
-    background:#334155;
-    }
-
-    .card-box{
-    border:none;
-    border-radius:15px;
-    color:white;
-    padding:20px;
-    }
-
-    .table-container{
-    background:white;
-    border-radius:15px;
-    padding:20px;
-    }
-</style>
-</head>
-
-<body>
 
 <div class="container-fluid">
 <div class="row">
@@ -176,6 +121,34 @@ href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.m
 
   </div>
 </div>
+<style>
+    
 
-</body>
-</html>
+    .sidebar{
+    height:100vh;
+    color:white;
+    padding:20px;
+    }
+
+    .sidebar a{
+    color:white;
+    text-decoration:none;
+    display:block;
+    padding:10px;
+    border-radius:10px;
+    margin-bottom:10px;
+    }
+
+    .sidebar a:hover{
+    background:#334155;
+    }
+
+    .card-box{
+    border:none;
+    border-radius:15px;
+    color:white;
+    padding:20px;
+    }
+
+    
+</style>

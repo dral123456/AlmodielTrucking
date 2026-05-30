@@ -250,13 +250,14 @@
       "booking-reg" => ["booking-reg.js"],
       "signup" => ["customer-individual/signup.js"],
       "trips" => ["trips.js"],
-      "driver-trips" => ["driver-trips.js"],
       "sales" => ["sales.js"],
       "manage-tariff" => ["manage.js", "manage-tariff.js"],
       "reports" => ["admin/reports.js"],
       "manage-company" => ["admin/manage.js"],
       "manage-employee" => ["admin/manage.js"],
-      "manage-truck" => ["admin/manage.js"]
+      "manage-truck" => ["admin/manage.js"],
+      "bookings" => ["customer-individual/bookings.js"],
+      "booking-details" => ["customer-individual/booking-details.js"]
     ];
 
     if (array_key_exists($route, $routeScripts)) {

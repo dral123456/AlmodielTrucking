@@ -19,7 +19,7 @@ $sidebarItems = [
       ['label' => 'Individual Customer', 'route' => 'signup'],
       ['label' => 'Booking',             'route' => 'booking-reg'],
       ['label' => 'Trips',               'route' => 'trips'],
-      ['label' => 'Driver Trips',        'route' => 'driver-trips'],
+      ['label' => 'Bookings',            'route' => 'bookings'],
     ],
   ],
   [
@@ -39,6 +39,12 @@ $sidebarItems = [
     ],
   ],
   [
+    'type'  => 'link',
+    'icon'  => 'ri-apps-line',
+    'label' => 'Dashboard',
+    'route' => 'assistantDashboard',
+  ],
+  [
     'type'  => 'title',
     'label' => 'Reports',
   ],
@@ -54,6 +60,7 @@ $sidebarItems = [
     'label' => 'Reports',
     'route' => 'reports',
   ],
+  
 ];
 
 // Pre-compute which titles have visible content

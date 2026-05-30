@@ -52,11 +52,24 @@ class BookingRegistration {
     $destinationLocationID = $_POST["destinationLocationID"] ?? null;
 
     // 🔴 VALIDATION (IMPORTANT)
-    if (!$customerID || !$truckID || !$driverID || !$pickupLocationID || !$destinationLocationID) {
+    if (
+      empty($customerID) ||
+      empty($truckID) ||
+      empty($driverID) ||
+      empty($pickupLocationID) ||
+      empty($destinationLocationID)
+    ) {
       echo "Missing required booking data or location IDs.";
       return;
     }
 
+    // if (
+    //   !$this->isValidNegrosCoordinate($_POST["pickupLatitude"] ?? null, $_POST["pickupLongitude"] ?? null) ||
+    //   !$this->isValidNegrosCoordinate($_POST["destinationLatitude"] ?? null, $_POST["destinationLongitude"] ?? null)
+    // ) {
+    //   echo "error";
+    //   return;
+    // }
     $data = array(
       "customerID" => $_POST["customerID"],
       "truckID" => $_POST["truckID"],
@@ -102,6 +115,22 @@ class BookingRegistration {
 
     $answer = (new ControllerBooking)->ctrSaveBooking($data);
     echo $answer;
+  }
+
+  private function isValidNegrosCoordinate($latitude, $longitude) {
+    if ($latitude === null || $longitude === null || $latitude === "" || $longitude === "") {
+      return false;
+    }
+
+    $lat = (float) $latitude;
+    $lng = (float) $longitude;
+
+    return is_finite($lat) &&
+      is_finite($lng) &&
+      $lat >= 9 &&
+      $lat <= 11.2 &&
+      $lng >= 122 &&
+      $lng <= 123.6;
   }
 }
 

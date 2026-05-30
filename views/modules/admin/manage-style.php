@@ -155,4 +155,38 @@
       margin-top: 0.5rem;
     }
   }
+
+  @media (min-width: 576px) {
+    .tariff-page .tariff-toolbar {
+      grid-template-columns: minmax(220px, 0.8fr) minmax(260px, 1fr) auto !important;
+    }
+
+    .tariff-page .tariff-import-grid {
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)) !important;
+    }
+
+    .tariff-page .tariff-toolbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      white-space: nowrap;
+    }
+
+    .tariff-page .tariff-import-grid .btn {
+      min-width: 150px;
+    }
+  }
+
+  @media (max-width: 575.98px) {
+    .tariff-page .tariff-toolbar,
+    .tariff-page .tariff-import-grid {
+      grid-template-columns: 1fr !important;
+    }
+
+    .tariff-page .tariff-toolbar-actions,
+    .tariff-page .tariff-toolbar-actions .btn,
+    .tariff-page .tariff-import-grid .btn {
+      width: 100%;
+    }
+  }
 </style>

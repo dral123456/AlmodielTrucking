@@ -528,14 +528,14 @@ $(document).ready(function () {
         .html(loading ? '<span class="spinner-border spinner-border-sm me-1"></span> Searching' : 'Search');
     }
 
-    function setPin(latlng) {
+    function setPin(latlng, lookupAddress) {
       const nextLat = Number(latlng.lat).toFixed(8);
       const nextLng = Number(latlng.lng).toFixed(8);
 
       if (!marker) {
         marker = L.marker(latlng, { draggable: true }).addTo(map);
         marker.on('dragend', function () {
-          setPin(marker.getLatLng());
+          setPin(marker.getLatLng(), true);
         });
       } else {
         marker.setLatLng(latlng);
@@ -545,14 +545,55 @@ $(document).ready(function () {
       $('input[name="longitude"]').val(nextLng);
       $('#manageCompanyCoordinateText').text(nextLat + ', ' + nextLng);
       $('#manageCompanyMapStatus').text('Warehouse pin updated. Save changes to apply it.');
+
+      if (lookupAddress) {
+        fillAddressFromCoordinates(nextLat, nextLng);
+      }
     }
 
-    function fillAddressFromResult(address) {
+    function composeAddressDescription() {
+      return [
+        $('input[name="street"]').val(),
+        $('input[name="barangay"]').val(),
+        $('input[name="city"]').val(),
+        $('input[name="province"]').val(),
+        'Philippines'
+      ].map(function (value) {
+        return String(value || '').trim();
+      }).filter(Boolean).join(', ');
+    }
+
+    function fillAddressFromResult(address, displayName) {
       if (!address) return;
       $('input[name="province"]').val(address.state || address.region || address.province || '');
       $('input[name="city"]').val(address.city || address.town || address.municipality || address.village || address.county || '');
       $('input[name="barangay"]').val(address.suburb || address.neighbourhood || address.quarter || address.barangay || '');
       $('input[name="street"]').val(address.road || address.pedestrian || address.footway || '');
+      $('textarea[name="description"]').val(displayName || composeAddressDescription());
+    }
+
+    function fillAddressFromCoordinates(lat, lng) {
+      const url = 'https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=' +
+        encodeURIComponent(lat) + '&lon=' + encodeURIComponent(lng) + '&addressdetails=1';
+
+      $('#manageCompanyMapStatus').text('Looking up address for this pin...');
+
+      fetch(url, { headers: { 'Accept': 'application/json' } })
+        .then(function (response) {
+          return response.ok ? response.json() : null;
+        })
+        .then(function (data) {
+          if (!data || !data.address) {
+            $('#manageCompanyMapStatus').text('Pin updated, but address lookup failed. You can enter the address manually.');
+            return;
+          }
+
+          fillAddressFromResult(data.address, data.display_name);
+          $('#manageCompanyMapStatus').text('Warehouse address filled from the pin. Save changes to apply it.');
+        })
+        .catch(function () {
+          $('#manageCompanyMapStatus').text('Pin updated, but address lookup failed. You can enter the address manually.');
+        });
     }
 
     function searchWarehouseAddress() {
@@ -589,8 +630,8 @@ $(document).ready(function () {
             return;
           }
 
-          setPin(latlng);
-          fillAddressFromResult(result.address);
+          setPin(latlng, false);
+          fillAddressFromResult(result.address, result.display_name);
           map.setView(latlng, 16);
           $('#manageCompanyMapStatus').text('Warehouse pin set from search. Save changes to apply it.');
         })
@@ -603,7 +644,7 @@ $(document).ready(function () {
     }
 
     map.on('click', function (event) {
-      setPin(event.latlng);
+      setPin(event.latlng, true);
     });
 
     $('#manageCompanyMapSearchBtn').on('click', searchWarehouseAddress);
@@ -615,7 +656,7 @@ $(document).ready(function () {
     });
 
     if (hasPin) {
-      setPin({ lat: lat, lng: lng });
+      setPin({ lat: lat, lng: lng }, false);
     }
 
     setTimeout(function () { map.invalidateSize(); }, 150);

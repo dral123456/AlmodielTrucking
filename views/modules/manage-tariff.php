@@ -184,4 +184,4 @@ function tariffMoney($value) {
   window.tariffCompanies = <?php echo json_encode($companies, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
 </script>
 
-<?php include __DIR__ . "/manage-style.php"; ?>
+<?php include __DIR__ . "/admin/manage-style.php"; ?>
