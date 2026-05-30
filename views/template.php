@@ -257,6 +257,7 @@
       "manage-employee" => ["admin/manage.js"],
       "manage-truck" => ["admin/manage.js"],
       "bookings" => ["customer-individual/bookings.js"],
+      "booking-details" => ["customer-individual/booking-details.js"]
     ];
 
     if (array_key_exists($route, $routeScripts)) {

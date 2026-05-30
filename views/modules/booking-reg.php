@@ -17,7 +17,7 @@ foreach ($trucks as $truck) {
 ?>
 
 <script>
-  window.bookingTruckCrew        = <?php echo json_encode($truckCrewMap); ?>;
+  window.bookingTruckCrew        = <?php echo json_encode($truckCrewMap); ?>;~
   window.bookingIsCustomerIndividual = <?php echo $isCustomerIndividual ? 'true' : 'false'; ?>;
   window.bookingSessionCustomerID    = <?php echo json_encode($sessionCustomerID); ?>;
 </script>

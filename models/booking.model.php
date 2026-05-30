@@ -1253,4 +1253,139 @@ class ModelBooking {
 
     return $bookings;
   }
+
+  static public function mdlGetBooking($bookingID) {
+    $pdo = (new Connection)->connect();
+
+    $stmt = $pdo->prepare("
+      SELECT
+        b.bookingID,
+        b.tripID,
+        b.customerID,
+        b.pickupDateTime,
+        b.price,
+        b.status,
+
+        c.customerType,
+        c.customerFName,
+        c.customerLName,
+        c.contactPerson,
+
+        pickup.province AS pickupProvince,
+        pickup.city AS pickupCity,
+        pickup.barangay AS pickupBarangay,
+        pickup.street AS pickupStreet,
+        pickup.description AS pickupDescription,
+        pickup.latitude AS pickupLatitude,
+        pickup.longitude AS pickupLongitude,
+
+        destination.province AS destinationProvince,
+        destination.city AS destinationCity,
+        destination.barangay AS destinationBarangay,
+        destination.street AS destinationStreet,
+        destination.description AS destinationDescription,
+        destination.latitude AS destinationLatitude,
+        destination.longitude AS destinationLongitude
+
+      FROM booking b
+
+      INNER JOIN customer c
+        ON c.id = b.customerID
+
+      INNER JOIN location pickup
+        ON pickup.locationID = b.pickupLocationID
+
+      INNER JOIN location destination
+        ON destination.locationID = b.destinationLocationID
+
+      WHERE b.bookingID = :bookingID
+
+      ORDER BY b.pickupDateTime ASC,
+              b.tripID ASC,
+              b.bookingID ASC
+    ");
+
+    $stmt->bindParam(":bookingID", $bookingID, PDO::PARAM_INT);
+
+    $stmt->execute();
+
+    $booking = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    return $booking;
+  }
+
+  static public function mdlReceiptBooking(int $bookingID): ?array {
+      $pdo  = (new Connection)->connect();
+      $stmt = $pdo->prepare("
+          SELECT
+              b.bookingID,
+              b.tripID,
+              b.pickupDateTime,
+              b.price,
+              b.status,
+              c.customerFName,
+              c.customerLName,
+              c.contactPerson,
+              c.customerType,
+              pickup.street     AS pickupStreet,
+              pickup.barangay   AS pickupBarangay,
+              pickup.city       AS pickupCity,
+              pickup.province   AS pickupProvince,
+              dest.street       AS destinationStreet,
+              dest.barangay     AS destinationBarangay,
+              dest.city         AS destinationCity,
+              dest.province     AS destinationProvince,
+              COALESCE(dc.extraAmount, 0)  AS extraAmount,
+              COALESCE(dc.extraTypes,  '') AS extraTypes,
+              cargo.condition              AS cargoCondition
+          FROM booking b
+          LEFT JOIN customer  c      ON c.id                = b.customerID
+          LEFT JOIN location  pickup ON pickup.locationID   = b.pickupLocationID
+          LEFT JOIN location  dest   ON dest.locationID     = b.destinationLocationID
+          LEFT JOIN (
+              SELECT bookingID,
+                      SUM(amount) AS extraAmount,
+                      GROUP_CONCAT(DISTINCT chargeType SEPARATOR ', ') AS extraTypes
+              FROM deliverycharge
+              GROUP BY bookingID
+          ) dc ON dc.bookingID = b.bookingID
+          LEFT JOIN cargo ON cargo.bookingID = b.bookingID
+          WHERE b.bookingID = :bookingID
+          LIMIT 1
+      ");
+      $stmt->bindValue(':bookingID', $bookingID, PDO::PARAM_INT);
+      $stmt->execute();
+      $row = $stmt->fetch(PDO::FETCH_ASSOC);
+      return $row ?: null;
+  }
+
+  static public function mdlReceiptCargoItems(int $bookingID): array {
+      $pdo  = (new Connection)->connect();
+      $stmt = $pdo->prepare("
+          SELECT cargoType, quantity, `condition`, description, specialHandling
+          FROM cargo
+          WHERE bookingID = :bookingID
+          ORDER BY cargoID
+      ");
+      $stmt->bindValue(':bookingID', $bookingID, PDO::PARAM_INT);
+      $stmt->execute();
+      return $stmt->fetchAll(PDO::FETCH_ASSOC);
+  }
+
+  static public function mdlReceiptTripCrew(int $tripID): array {
+      $pdo  = (new Connection)->connect();
+      $stmt = $pdo->prepare("
+          SELECT te.role, e.empFName, e.empLName, t.plateNumber
+          FROM tripemployee te
+          INNER JOIN employee e ON e.id  = te.empID
+          LEFT JOIN  truck    t ON t.id  = te.truckID
+          WHERE te.tripID = :tripID
+          ORDER BY FIELD(te.role, 'driver', 'assistant'), e.empFName
+      ");
+      $stmt->bindValue(':tripID', $tripID, PDO::PARAM_INT);
+      $stmt->execute();
+      return $stmt->fetchAll(PDO::FETCH_ASSOC);
+  }
+
+  
 }
