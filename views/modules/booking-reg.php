@@ -17,7 +17,7 @@ foreach ($trucks as $truck) {
 ?>
 
 <script>
-  window.bookingTruckCrew        = <?php echo json_encode($truckCrewMap); ?>;~
+  window.bookingTruckCrew        = <?php echo json_encode($truckCrewMap); ?>;
   window.bookingIsCustomerIndividual = <?php echo $isCustomerIndividual ? 'true' : 'false'; ?>;
   window.bookingSessionCustomerID    = <?php echo json_encode($sessionCustomerID); ?>;
 </script>
@@ -194,7 +194,7 @@ foreach ($trucks as $truck) {
             </div>
             <div id="bookingCargoList" class="booking-cargo-list">
               <div class="booking-cargo-item">
-                <div class="row g-2 align-items-end">
+                <div class="row g-2 align-items-end booking-cargo-item-row">
                   <div class="col-12 col-md-7">
                     <label class="form-label">Cargo Type <span class="text-danger">*</span></label>
                     <input type="text" class="form-control cargo-type" maxlength="100" placeholder="e.g. Construction materials">

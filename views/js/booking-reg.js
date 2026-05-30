@@ -129,6 +129,29 @@ $(document).ready(function () {
     showConfirmModal();
   });
 
+  $("#bookingAddCargo").on("click", function () {
+    console.log("clicked");
+    
+    $(".booking-cargo-item").append(`
+      <div class="row g-2 align-items-end mt-2 booking-cargo-item-row">
+        <div class="col-12 col-md-7">
+          <input type="text" class="form-control cargo-type" maxlength="100" placeholder="e.g. Construction materials">
+        </div>
+        <div class="col-12 col-md-4">
+          <input type="number" class="form-control cargo-quantity" min="1" step="1" placeholder="Quantity">
+        </div>
+        <div class="col-12 col-md-1 d-grid">
+          <button class="btn btn-outline-danger booking-remove-cargo" type="button" aria-label="Remove cargo" disabled>
+            <i class="ri-close-line"></i>
+          </button>
+        </div>
+      </div>`
+    );
+  });
+  $(document).on("click", ".booking-remove-cargo:not([disabled])", function () {
+    $(this).closest(".booking-cargo-item-row").remove();
+  });
+
   // ─── Location search with local-first suggestions ──────────────────────────
   function initLocationSearch(type) {
     const searchId     = '#' + type + 'MapSearch';
@@ -475,7 +498,7 @@ $(document).ready(function () {
   }
 
   function getAssistantIDs() {
-    if (IS_CUSTOMER_INDIVIDUAL) return [];
+    if (IS_CUSTOMER_INDIVIDUAL) return [null, null];
     return $('.booking-assistant').map(function () {
       return String($(this).val() || '').trim();
     }).get().filter(Boolean);
@@ -733,6 +756,8 @@ $(document).ready(function () {
         check('bookingDriver', 'Driver');
 
         const assistantIDs = getAssistantIDs();
+        console.log(assistantIDs.length);
+        
         if (assistantIDs.length < 2) {
           missing.push('At least 2 assistants');
           $('.booking-assistant').each(function () { if (!$(this).val()) $(this).addClass('is-invalid'); });
