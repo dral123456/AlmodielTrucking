@@ -1,7 +1,4 @@
 $(document).ready(function () {
-	const bookingID = sessionStorage.getItem("bookingID");
-	console.log(bookingID);
-
 	const map = L.map('bookingMap');
 
   const pickupCoords      = [pickupLat, pickupLng];
@@ -56,4 +53,9 @@ $(document).ready(function () {
   L.marker(destinationCoords, { icon: markerIcon('#ff3e1d', 'D') })
     .addTo(map)
     .bindPopup('<strong>Destination</strong>');
+
+	$('#viewReceipt').click(function() {
+		var bookingID = $(this).data('id');
+		window.open("reports/receipt.php?bookingID=" + bookingID, "_blank");
+	});
 });

@@ -46,4 +46,18 @@ class ControllerBooking {
   static public function ctrGetBooking($bookingID) {
     return (new ModelBooking)->mdlGetBooking($bookingID);
   }
+  
+  static public function ctrReceiptBooking(int $bookingID): ?array {
+    return ModelBooking::mdlReceiptBooking($bookingID);
+  }
+
+  static public function ctrReceiptCargoItems(int $bookingID): array {
+      return ModelBooking::mdlReceiptCargoItems($bookingID);
+  }
+
+  static public function ctrReceiptTripCrew(int $tripID): array {
+      return ModelBooking::mdlReceiptTripCrew($tripID);
+  }
+
+
 }

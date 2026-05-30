@@ -369,8 +369,8 @@ function detailStatusClass($status) {
               <button class="btn btn-secondary " onclick="history.back()">
                 <i class="ri-arrow-left-line me-1"></i> Back
               </button>
-              <button class="btn btn-primary " onclick="history.back()">
-              <i class="ri-printer-line"></i></i> View Receipt
+              <button class="btn btn-primary " id="viewReceipt" data-id="<?php echo (int) $booking["bookingID"]; ?>">
+                <i class="ri-printer-line me-1"></i> View Receipt
               </button>
             </div>
           </div>
