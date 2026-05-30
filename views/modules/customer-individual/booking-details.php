@@ -37,7 +37,7 @@ function detailStatusClass($status) {
 .booking-detail-layout {
   display: grid;
   grid-template-columns: minmax(360px, 0.8fr) minmax(420px, 1.2fr);
-  align-items: start;
+  align-items: stretch;
   gap: 1rem;
 }
 
@@ -121,28 +121,40 @@ function detailStatusClass($status) {
 /* ── Map panel (mirrors driver-map-panel) ─────────── */
 .booking-map-panel {
   min-width: 0;
-  position: sticky;
-  top: 90px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 #bookingMap {
   width: 100%;
-  height: min(62vh, 620px);
-  min-height: 420px;
+  height: 100%;
+  min-height: 0;
   border-radius: 0.5rem;
   overflow: hidden;
-  background: #dbeafe;
+  
 }
 
 /* ── Back button row ─────────────────────────────── */
 .booking-detail-actions {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: space-between;
   gap: 0.75rem;
   border-top: 1px solid var(--bs-border-color);
   padding-top: 1rem;
   margin-top: 0.5rem;
+}
+
+.booking-map-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.booking-map-card #bookingMap {
+  flex: 1;
+  min-height: 0;
 }
 
 /* ── Responsive ──────────────────────────────────── */
@@ -157,12 +169,23 @@ function detailStatusClass($status) {
   }
 
   #bookingMap {
-    min-height: 300px;
-    height: 380px;
+    min-height: 320px;
   }
 
   .booking-detail-grid {
     grid-template-columns: 1fr;
+  }
+
+  .booking-map-panel,
+  .booking-map-card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .booking-map-card #bookingMap {
+    flex: 1;
+    min-height: 300px;
   }
 }
 </style>
@@ -342,20 +365,20 @@ function detailStatusClass($status) {
               </div>
             </div>
 
+            <div class="booking-detail-actions">
+              <button class="btn btn-secondary " onclick="history.back()">
+                <i class="ri-arrow-left-line me-1"></i> Back
+              </button>
+              <button class="btn btn-primary " onclick="history.back()">
+              <i class="ri-printer-line"></i></i> View Receipt
+              </button>
+            </div>
           </div>
-
-          <!-- Back button -->
-          <div class="booking-detail-actions">
-            <button class="btn btn-secondary" onclick="history.back()">
-              <i class="ri-arrow-left-line me-1"></i> Back
-            </button>
-          </div>
-
         </div>
 
         <!-- ── RIGHT: map panel ──────────────────────── -->
         <div class="booking-map-panel">
-          <div class="booking-section-card">
+          <div class="booking-section-card booking-map-card">
 
             <div class="booking-section-header mb-3">
               <div>
@@ -390,27 +413,4 @@ function detailStatusClass($status) {
   const pickupLng     = <?php echo json_encode($booking['pickupLongitude']); ?>;
   const destinationLat = <?php echo json_encode($booking['destinationLatitude']); ?>;
   const destinationLng = <?php echo json_encode($booking['destinationLongitude']); ?>;
-
-  const map = L.map('bookingMap');
-
-  const pickupCoords      = [pickupLat, pickupLng];
-  const destinationCoords = [destinationLat, destinationLng];
-
-  map.fitBounds([pickupCoords, destinationCoords], { padding: [50, 50] });
-
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors'
-  }).addTo(map);
-
-  L.marker(pickupCoords)
-    .addTo(map)
-
-  L.marker(destinationCoords)
-    .addTo(map)
-
-  L.polyline([pickupCoords, destinationCoords], {
-    color: '#696cff',
-    weight: 3,
-    dashArray: '6 6'
-  }).addTo(map);
 </script>
