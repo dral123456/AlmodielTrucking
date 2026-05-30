@@ -7,7 +7,7 @@ return [
     'booking-reg'                   => 'modules/booking-reg.php',
     'trips'                         => 'modules/trips.php',
     'sales'                         => 'modules/sales.php',
-    'manage-tariff'                 => 'modules/manage-tariff.php',
+    'manage-tariff'                 => 'modules/admin/manage-tariff.php',
     'reports'                       => 'modules/admin/reports.php',
     'manage-company'                => 'modules/admin/manage-company.php',
     'manage-employee'               => 'modules/admin/manage-employee.php',

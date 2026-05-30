@@ -56,6 +56,6 @@ $(document).ready(function () {
 
 	$('#viewReceipt').click(function() {
 		var bookingID = $(this).data('id');
-		window.open("reports/receipt.php?bookingID=" + bookingID, "_blank");
+		window.open("pdf/receipt.php?bookingID=" + bookingID, "_blank");
 	});
 });

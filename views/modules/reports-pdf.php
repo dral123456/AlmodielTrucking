@@ -130,7 +130,7 @@ $yAfterCause = $pdf->GetY();
 
 $pdf->SetXY($xCause + 1, $yCause + 1);
 $pdf->Cell(12, 4, 'Cause', 0, 0, 'L');
-$pdf->Line($xCause + 0, $yCause + 5.5, $xCause + 13.9s, $yCause + 5.5);
+$pdf->Line($xCause + 0, $yCause + 5.5, $xCause + 13.9, $yCause + 5.5);
 
 // Restore cursor to below Cause row
 $pdf->SetXY($pdf->getMargins()['left'], $yAfterCause);

@@ -132,9 +132,6 @@ function reportStaffName($employee) {
           <button type="button" class="btn btn-primary" id="reportExportPdf">
             <i class="ri-file-pdf-2-line me-1"></i> PDF
           </button>
-          <button type="button" class="btn btn-primary" id="tcpdfExportPdf">
-            <i class="ri-file-pdf-2-line me-1"></i>TC
-          </button>
         </div>
       </div>
 
