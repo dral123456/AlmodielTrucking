@@ -25,122 +25,11 @@ foreach ($trips as $trip) {
 }
 ?>
 
-<div class="trip-page">
-  <div class="card">
-    <div class="card-header border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
-      <div>
-        <h5 class="mb-0">Trips</h5>
-        <p class="text-muted small mb-0">
-          <?php echo $role === "driver" ? "View only trips assigned to you and update delivery progress." : "Monitor generated trips, route points, booking groups, and delivery status."; ?>
-        </p>
-      </div>
-      <span class="badge bg-primary-subtle text-primary fs-6">
-        <i class="ri-route-line me-1"></i> Trip Monitoring
-      </span>
-    </div>
-
-    <div class="card-body p-4">
-      <div class="trip-stat-grid mb-4">
-        <button type="button" class="trip-stat-card active" data-status-shortcut="all">
-          <span class="trip-stat-icon bg-primary-subtle text-primary"><i class="ri-route-line"></i></span>
-          <span><small>Total Trips</small><strong><?php echo (int) $tripStats["total"]; ?></strong></span>
-        </button>
-        <button type="button" class="trip-stat-card" data-status-shortcut="pending">
-          <span class="trip-stat-icon bg-warning-subtle text-warning"><i class="ri-time-line"></i></span>
-          <span><small>Pending</small><strong><?php echo (int) $tripStats["pending"]; ?></strong></span>
-        </button>
-        <button type="button" class="trip-stat-card" data-status-shortcut="stopover">
-          <span class="trip-stat-icon bg-info-subtle text-info"><i class="ri-map-pin-time-line"></i></span>
-          <span><small>Stopover</small><strong><?php echo (int) $tripStats["stopover"]; ?></strong></span>
-        </button>
-        <button type="button" class="trip-stat-card" data-status-shortcut="in-transit">
-          <span class="trip-stat-icon bg-primary-subtle text-primary"><i class="ri-truck-line"></i></span>
-          <span><small>On Transit</small><strong><?php echo (int) $tripStats["in-transit"]; ?></strong></span>
-        </button>
-        <button type="button" class="trip-stat-card" data-status-shortcut="completed">
-          <span class="trip-stat-icon bg-success-subtle text-success"><i class="ri-check-double-line"></i></span>
-          <span><small>Delivered</small><strong><?php echo (int) $tripStats["completed"]; ?></strong></span>
-        </button>
-      </div>
-
-      <div class="trip-filter-panel mb-4">
-        <div class="trip-filter-grid">
-          <div>
-            <label class="form-label">Sort by Date & Time</label>
-            <select class="form-select" id="tripSort">
-              <option value="date_desc">Newest first</option>
-              <option value="date_asc">Oldest first</option>
-              <option value="time_asc">Earliest time first</option>
-              <option value="time_desc">Latest time first</option>
-            </select>
-          </div>
-          <div>
-            <label class="form-label">Status</label>
-            <select class="form-select" id="tripStatusFilter">
-              <option value="all">All trips</option>
-              <option value="pending">Pending</option>
-              <option value="stopover">Stopover</option>
-              <option value="in-transit">On Transit</option>
-              <option value="completed">Delivered</option>
-            </select>
-          </div>
-          <div>
-            <label class="form-label">Trip Number</label>
-            <div class="form-icon">
-              <i class="ri-hashtag text-muted"></i>
-              <input type="text" class="form-control form-control-icon" id="tripNumberFilter" placeholder="Search trip #">
-            </div>
-          </div>
-          <div>
-            <label class="form-label">Trip Date Range</label>
-            <div class="form-icon">
-              <i class="ri-calendar-line text-muted"></i>
-              <input type="text" class="form-control form-control-icon" id="tripDateRangeFilter" placeholder="Select date range" autocomplete="off" readonly>
-            </div>
-            <div class="form-text" id="tripDateHint">Dates with bookings are marked in the calendar.</div>
-          </div>
-          <div class="trip-filter-action">
-            <button type="button" class="btn btn-light w-100" id="tripClearFilters">
-              <i class="ri-refresh-line me-1"></i> Clear Filters
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div class="trip-workspace">
-        <section class="trip-list-panel">
-          <div class="trip-panel-heading">
-            <div>
-              <h6 class="mb-0">Trip List</h6>
-              <p class="text-muted small mb-0" id="tripListSummary">Select a row to view route and booking details.</p>
-            </div>
-          </div>
-          <div class="table-responsive mt-3">
-            <table class="table align-middle trip-table mb-0">
-              <thead>
-                <tr>
-                <th style="width: 22%">Trip</th>
-                <th style="width: 18%">Date & Time</th>
-                <th style="width: 16%">Customer</th>
-                <th style="width: 26%">Crew</th>
-                <th style="width: 8%" class="text-center">Bookings</th>
-                <th style="width: 10%">Status</th>
-                </tr>
-              </thead>
-              <tbody id="tripTableBody"></tbody>
-            </table>
-          </div>
-        </section>
-        <!-- <section class="trip-detail-panel">
-          <div id="tripDetails" class="trip-detail-shell">
-            <div class="text-muted text-center p-4">Select a trip to view details.</div>
-          </div>
-        </section> -->
-      </div>
-    </div>
+<section class="trip-detail-panel">
+  <div id="tripDetails" class="trip-detail-shell">
+    <div class="text-muted text-center p-4">Select a trip to view details.</div>
   </div>
-</div>
-
+</section>
 <script>
   window.tripOverviewData = <?php echo json_encode($trips, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
   window.tripTruckOptions = <?php echo json_encode($trucks, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
@@ -149,7 +38,6 @@ foreach ($trips as $trip) {
   window.tripCanModifyInfo = <?php echo $canModifyTrips ? "true" : "false"; ?>;
   window.tripCanUpdateStatus = <?php echo $canUpdateTripStatus ? "true" : "false"; ?>;
 </script>
-
 <style>
   .trip-page {
     max-width: 1480px;
@@ -273,18 +161,16 @@ foreach ($trips as $trip) {
 
   .trip-row-main {
     font-weight: 700;
-    white-space: normal;
-    word-break: break-word;
+    white-space: nowrap;
   }
 
   .trip-row-sub {
     color: var(--bs-secondary-color);
     font-size: 0.8125rem;
-    max-width: unset;      
-    overflow: visible;     
-    text-overflow: unset;  
-    white-space: normal;
-    word-break: break-word;
+    max-width: 360px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .trip-booking-row {
@@ -594,11 +480,6 @@ foreach ($trips as $trip) {
 
   .trip-edit-modal textarea.form-control {
     min-height: 70px;
-  }
-
-  .trip-table {
-    table-layout: fixed;
-    width: 100%;
   }
 
   @media (max-width: 1399.98px) {

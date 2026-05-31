@@ -2,51 +2,25 @@ $(document).ready(function () {
   const trips = Array.isArray(window.tripOverviewData) ? window.tripOverviewData : [];
   const canModifyTripInfo = window.tripCanModifyInfo === true;
   const canUpdateTripStatus = window.tripCanUpdateStatus === true;
-  let filteredTrips = [];
-  let selectedTripID = null;
+  let selectedTripID = Number(sessionStorage.getItem('selectedTripID'));
+  const trip = trips.find(t => Number(t.tripID) === selectedTripID);
   let map = null;
   let mapLayers = [];
   let tripDatePicker = null;
   let editTripMap = null;
   let editTripMarker = null;
-  const bookingDateCounts = buildBookingDateCounts();
+  
+  if (trip) {
+    renderTripDetails(trip);
+  } else {
+    $('#tripDetails').html('<div class="text-muted text-center p-4">Trip not found.</div>');
+  }
+
 
   initMap();
-  initDateRangePicker();
   bindEvents();
-  renderTrips();
 
   function bindEvents() {
-    $(document).on('change', '#tripSort, #tripStatusFilter, #tripDateRangeFilter', renderTrips);
-    $(document).on('input', '#tripNumberFilter', renderTrips);
-
-    $(document).on('click', '.trip-stat-card', function () {
-      const status = $(this).data('status-shortcut');
-      $('#tripStatusFilter').val(status);
-      $('.trip-stat-card').removeClass('active');
-      $(this).addClass('active');
-      renderTrips();
-    });
-
-    $(document).on('change', '#tripStatusFilter', function () {
-      const status = $(this).val();
-      $('.trip-stat-card').removeClass('active');
-      $('.trip-stat-card[data-status-shortcut="' + status + '"]').addClass('active');
-    });
-
-    $(document).on('click', '#tripClearFilters', function () {
-      $('#tripSort').val('date_desc');
-      $('#tripStatusFilter').val('all');
-      $('#tripNumberFilter').val('');
-      $('.trip-stat-card').removeClass('active');
-      $('.trip-stat-card[data-status-shortcut="all"]').addClass('active');
-      $('#tripDateRangeFilter').val('');
-      if (tripDatePicker) {
-        tripDatePicker.clear();
-      }
-      renderTrips();
-    });
-
     $(document).on('click', '.trip-row', function () {
       const tripID = $(this).data('trip-id');
       sessionStorage.setItem('selectedTripID', tripID);
@@ -101,57 +75,6 @@ $(document).ready(function () {
     });
   }
 
-  function initDateRangePicker() {
-    if (typeof AirDatepicker === 'undefined' || !document.getElementById('tripDateRangeFilter')) {
-      return;
-    }
-
-    const localeEn = {
-      days: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
-      daysShort: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
-      daysMin: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'],
-      months: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
-      monthsShort: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-      today: 'Today',
-      clear: 'Clear',
-      dateFormat: 'yyyy-MM-dd',
-      timeFormat: 'hh:mm aa',
-      firstDay: 0
-    };
-
-    tripDatePicker = new AirDatepicker('#tripDateRangeFilter', {
-      range: true,
-      multipleDatesSeparator: ' to ',
-      dateFormat: 'yyyy-MM-dd',
-      locale: localeEn,
-      autoClose: false,
-      buttons: ['today', 'clear'],
-      onRenderCell: function ({ date, cellType }) {
-        if (cellType !== 'day') {
-          return {};
-        }
-
-        const dateKey = formatDateObject(date);
-        const count = bookingDateCounts[dateKey] || 0;
-
-        if (!count) {
-          return {};
-        }
-
-        return {
-          html: '<span class="trip-calendar-day">' + date.getDate() + '<i></i></span>',
-          classes: '-trip-has-booking-',
-          attrs: {
-            title: count + ' booking(s)'
-          }
-        };
-      },
-      onSelect: function () {
-        renderTrips();
-      }
-    });
-  }
-
   function initMap() {
     if (typeof L === 'undefined' || !document.getElementById('tripMap')) {
       return;
@@ -168,148 +91,6 @@ $(document).ready(function () {
       maxZoom: 19,
       attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
-  }
-
-  function renderTrips() {
-    filteredTrips = filterTrips();
-    filteredTrips.sort(sortTrips);
-    updateDateHint(filteredTrips.length);
-
-    const html = filteredTrips.length
-      ? filteredTrips.map(renderTripRow).join('')
-      : '<tr><td colspan="6" class="text-center text-muted py-4">No trips found.</td></tr>';
-
-    $('#tripTableBody').html(html);
-
-    if (!filteredTrips.length) {
-      selectedTripID = null;
-      clearMap();
-      $('#tripDetails').html('<div class="text-muted text-center p-4">No trips match the selected filters.</div>');
-      $('#tripListSummary').text('No trips match the current filters.');
-      return;
-    }
-
-    if (!selectedTripID || !getTripByID(selectedTripID, filteredTrips)) {
-      selectedTripID = filteredTrips[0].tripID;
-    }
-
-    $('.trip-row[data-trip-id="' + selectedTripID + '"]').addClass('active');
-    $('#tripListSummary').text(filteredTrips.length + ' trip(s) shown. Select a row to view route details.');
-    renderTripDetails(getTripByID(selectedTripID, filteredTrips));
-  }
-
-  function filterTrips() {
-    const status = $('#tripStatusFilter').val();
-    const tripNumber = String($('#tripNumberFilter').val() || '').replace(/[^0-9]/g, '');
-    const dateRange = parseDateRange($('#tripDateRangeFilter').val());
-
-    return trips.filter(function (trip) {
-      const tripDate = formatDateInput(trip.firstPickupDateTime);
-
-      if (status !== 'all' && trip.status !== status) {
-        return false;
-      }
-
-      if (tripNumber && String(trip.tripID).indexOf(tripNumber) === -1) {
-        return false;
-      }
-
-      if (dateRange.from && tripDate < dateRange.from) {
-        return false;
-      }
-
-      if (dateRange.to && tripDate > dateRange.to) {
-        return false;
-      }
-
-      return true;
-    });
-  }
-
-  function buildBookingDateCounts() {
-    const counts = {};
-
-    trips.forEach(function (trip) {
-      (trip.bookings || []).forEach(function (booking) {
-        const dateKey = formatDateInput(booking.pickupDateTime);
-        counts[dateKey] = (counts[dateKey] || 0) + 1;
-      });
-    });
-
-    return counts;
-  }
-
-  function updateDateHint(count) {
-    const dates = Object.keys(bookingDateCounts);
-
-    if (!dates.length) {
-      $('#tripDateHint').text('No booking dates available yet.');
-      return;
-    }
-
-    $('#tripDateHint').text(count + ' trip(s) shown. Dates with bookings are marked in the calendar.');
-  }
-
-  function sortTrips(a, b) {
-    const sort = $('#tripSort').val();
-    const aDate = new Date(a.firstPickupDateTime);
-    const bDate = new Date(b.firstPickupDateTime);
-
-    if (sort === 'date_asc') {
-      return aDate - bDate;
-    }
-
-    if (sort === 'time_asc') {
-      return minutesOfDay(aDate) - minutesOfDay(bDate);
-    }
-
-    if (sort === 'time_desc') {
-      return minutesOfDay(bDate) - minutesOfDay(aDate);
-    }
-
-    return bDate - aDate;
-  }
-
-  function formatDate(value) {
-    if (!value) return '-';
-    const date = new Date(value.replace(' ', 'T'));
-    if (Number.isNaN(date.getTime())) return value;
-    return date.toLocaleDateString([], { year: 'numeric', month: 'short', day: '2-digit' });
-  }
-  
-  function formatTime(value) {
-    if (!value) return '-';
-    const date = new Date(value.replace(' ', 'T'));
-    if (Number.isNaN(date.getTime())) return '';
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  }
-
-  function renderTripRow(trip) {
-    const status = statusMeta(trip.status);
-    const crew = formatCrew(trip.crew);
-    const customerText = (trip.customers || []).join(', ') || '-';
-    const bookings = trip.bookings || [];
-    const firstBooking = bookings[0] || {};
-    const lastBooking = bookings.length ? bookings[bookings.length - 1] : firstBooking;
-    const routeStart = firstBooking.pickup && firstBooking.pickup.address ? firstBooking.pickup.address : '-';
-    const routeEnd = lastBooking.destination && lastBooking.destination.address ? lastBooking.destination.address : '-';
-
-    return (
-      '<tr class="trip-row" data-trip-id="' + escapeHtml(trip.tripID) + '">' +
-        '<td>' +
-          '<div class="trip-row-main">Trip #' + escapeHtml(trip.tripID) + '</div>' +
-          '<div class="trip-row-sub">' + escapeHtml(routeStart) + ' to ' + escapeHtml(routeEnd) + '</div>' +
-        '</td>' +
-        '<td>' +
-          '<div class="trip-row-main">' + escapeHtml(formatDate(trip.firstPickupDateTime)) + '</div>' +
-          '<div class="trip-row-sub">' + escapeHtml(formatTime(trip.firstPickupDateTime)) + '</div>' +
-        '</td>' +
-        '<td><div class="trip-row-sub">' + escapeHtml(customerText) + '</div></td>' +
-        '<td><div class="trip-row-sub" style="white-space: pre-line">' + escapeHtml(crew || '-') + '</div></td>' +
-        '<td class="text-center"><span class="badge bg-light text-body">' + escapeHtml(trip.bookingCount) + '</span></td>' +
-        '<td><span class="badge ' + status.className + '">' + status.label + '</span></td>' +
-      '</tr>'
-    );
   }
 
   function renderTripDetails(trip) {
@@ -351,8 +132,11 @@ $(document).ready(function () {
 
     $('#tripDetails').html(
       '<div class="trip-panel-heading mb-3">' +
-        '<div>' +
-          '<h6 class="mb-1">Trip #' + escapeHtml(trip.tripID) + '</h6>' +
+        '<div class="d-flex align-items-center gap-2 flex-wrap">' +
+          '<button class="btn btn-primary rounded-pill btn-sm" onclick="history.back()">'+
+            '<i class="ri-arrow-left-line me-0"></i>'+
+          '</button>' +
+          '<h6 class="mb-0">Trip #' + escapeHtml(trip.tripID) + '</h6>' +
           '<p class="text-muted small mb-0">' + escapeHtml(formatDateTime(trip.firstPickupDateTime)) + ' | ' + escapeHtml(trip.bookingCount) + ' booking(s)</p>' +
         '</div>' +
         '<div class="d-flex align-items-center gap-2 flex-wrap justify-content-end" id="tripActionArea">' +
@@ -362,8 +146,8 @@ $(document).ready(function () {
       '</div>' +
       '<div class="row g-3 mb-3">' +
         '<div class="col-12 col-lg-4"><div class="border rounded p-3 h-100"><span class="text-muted small d-block">Customer</span><strong>' + escapeHtml(customerText) + '</strong></div></div>' +
-        '<div class="col-12 col-lg-4"><div class="border rounded p-3 h-100"><span class="text-muted small d-block">Trip KM</span><strong>' + escapeHtml(formatKilometers(trip.totalDistanceKm)) + '</strong></div></div>' +
-        '<div class="col-12 col-lg-4"><div class="border rounded p-3 h-100"><span class="text-muted small d-block">Crew</span><strong>' + escapeHtml(crew) + '</strong></div></div>' +
+        '<div class="col-12 col-lg-4"><div class="border rounded p-3 h-100"><span class="text-muted small d-block">Trip Distance</span><strong>' + escapeHtml(formatKilometers(trip.totalDistanceKm)) + '</strong></div></div>' +
+        '<div class="col-12 col-lg-4"><div class="border rounded p-3 h-100"><span class="text-muted small d-block">Crew</span><strong style="white-space: pre-line;">' + escapeHtml(crew) + '</strong></div></div>' +
       '</div>' +
       '<div class="trip-detail-grid">' +
         '<div>' +
@@ -384,7 +168,12 @@ $(document).ready(function () {
     );
 
     initMap();
-    renderTripMap(trip);
+    setTimeout(function () {
+      if (map) {
+        map.invalidateSize();
+        renderTripMap(trip);
+      }
+    }, 100);
   }
 
   function buildTripActionHtml(trip) {
@@ -949,45 +738,6 @@ $(document).ready(function () {
     });
   }
 
-  function updateTripDeliveryStatus(tripID, status, button) {
-    $.ajax({
-      url: 'ajax/driver_trip_status.ajax.php',
-      method: 'POST',
-      dataType: 'json',
-      data: {
-        tripID: tripID,
-        status: status
-      },
-      success: function (response) {
-        if (!response || response.status !== 'success') {
-          showTripSaveError(response && response.message ? response.message : 'Unable to update trip.');
-          button.prop('disabled', false);
-          return;
-        }
-
-        applyTripStatus(tripID, status);
-        renderTrips();
-      },
-      error: function () {
-        showTripSaveError('Unable to update trip status.');
-        button.prop('disabled', false);
-      }
-    });
-  }
-
-  function applyTripStatus(tripID, status) {
-    const trip = getTripByID(tripID);
-
-    if (!trip) {
-      return;
-    }
-
-    trip.status = status;
-    (trip.bookings || []).forEach(function (booking) {
-      booking.status = status;
-    });
-  }
-
   function showTripSaveError(message) {
     Swal.fire({
       icon: 'error',
@@ -999,6 +749,7 @@ $(document).ready(function () {
 
   function renderTripMap(trip) {
     if (!map || !trip) {
+      console.warn('renderTripMap: no map or no trip', { map, trip });
       return;
     }
 
@@ -1008,6 +759,8 @@ $(document).ready(function () {
     (trip.bookings || []).forEach(function (booking, index) {
       const pickupLatLng = [booking.pickup.latitude, booking.pickup.longitude];
       const destinationLatLng = [booking.destination.latitude, booking.destination.longitude];
+      console.log('booking coords', pickupLatLng, destinationLatLng,
+      isValidTripCoordinate(pickupLatLng), isValidTripCoordinate(destinationLatLng));
 
       if (!isValidTripCoordinate(pickupLatLng) || !isValidTripCoordinate(destinationLatLng)) {
         return;

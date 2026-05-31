@@ -250,6 +250,7 @@
       "booking-reg" => ["booking-reg.js"],
       "signup" => ["customer-individual/signup.js"],
       "trips" => ["trips.js"],
+      "trip-details" => ["trip-details.js"],
       "sales" => ["sales.js"],
       "manage-tariff" => ["manage.js", "manage-tariff.js"],
       "reports" => ["admin/reports.js"],
