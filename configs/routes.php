@@ -6,6 +6,7 @@ $adminRoutes = [
     'truck-reg',
     'booking-reg',
     'trips',
+    'incident-reports',
     'reports',
     'sales',
     'manage-company',

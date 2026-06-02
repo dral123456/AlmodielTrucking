@@ -6,6 +6,7 @@ return [
     'truck-reg'                     => 'modules/admin/truck-reg.php',
     'booking-reg'                   => 'modules/booking-reg.php',
     'trips'                         => 'modules/trips.php',
+    'incident-reports'              => 'modules/admin/incident-reports.php',
     'sales'                         => 'modules/sales.php',
     'manage-tariff'                 => 'modules/manage-tariff.php',
     'reports'                       => 'modules/admin/reports.php',

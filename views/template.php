@@ -251,6 +251,7 @@
       "signup" => ["customer-individual/signup.js"],
       "trips" => ["trips.js"],
       "sales" => ["sales.js"],
+      "incident-reports" => ["admin/incident-reports.js"],
       "manage-tariff" => ["manage.js", "manage-tariff.js"],
       "reports" => ["admin/reports.js"],
       "manage-company" => ["admin/manage.js"],
