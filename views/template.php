@@ -68,8 +68,31 @@
   <link rel="stylesheet" href="views/assets/libs/air-datepicker/air-datepicker.css">
   <link rel="stylesheet" href="views/assets/libs/leaflet/leaflet.css">
 
+  <script type="module" src="views/assets/js/layout-setup.js"></script>
+    
+  <!-- App favicon -->
+  <link rel="shortcut icon" href="views/assets/images/favicon.png">    <!-- Uploaded css -->
+  <link rel="stylesheet" href="views/assets/libs/dropzone/dropzone.css">
+  <!-- Picker -->
+  <link rel="stylesheet" href="views/assets/libs/air-datepicker/air-datepicker.css">
+  <!-- Select -->
+  <link rel="stylesheet" href="views/assets/libs/choices.js/public/views/assets/styles/choices.min.css">
+
+  <!-- Simplebar Css -->
+  <link rel="stylesheet" href="views/assets/libs/simplebar/simplebar.min.css">
+  <!-- Swiper Css -->
+  <link href="views/assets/libs/swiper/swiper-bundle.min.css" rel="stylesheet">
+  <!-- Nouislider Css -->
+  <link href="views/assets/libs/nouislider/nouislider.min.css" rel="stylesheet">
+  <!-- Bootstrap Css -->
+  <link href="views/assets/css/bootstrap.min.css" id="bootstrap-style" rel="stylesheet" type="text/css">
+  <!--icons css-->
+  <link href="views/assets/css/icons.min.css" rel="stylesheet" type="text/css">
+  <!-- App Css-->
+  <link href="views/assets/css/app.min.css" id="app-style" rel="stylesheet" type="text/css">
+
   <script src="views/assets/js/jquery-4.0.0.min.js"></script>
-  <style>
+  <!-- <style>
     .layout-container {
       display: flex;
     }
@@ -125,7 +148,7 @@
         padding: 1rem !important;
       }
     }
-</style>
+</style> -->
 
 </head>
 
@@ -165,15 +188,13 @@
       $modulePaths = include "configs/module-paths.php";
 
       $allowedRoutes = $routeMap[$role] ?? [];
-      echo '<script>console.log("User role: ' . $role . '")</script>';
-      echo '<script>console.log("Allowed routes for this role: ' . implode(", ", $allowedRoutes) . '")</script>';
-      echo '<div class="layout-wrapper layout-content-navbar">';
-        echo '<div class="layout-container">';
+      // echo '<div class="layout-wrapper layout-content-navbar">';
+      //   echo '<div class="layout-container">';
           include "partials/sidebar.php";
-          echo '<div class="layout-page">';
+          // echo '<div class="layout-page">';
             include "partials/header.php";
-            echo '<div class="content-wrapper">';
-              echo '<div class="container-fluid py-4">';
+            // echo '<div class="content-wrapper">';
+            //   echo '<div class="container-fluid py-4">';
               $route = isset($_GET["route"]) ? basename($_GET["route"]) : 'sample';
             if (isset($_GET["route"])) {
               $raw = $_GET["route"];
@@ -195,8 +216,8 @@
               echo '</div>'; // container-fluid
             echo '</div>'; // content-wrapper
 
-          echo '<div class="layout-overlay layout-menu-toggle"></div>';
-          echo '<div class="drag-target"></div>';
+          // echo '<div class="layout-overlay layout-menu-toggle"></div>';
+          // echo '<div class="drag-target"></div>';
 
           echo '</div>'; // layout-page
         echo '</div>'; // layout-container
@@ -236,6 +257,22 @@
 <!-- SWEET ALERT -->
 <script src="views/assets/libs/sweetalert2/sweetalert2.all.min.js"></script>
 <script src="views/assets/js/ui/sweetalert.init.js"></script>
+
+<script src="views/assets/libs/swiper/swiper-bundle.min.js"></script>
+<script src="views/assets/libs/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script src="views/assets/libs/simplebar/simplebar.min.js"></script>
+<script src="views/assets/js/scroll-top.init.js"></script>
+<!-- Uploaded js -->
+<script src="views/assets/libs/dropzone/dropzone-min.js"></script>
+<!-- Picker -->
+<script src="views/assets/libs/air-datepicker/air-datepicker.js"></script>
+<!-- Select -->
+<script src="views/assets/libs/choices.js/public/views/assets/scripts/choices.min.js"></script>
+<!-- Upload -->
+<script src="views/assets/js/form/file-upload.init.js"></script>
+<script src="views/assets/js/pages/profile.init.js"></script>
+<!-- App js -->
+<script src="views/assets/js/app.js"></script>
 
 
 

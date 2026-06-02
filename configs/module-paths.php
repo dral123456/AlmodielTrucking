@@ -12,8 +12,6 @@ return [
     'manage-company'                => 'modules/admin/manage-company.php',
     'manage-employee'               => 'modules/admin/manage-employee.php',
     'manage-truck'                  => 'modules/admin/manage-truck.php',
-    'customer-individual/profile'   => 'modules/customer-individual/profile.php',
-    'customer-individual/bookings'  => 'modules/customer-individual/bookings.php',
     'logout'                        => 'modules/logout.php',
     'signup'                        => 'modules/customer-individual/signup.php',
     'staff-login'                   => 'modules/staff-login.php',
@@ -21,5 +19,6 @@ return [
     'booking-details'               => 'modules/customer-individual/booking-details.php',
     'assistantDashboard'            => 'modules/assistant/assistantDashboard.php',
     'driverDashboard'               => 'modules/driver/driverDashboard.php',
-    'trip-details'                 => 'modules/trip-details.php',
+    'trip-details'                  => 'modules/trip-details.php',
+    'user-profile'                  => 'modules/user-profile.php',
 ];

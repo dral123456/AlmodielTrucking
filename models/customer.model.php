@@ -301,4 +301,12 @@ class ModelCustomer {
 
     return (int) $stmt->fetchColumn() > 0;
   }
+
+  static public function mdlGetCustomer($customerId) {
+    $pdo = (new Connection)->connect();
+    $stmt = $pdo->prepare("SELECT * FROM customer WHERE id = :customerId");
+    $stmt->bindParam(":customerId", $customerId, PDO::PARAM_INT);
+    $stmt->execute();
+    return $stmt->fetch(PDO::FETCH_ASSOC);
+  }
 }

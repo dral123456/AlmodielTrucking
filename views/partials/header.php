@@ -1,3 +1,36 @@
+<?php
+if(isset($_SESSION['role'])) {
+    $role = $_SESSION['role'];
+    if($role === 'customer') {
+        require_once 'controllers/customer.booking.php';
+
+        $customer = ControllerCustomer::ctrGetCustomer($_SESSION['id']);
+
+        $customerType = $customer['customerType'];
+        $fName = $customer['customerFName'];
+        if(strtolower($customerType) === 'company') {
+            $fullname = $fName;
+        } else {
+            $mI = $customer['customerMI'];
+            $lName = $customer['customerLName'];
+            $fullName = $fName . ' ' . $mI . ' ' . $lName;
+        }
+        $email = $customer['email'];
+    } else {
+        require_once 'controllers/employee.controller.php';
+
+        $employee = ControllerEmployee::ctrGetEmployee($_SESSION['id']);
+
+        $fName = $employee['empFName'];
+        $mI = $employee['empMI'];
+        $lName = $employee['empLName'];
+        $fullName = $fName . ' ' . $mI . ' ' . $lName;
+        $email = $employee['empEmail'];
+    }
+}
+
+?>
+
 <!-- Begin Header -->
 <header class="app-header" id="appHeader">
     <div class="container-fluid w-100">
@@ -120,87 +153,6 @@
                             </div>
                         </div>
                     </div>
-                    <div class="dropdown pe-dropdown-mega d-none d-md-block">
-                        <button class="btn btn-icon header-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Messages">
-                            <i class="bi bi-cart position-relative"></i>
-                            <div class="icon-dot"></div>
-                        </button>
-                        <ul class="dropdown-menu dropdown-mega-md header-dropdown-menu p-0">
-                            <div class="card mb-0">
-                                <div class="p-5 border-bottom d-flex justify-content-between align-items-center">
-                                    <h5 class="card-title">Cart Items</h5>
-                                    <span class="badge text-primary bg-primary-subtle">3</span>
-                                </div>
-                                <ul class="list-unstyled list-none mb-0 p-4" id="header-cart-items-scroll">
-                                    <li class="cart-item">
-                                        <div class="d-flex items-start cart-dropdown-item">
-                                            <img src="views/assets/images/product/img-02.png" class="avatar-lg me-4 p-1 rounded border" alt="img">
-                                            <div class="flex-grow-1">
-                                                <div>
-                                                    <h6><a href="apps-ecommerce-products-details.html" class="text-reset">Stop Watch</a></h6>
-                                                    <p class="mb-0 fs-12 text-muted">Quantity: <span>2 x $159</span></p>
-                                                </div>
-                                            </div>
-                                            <div class="d-flex align-items-center px-2">
-                                                <h6 class="m-0 fw-normal">$<span class="cart-item-price">318</span></h6>
-                                            </div>
-                                            <div class="ps-2 d-flex">
-                                                <button type="button" class="btn btn-sm"><i class="ri-close-fill fs-16"></i></button>
-                                            </div>
-                                        </div>
-                                    </li>
-                                    <li class="cart-item">
-                                        <div class="d-flex items-start cart-dropdown-item">
-                                            <img src="views/assets/images/product/img-03.png" class="avatar-lg me-4 p-1 rounded border" alt="img">
-                                            <div class="flex-grow-1">
-                                                <div>
-                                                    <h6><a href="apps-ecommerce-products-details.html" class="text-reset">Jeens Shoes</a></h6>
-                                                    <p class="mb-0 fs-12 text-muted">Quantity: <span>1 x $399</span></p>
-                                                </div>
-                                            </div>
-                                            <div class="d-flex align-items-center px-2">
-                                                <h6 class="m-0 fw-normal">$<span class="cart-item-price">399</span></h6>
-                                            </div>
-                                            <div class="ps-2 d-flex">
-                                                <button type="button" class="btn btn-sm"><i class="ri-close-fill fs-16"></i></button>
-                                            </div>
-                                        </div>
-                                    </li>
-                                    <li class="cart-item">
-                                        <div class="d-flex items-start cart-dropdown-item">
-                                            <img src="views/assets/images/product/img-04.png" class="avatar-lg me-4 p-1 rounded border" alt="img">
-                                            <div class="flex-grow-1">
-                                                <div>
-                                                    <h6><a href="apps-ecommerce-products-details.html" class="text-reset">Solder Less T-shirt</a></h6>
-                                                    <p class="mb-0 fs-12 text-muted">Quantity: <span>3 x $259</span></p>
-                                                </div>
-                                            </div>
-                                            <div class="d-flex align-items-center px-2">
-                                                <h6 class="m-0 fw-normal">$<span class="cart-item-price">777</span></h6>
-                                            </div>
-                                            <div class="ps-2 d-flex">
-                                                <button type="button" class="btn btn-sm"><i class="ri-close-fill fs-16"></i></button>
-                                            </div>
-                                        </div>
-                                    </li>
-                                </ul>
-                                <div class="px-5 py-4 bg-light-subtle d-flex justify-content-between align-items-center">
-                                    <h6 class="mb-0">Order Total:</h6>
-                                    <span class="fw-semibold">$1494.00</span>
-                                </div>
-                                <div class="p-5 d-flex justify-content-end gap-3">
-                                    <a href="apps-ecommerce-cart.html"><button class="btn btn-light" type="button">View Cart</button></a>
-                                    <a class="btn btn-primary view-checkout" href="apps-ecommerce-checkout.html">Checkout </a>
-                                </div>
-                            </div>
-                        </ul>
-                    </div>
-                    <button class="btn header-btn d-block d-md-none" type="button" data-bs-toggle="modal" data-bs-target="#searchModal">
-                        <i class="ri-search-line"></i>
-                    </button>
-                    <button class="btn header-btn d-none d-md-block" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasRight" aria-controls="offcanvasRight" aria-label="Settings">
-                        <i class="bi bi-gear"></i>
-                    </button>
                 </div>
                 <div class="dark-mode-btn" id="toggleMode">
                     <button class="btn header-btn active" id="lightModeBtn" type="button" aria-label="Switch to light mode">
@@ -213,8 +165,8 @@
                 <div class="dropdown pe-dropdown-mega d-none d-md-block">
                     <button class="header-profile-btn btn gap-1 text-start" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <div class="d-none d-xl-block pe-2">
-                            <span class="d-block mb-0 fs-12 fw-semibold">Jaydon Levin</span>
-                            <span class="d-block mb-0 fs-10 text-muted">jaydon@gmail.com</span>
+                            <span class="d-block mb-0 fs-12 fw-semibold"><?php echo $fullName; ?></span>
+                            <span class="d-block mb-0 fs-10 text-muted"><?php echo $email; ?></span>
                         </div>
                         <span class="header-btn btn position-relative">
                             <img src="views/assets/images/avatar/avatar-3.jpg" alt="Avatar Image" class="img-fluid rounded-circle">
@@ -225,20 +177,13 @@
                             <img src="views/assets/images/avatar/avatar-3.jpg" alt="Avatar Image" class="avatar-md">
                             <div>
                                 <a href="javascript:void(0)">
-                                    <h6 class="mb-0 lh-base">Jaydon Levin</h6>
+                                    <h6 class="mb-0 lh-base"><?php echo $fullName; ?></h6>
                                 </a>
-                                <p class="mb-0 fs-13 text-muted">jaydon@gmail.com</p>
+                                <p class="mb-0 fs-13 text-muted"><?php echo $email; ?></p>
                             </div>
                         </div>
                         <ul class="list-unstyled mb-1 border-bottom pb-1">
-                            <li><a class="dropdown-item" href="pages-profile.html"><i class="bi bi-person me-2"></i> View Profile</a></li>
-                            <li><a class="dropdown-item" href="pages-profile.html"><i class="bi bi-gear me-2"></i> Settings</a></li>
-                            <li><a class="dropdown-item" href="pages-billing-subscription.html"><i class="bi bi-award me-2"></i> Subscription</a></li>
-                        </ul>
-                        <ul class="list-unstyled mb-1 border-bottom pb-1">
-                            <li><a class="dropdown-item" href="javascript:void(0)"><i class="bi bi-clock me-2"></i> ChangLog</a></li>
-                            <li><a class="dropdown-item" href="pages-pricing.html"><i class="bi bi-currency-dollar"></i> Pricing</a></li>
-                            <li><a class="dropdown-item" href="javascript:void(0)"><i class="bi bi-headset me-2"></i> Support</a></li>
+                            <li><a class="dropdown-item" href="user-profile"><i class="bi bi-person me-2"></i> View Profile</a></li>
                         </ul>
                         <ul class="list-unstyled mb-0">
                             <li><a href="logout" class="dropdown-item"><i class="bi bi-box-arrow-right me-2"></i> Sign Out</a></li>
@@ -253,20 +198,20 @@
 
 <!-- Search Modal -->
 <div class="modal fade search-modal" id="searchModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="searchModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header d-block">
-          <div class="form-icon">
-            <input type="text" class="form-control form-control-icon" id="searchInputInModal" placeholder="Search" required>
-            <div class="search-btn w-44px">
-              <i class="ri-search-line text-muted fs-16"></i>
-            </div>
-            <button type="button" class="btn-close position-absolute end-0 top-50 translate-middle-y d-inline-block m-0" data-bs-dismiss="modal" aria-label="Close"></button>
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header d-block">
+        <div class="form-icon">
+          <input type="text" class="form-control form-control-icon" id="searchInputInModal" placeholder="Search" required>
+          <div class="search-btn w-44px">
+            <i class="ri-search-line text-muted fs-16"></i>
           </div>
+          <button type="button" class="btn-close position-absolute end-0 top-50 translate-middle-y d-inline-block m-0" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
-        <div class="modal-body" data-simplebar id="list-items">
-          <ul class="list-unstyled mb-0" id="searchList"></ul>
-        </div>
+      </div>
+      <div class="modal-body" data-simplebar id="list-items">
+        <ul class="list-unstyled mb-0" id="searchList"></ul>
       </div>
     </div>
   </div>
+</div>
