@@ -8,6 +8,13 @@ $(document).ready(function () {
   // Track locationIDs chosen from existing DB records (skip re-saving)
   let pickedPickupLocationID    = null;
   let pickedDestinationLocationID = null;
+  let bookingDatePicker = null;
+  let truckBookedDates = {};
+  let selectedCalendarTruckID = '';
+  let truckCalendarLoaded = false;
+  let truckCalendarAllUnavailable = false;
+  let truckCalendarStatus = '';
+  let truckCalendarActiveTrip = null;
 
   let pickupIcon     = null;
   let destinationIcon = null;
@@ -18,6 +25,7 @@ $(document).ready(function () {
 
   initMap();
   updateStepper();
+  initBookingDatePicker();
   if (!IS_CUSTOMER_INDIVIDUAL) syncAssistantOptions();
   initLocationSearch('pickup');
   initLocationSearch('destination');
@@ -28,6 +36,12 @@ $(document).ready(function () {
     $(document).on('change', '#bookingTruck', function () {
       applyTruckDefaultCrew($(this).val());
       lookupTariffPrice();
+      checkTruckAvailability(false);
+      loadTruckBookedDates($(this).val());
+    });
+
+    $(document).on('change', '#bookingPickupDateTime', function () {
+      checkTruckAvailability(false);
     });
 
     $(document).on('change', '#bookingCustomer', function () {
@@ -102,8 +116,14 @@ $(document).ready(function () {
       $('#bookingPrice').data('tariffAutofilled', false).data('settingTariffPrice', false);
       $('#bookingAssistantList .booking-assistant-item').slice(2).remove();
       $('.booking-assistant').val('');
+      loadTruckBookedDates('');
     }
-    $('#bookingPickupDateTime').val('');
+    if (bookingDatePicker) bookingDatePicker.clear();
+    else $('#bookingPickupDateTime').val('');
+    if (!IS_CUSTOMER_INDIVIDUAL) {
+      setTruckAvailabilityMessage('Select a pickup date and truck to check availability.', 'muted');
+      setBookingCalendarStatus('Select a truck to view its date availability.', 'muted');
+    }
     $('#bookingCargoList .booking-cargo-item').slice(1).remove();
     $('#bookingCargoList .cargo-type, #bookingCargoList .cargo-quantity, #cargoCondition, #cargoDescription, #cargoSpecialHandling').val('');
     $('#pickupProvince, #pickupCity, #pickupBarangay, #pickupStreet, #pickupDescription, #pickupLatitude, #pickupLongitude').val('');
@@ -126,6 +146,14 @@ $(document).ready(function () {
   $(document).on('click', '#bookingBtnRegister', function () {
     const missing = validateInputs();
     if (missing.length > 0) { showMissingModal(missing); return; }
+
+    if (!IS_CUSTOMER_INDIVIDUAL) {
+      checkTruckAvailability(true).then(function (available) {
+        if (available) showConfirmModal();
+      });
+      return;
+    }
+
     showConfirmModal();
   });
 
@@ -749,6 +777,10 @@ $(document).ready(function () {
       // Customer: always required — for individual role the hidden input is pre-filled from session
       check('bookingCustomer', 'Customer');
       check('bookingPickupDateTime', 'Pickup Date & Time');
+      if ($('#bookingPickupDateTime').val() && !isPickupDateAllowed($('#bookingPickupDateTime').val())) {
+        missing.push('Pickup Date & Time must be today or an upcoming date');
+        $('#bookingPickupDateTime').addClass('is-invalid');
+      }
 
       if (!IS_CUSTOMER_INDIVIDUAL) {
         // Crew fields only required for non-individual roles
@@ -866,6 +898,271 @@ $(document).ready(function () {
     }
 
     checkPriceValue(missing);
+  }
+
+  function setPickupDateMinimum() {
+    $('#bookingPickupDateTime').attr('data-min-date', localTodayValue() + 'T00:00');
+  }
+
+  function initBookingDatePicker() {
+    setPickupDateMinimum();
+
+    if (typeof AirDatepicker === 'undefined') {
+      return;
+    }
+
+    const localeEn = {
+      days: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+      daysShort: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      daysMin: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'],
+      months: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
+      monthsShort: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+      today: 'Today',
+      clear: 'Clear',
+      dateFormat: 'yyyy-MM-dd',
+      timeFormat: 'HH:mm',
+      firstDay: 0
+    };
+
+    bookingDatePicker = new AirDatepicker('#bookingPickupDateTime', {
+      minDate: new Date(localTodayValue() + 'T00:00:00'),
+      timepicker: true,
+      minutesStep: 15,
+      dateFormat: 'yyyy-MM-dd',
+      timeFormat: 'HH:mm',
+      dateTimeSeparator: ' ',
+      locale: localeEn,
+      autoClose: false,
+      buttons: ['today', 'clear'],
+      onRenderCell: renderBookedDateCell,
+      onSelect: function () {
+        $('#bookingPickupDateTime').removeClass('is-invalid');
+        if (!IS_CUSTOMER_INDIVIDUAL) checkTruckAvailability(false);
+      }
+    });
+  }
+
+  function renderBookedDateCell({ date, cellType }) {
+    if (cellType !== 'day') return {};
+
+    const dateKey = formatCalendarDate(date);
+    if (!selectedCalendarTruckID || !truckCalendarLoaded || dateKey < localTodayValue()) return {};
+
+    const booking = truckBookedDates[dateKey];
+    if (truckCalendarAllUnavailable || booking) {
+      const label = truckCalendarUnavailableLabel(booking);
+      return {
+        disabled: true,
+        html: '<span class="booking-calendar-day booking-calendar-day--unavailable">' + date.getDate() + '</span>',
+        classes: '-booking-unavailable-',
+        attrs: { title: label }
+      };
+    }
+
+    return {};
+  }
+
+  function loadTruckBookedDates(truckID) {
+    selectedCalendarTruckID = String(truckID || '');
+    truckBookedDates = {};
+    truckCalendarLoaded = false;
+    truckCalendarAllUnavailable = false;
+    truckCalendarStatus = '';
+    truckCalendarActiveTrip = null;
+    refreshBookingDatePicker();
+
+    if (!truckID) {
+      setBookingCalendarStatus('Select a truck to view its date availability.', 'muted');
+      return;
+    }
+
+    setBookingCalendarStatus('Loading truck date availability...', 'muted');
+
+    $.ajax({
+      url: 'ajax/booking_truck_booked_dates.ajax.php',
+      method: 'POST',
+      dataType: 'json',
+      data: { truckID: truckID },
+      success: function (response) {
+        if (String(truckID) !== selectedCalendarTruckID) return;
+
+        if (!response || response.requestStatus !== 'success' || !Array.isArray(response.dates)) {
+          setBookingCalendarStatus('Unable to load truck date availability.', 'danger');
+          return;
+        }
+
+        response.dates.forEach(function (item) {
+          truckBookedDates[item.date] = item;
+        });
+        truckCalendarLoaded = true;
+        truckCalendarAllUnavailable = !!response.allUnavailable;
+        truckCalendarStatus = response.status || '';
+        truckCalendarActiveTrip = response.activeTrip || null;
+        refreshBookingDatePicker();
+        updateBookingCalendarStatus();
+        clearUnavailableSelectedDate();
+      },
+      error: function () {
+        if (String(truckID) !== selectedCalendarTruckID) return;
+        setBookingCalendarStatus('Unable to load truck date availability.', 'danger');
+      }
+    });
+  }
+
+  function refreshBookingDatePicker() {
+    if (bookingDatePicker) {
+      bookingDatePicker.update({ onRenderCell: renderBookedDateCell }, { silent: true });
+    }
+  }
+
+  function formatCalendarDate(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return year + '-' + month + '-' + day;
+  }
+
+  function truckCalendarUnavailableLabel(booking) {
+    if (truckCalendarStatus === 'inactive') {
+      return 'Unavailable: truck is inactive';
+    }
+
+    if (truckCalendarStatus === 'active-trip') {
+      const tripLabel = truckCalendarActiveTrip && truckCalendarActiveTrip.tripID
+        ? ' on Trip #' + truckCalendarActiveTrip.tripID
+        : '';
+      return 'Unavailable: truck is currently assigned' + tripLabel;
+    }
+
+    if (booking) {
+      return 'Unavailable: ' + booking.tripCount + ' active trip' + (booking.tripCount === 1 ? '' : 's');
+    }
+
+    return 'Unavailable';
+  }
+
+  function updateBookingCalendarStatus() {
+    if (truckCalendarStatus === 'inactive') {
+      setBookingCalendarStatus('This truck is inactive. All dates are unavailable.', 'danger');
+      return;
+    }
+
+    if (truckCalendarStatus === 'active-trip') {
+      const tripLabel = truckCalendarActiveTrip && truckCalendarActiveTrip.tripID
+        ? ' Trip #' + truckCalendarActiveTrip.tripID + ' is still active.'
+        : '';
+      setBookingCalendarStatus('This truck is currently in use.' + tripLabel + ' All dates are unavailable.', 'danger');
+      return;
+    }
+
+    const bookedCount = Object.keys(truckBookedDates).length;
+    const message = bookedCount > 0
+      ? 'Red dates are already booked and cannot be selected.'
+      : 'No unavailable dates found for this truck.';
+    setBookingCalendarStatus(message, 'success');
+  }
+
+  function clearUnavailableSelectedDate() {
+    const selectedDate = String($('#bookingPickupDateTime').val() || '').slice(0, 10);
+    if (!selectedDate || (!truckCalendarAllUnavailable && !truckBookedDates[selectedDate])) return;
+
+    if (bookingDatePicker) bookingDatePicker.clear();
+    else $('#bookingPickupDateTime').val('');
+    setTruckAvailabilityMessage('Choose a green available date for this truck.', 'danger');
+  }
+
+  function setBookingCalendarStatus(message, tone) {
+    $('#bookingCalendarStatus')
+      .removeClass('text-muted text-success text-danger')
+      .addClass(tone === 'success' ? 'text-success' : (tone === 'danger' ? 'text-danger' : 'text-muted'))
+      .text(message);
+  }
+
+  function isPickupDateAllowed(value) {
+    const selectedDate = String(value || '').slice(0, 10);
+    return selectedDate !== '' && selectedDate >= localTodayValue();
+  }
+
+  function localTodayValue() {
+    const date = new Date();
+    const offset = date.getTimezoneOffset();
+    return new Date(date.getTime() - offset * 60000).toISOString().slice(0, 10);
+  }
+
+  function checkTruckAvailability(showAlert) {
+    if (IS_CUSTOMER_INDIVIDUAL) return Promise.resolve(true);
+
+    const truckID = $('#bookingTruck').val();
+    const pickupDateTime = $('#bookingPickupDateTime').val();
+
+    if (!truckID || !pickupDateTime || !isPickupDateAllowed(pickupDateTime)) {
+      setTruckAvailabilityMessage('Select a valid pickup date and truck to check availability.', 'muted');
+      return Promise.resolve(false);
+    }
+
+    setTruckAvailabilityMessage('Checking truck availability...', 'muted');
+
+    return new Promise(function (resolve) {
+      $.ajax({
+        url: 'ajax/booking_truck_availability.ajax.php',
+        method: 'POST',
+        dataType: 'json',
+        data: {
+          truckID: truckID,
+          pickupDateTime: pickupDateTime.replace('T', ' ')
+        },
+        success: function (response) {
+          if (response && response.available) {
+            $('#bookingTruck').removeClass('is-invalid');
+            setTruckAvailabilityMessage('Truck is available for the selected pickup date.', 'success');
+            resolve(true);
+            return;
+          }
+
+          $('#bookingTruck').addClass('is-invalid');
+          const message = truckAvailabilityError(response);
+          setTruckAvailabilityMessage(message, 'danger');
+
+          if (showAlert) {
+            Swal.fire({
+              icon: 'warning',
+              title: 'Truck Not Available',
+              text: message,
+              confirmButtonColor: '#696cff'
+            });
+          }
+          resolve(false);
+        },
+        error: function () {
+          const message = 'Unable to check truck availability. Please try again.';
+          setTruckAvailabilityMessage(message, 'danger');
+          if (showAlert) {
+            Swal.fire({ icon: 'error', title: 'Availability Check Failed', text: message, confirmButtonColor: '#696cff' });
+          }
+          resolve(false);
+        }
+      });
+    });
+  }
+
+  function truckAvailabilityError(response) {
+    if (response && response.status === 'inactive') {
+      return 'This truck is inactive and cannot be assigned.';
+    }
+
+    if (response && response.status === 'conflict') {
+      const trip = response.tripID ? ' Trip #' + response.tripID + ' is already using it.' : '';
+      return 'This truck has a conflicting active booking.' + trip;
+    }
+
+    return 'This truck is not available for the selected pickup date.';
+  }
+
+  function setTruckAvailabilityMessage(message, tone) {
+    $('#bookingTruckAvailability')
+      .removeClass('text-muted text-success text-danger')
+      .addClass(tone === 'success' ? 'text-success' : (tone === 'danger' ? 'text-danger' : 'text-muted'))
+      .text(message);
   }
 
   function checkPriceValue(missing) {
@@ -1096,7 +1393,12 @@ $(document).ready(function () {
             icon: 'success', title: 'Saved!', text: 'Booking saved successfully.', confirmButtonColor: '#696cff'
           }).then(() => { window.location = 'booking-reg'; });
         } else {
-          Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to save booking.', confirmButtonColor: '#696cff' });
+          const messages = {
+            'past-date': 'Pickup date must be today or an upcoming date.',
+            'truck-conflict': 'The selected truck has a conflicting active booking. Please choose another truck or pickup date.',
+            'truck-inactive': 'The selected truck is inactive. Please choose another truck.'
+          };
+          Swal.fire({ icon: 'error', title: 'Unable to Save Booking', text: messages[res] || 'Failed to save booking.', confirmButtonColor: '#696cff' });
         }
       },
       error: function () {

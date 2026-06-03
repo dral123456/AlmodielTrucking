@@ -56,6 +56,7 @@ class BookingRegistration {
       empty($customerID) ||
       empty($truckID) ||
       empty($driverID) ||
+      empty($pickupDateTime) ||
       empty($pickupLocationID) ||
       empty($destinationLocationID)
     ) {
