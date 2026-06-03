@@ -706,6 +706,7 @@ class ModelBooking {
 
       if (isset($data["truckID"], $data["crew"]) && !self::tripHasEmployees($pdo, $tripID)) {
         self::insertTripEmployees($pdo, $tripID, $data["truckID"], $data["crew"]);
+        self::insertCrewSalaryRecords($pdo, $tripID, $bookingID, $data);
       }
 
       $pdo->commit();
@@ -1105,6 +1106,110 @@ class ModelBooking {
     $stmt->bindValue(":empID", $empID, PDO::PARAM_INT);
     $stmt->bindValue(":role", $role, PDO::PARAM_STR);
     $stmt->execute();
+  }
+
+  static private function insertCrewSalaryRecords($pdo, $tripID, $bookingID, $data) {
+    if (!self::tableExists($pdo, "staffsalary")) {
+      return;
+    }
+
+    $crew = $data["crew"] ?? array();
+    $driverSalary = max((float) ($crew["salary"] ?? 0), 0);
+    $assistantSalary = max($driverSalary - 100, 0);
+    $allowance = max((float) ($crew["allowance"] ?? 0), 0);
+    $driverGrossPay = $driverSalary + $allowance;
+    $assistantGrossPay = $assistantSalary + $allowance;
+
+    if ($driverGrossPay <= 0 && $assistantGrossPay <= 0) {
+      return;
+    }
+
+    $pickupDate = self::dateOnly($data["pickupDateTime"] ?? "");
+    $createdBy = isset($data["createdBy"]) && (int) $data["createdBy"] > 0 ? (int) $data["createdBy"] : null;
+    $driverRemarks = "Auto-created from booking. Driver salary: PHP " . number_format($driverSalary, 2, ".", "") .
+      "; Allowance: PHP " . number_format($allowance, 2, ".", "");
+    $assistantRemarks = "Auto-created from booking. Assistant salary is driver salary less PHP 100.00. Salary: PHP " . number_format($assistantSalary, 2, ".", "") .
+      "; Allowance: PHP " . number_format($allowance, 2, ".", "");
+
+    $stmt = $pdo->prepare("
+      INSERT INTO staffsalary (
+        empID,
+        tripID,
+        creditedBookingID,
+        creditedDistanceKm,
+        tripRole,
+        payPeriodStart,
+        payPeriodEnd,
+        payType,
+        baseRate,
+        grossPay,
+        deductions,
+        netPay,
+        datePaid,
+        status,
+        remarks,
+        createdBy,
+        dateCreated
+      ) VALUES (
+        :empID,
+        :tripID,
+        :creditedBookingID,
+        0,
+        :tripRole,
+        :payPeriodStart,
+        :payPeriodEnd,
+        'trip',
+        :baseRate,
+        :grossPay,
+        0,
+        :netPay,
+        NULL,
+        'pending',
+        :remarks,
+        :createdBy,
+        NOW()
+      )
+    ");
+
+    self::insertCrewSalaryRecord($stmt, $tripID, $bookingID, $crew["driverID"] ?? 0, "driver", $driverSalary, $driverGrossPay, $pickupDate, $driverRemarks, $createdBy);
+
+    $assistantIDs = array_unique(array_filter($crew["assistantIDs"] ?? array()));
+    foreach ($assistantIDs as $assistantID) {
+      if ((int) $assistantID !== (int) ($crew["driverID"] ?? 0)) {
+        self::insertCrewSalaryRecord($stmt, $tripID, $bookingID, $assistantID, "assistant", $assistantSalary, $assistantGrossPay, $pickupDate, $assistantRemarks, $createdBy);
+      }
+    }
+  }
+
+  static private function insertCrewSalaryRecord($stmt, $tripID, $bookingID, $empID, $role, $baseRate, $grossPay, $payDate, $remarks, $createdBy) {
+    $empID = (int) $empID;
+    if ($empID <= 0) {
+      return;
+    }
+
+    $stmt->bindValue(":empID", $empID, PDO::PARAM_INT);
+    $stmt->bindValue(":tripID", $tripID, PDO::PARAM_INT);
+    $stmt->bindValue(":creditedBookingID", $bookingID, PDO::PARAM_INT);
+    $stmt->bindValue(":tripRole", $role, PDO::PARAM_STR);
+    $stmt->bindValue(":payPeriodStart", $payDate, PDO::PARAM_STR);
+    $stmt->bindValue(":payPeriodEnd", $payDate, PDO::PARAM_STR);
+    $stmt->bindValue(":baseRate", $baseRate, PDO::PARAM_STR);
+    $stmt->bindValue(":grossPay", $grossPay, PDO::PARAM_STR);
+    $stmt->bindValue(":netPay", $grossPay, PDO::PARAM_STR);
+    $stmt->bindValue(":remarks", $remarks, PDO::PARAM_STR);
+
+    if ($createdBy === null) {
+      $stmt->bindValue(":createdBy", null, PDO::PARAM_NULL);
+    } else {
+      $stmt->bindValue(":createdBy", $createdBy, PDO::PARAM_INT);
+    }
+
+    $stmt->execute();
+  }
+
+  static private function dateOnly($value) {
+    $timestamp = strtotime((string) $value);
+    return $timestamp ? date("Y-m-d", $timestamp) : date("Y-m-d");
   }
 
   static private function tripHasEmployees($pdo, $tripID) {

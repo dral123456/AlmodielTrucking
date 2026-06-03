@@ -173,6 +173,26 @@ foreach ($trucks as $truck) {
                     </div>
                   </div>
                 </div>
+                <div class="col-12">
+                  <div class="row g-3">
+                    <div class="col-12 col-md-6">
+                      <label class="form-label">Driver Salary</label>
+                      <div class="input-group">
+                        <span class="input-group-text">PHP</span>
+                        <input type="number" class="form-control" id="bookingCrewSalary" min="0" step="0.01" placeholder="Driver salary">
+                      </div>
+                      <div class="form-text">Assistants automatically receive PHP 100 less.</div>
+                    </div>
+                    <div class="col-12 col-md-6">
+                      <label class="form-label">Crew Allowance</label>
+                      <div class="input-group">
+                        <span class="input-group-text">PHP</span>
+                        <input type="number" class="form-control" id="bookingCrewAllowance" min="0" step="0.01" placeholder="Allowance per crew member">
+                      </div>
+                      <div class="form-text">Added on top of the crew salary.</div>
+                    </div>
+                  </div>
+                </div>
               <?php else: ?>
                 <input type="hidden" id="bookingTruck" value=0>
                 <input type="hidden" id="bookingDriver" value=0>

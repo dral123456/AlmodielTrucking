@@ -99,6 +99,7 @@ $(document).ready(function () {
   $(document).on('click', '#bookingBtnReset', function () {
     if (!IS_CUSTOMER_INDIVIDUAL) {
       $('#bookingCustomer, #bookingPrice, #bookingFuelPrice, #bookingTruck, #bookingDriver').val('');
+      $('#bookingCrewSalary, #bookingCrewAllowance').val('');
       $('#bookingPrice').data('tariffAutofilled', false).data('settingTariffPrice', false);
       $('#bookingAssistantList .booking-assistant-item').slice(2).remove();
       $('.booking-assistant').val('');
@@ -741,6 +742,9 @@ $(document).ready(function () {
           missing.push('Assistants must be different employees');
           $('.booking-assistant').addClass('is-invalid');
         }
+
+        checkMoneyInput('bookingCrewSalary', 'Crew Salary', missing);
+        checkMoneyInput('bookingCrewAllowance', 'Crew Allowance', missing);
       }
     }
 
@@ -809,6 +813,24 @@ $(document).ready(function () {
     }
 
     $lat.add($lng).removeClass('is-invalid');
+  }
+
+  function checkMoneyInput(id, label, missing) {
+    const $field = $('#' + id);
+    const raw = String($field.val() || '').trim();
+    if (raw === '') {
+      $field.removeClass('is-invalid');
+      return;
+    }
+
+    const amount = Number(raw);
+    if (!Number.isFinite(amount) || amount < 0) {
+      missing.push(label + ' must be a valid amount');
+      $field.addClass('is-invalid');
+      return;
+    }
+
+    $field.removeClass('is-invalid');
   }
 
   function hasValidNegrosPin(prefix) {
@@ -1020,6 +1042,8 @@ $(document).ready(function () {
     formData.append('truckID',      IS_CUSTOMER_INDIVIDUAL ? null : $('#bookingTruck').val());
     formData.append('driverID',     IS_CUSTOMER_INDIVIDUAL ? null : $('#bookingDriver').val());
     formData.append('assistantIDs', IS_CUSTOMER_INDIVIDUAL ? JSON.stringify([null, null]) : JSON.stringify(getAssistantIDs()));
+    formData.append('crewSalary',   IS_CUSTOMER_INDIVIDUAL ? '0' : $('#bookingCrewSalary').val());
+    formData.append('crewAllowance', IS_CUSTOMER_INDIVIDUAL ? '0' : $('#bookingCrewAllowance').val());
 
     formData.append('pickupDateTime', $('#bookingPickupDateTime').val().replace('T', ' '));
 
