@@ -94,14 +94,7 @@ class ModelReport {
         ");
 
         $stmt->execute();
-        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        $rows = array_merge($rows, self::completedCrewSalaryExpenseRows($pdo));
-
-        usort($rows, function ($a, $b) {
-            return strtotime($b["recordDate"] ?? "") <=> strtotime($a["recordDate"] ?? "");
-        });
-
-        return array_slice($rows, 0, 50);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     static public function mdlSaveDeliveryCharge($data) {
@@ -178,7 +171,14 @@ class ModelReport {
         ");
 
         $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $rows = array_merge($rows, self::completedCrewSalaryExpenseRows($pdo));
+
+        usort($rows, function ($a, $b) {
+            return strtotime($b["recordDate"] ?? "") <=> strtotime($a["recordDate"] ?? "");
+        });
+
+        return array_slice($rows, 0, 50);
     }
 
     static public function mdlExpenseTruckRows() {
