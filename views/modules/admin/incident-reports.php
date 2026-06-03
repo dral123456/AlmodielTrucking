@@ -139,7 +139,7 @@ function incidentSeverityClass($severity) {
             <?php endif; ?>
 
             <?php foreach ($incidentRows as $row): ?>
-              <tr class="incident-row" data-status="<?php echo htmlspecialchars($row["status"]); ?>">
+              <tr class="incident-row" data-incident-id="<?php echo (int) $row["incidentID"]; ?>" data-status="<?php echo htmlspecialchars($row["status"]); ?>">
                 <td>
                   <strong>#<?php echo (int) $row["incidentID"]; ?></strong>
                   <div class="small text-muted"><?php echo htmlspecialchars(incidentDate($row["dateSubmitted"])); ?></div>
@@ -187,6 +187,10 @@ function incidentSeverityClass($severity) {
     </div>
   </div>
 </div>
+
+<script>
+  window.incidentReportData = <?php echo json_encode($incidentRows, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
+</script>
 
 <style>
   .incident-admin-page {
@@ -252,8 +256,27 @@ function incidentSeverityClass($severity) {
     border-radius: 0.625rem;
   }
 
+  .incident-action-group {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.25rem;
+  }
+
   .incident-table {
     min-width: 1120px;
+  }
+
+  .incident-row {
+    cursor: pointer;
+  }
+
+  .incident-row:hover {
+    background: var(--bs-tertiary-bg);
+  }
+
+  .incident-row.active {
+    background: var(--bs-primary-bg-subtle);
   }
 
   .incident-description {
@@ -268,14 +291,113 @@ function incidentSeverityClass($severity) {
     font-size: 0.8125rem;
   }
 
-  .incident-action-group {
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: 0.25rem;
-  }
-
   .incident-action-group .btn {
     border-radius: 0.375rem !important;
+  }
+
+  .incident-review-popup {
+    width: min(1080px, calc(100vw - 32px)) !important;
+    max-width: min(1080px, calc(100vw - 32px)) !important;
+    max-height: calc(100vh - 48px) !important;
+    border-radius: 0.875rem !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .incident-review-popup .swal2-html-container {
+    max-height: calc(100vh - 48px) !important;
+    margin: 0 !important;
+    overflow-y: auto !important;
+    padding: 0 !important;
+    text-align: left !important;
+  }
+
+  .incident-review-modal {
+    color: var(--bs-body-color);
+    padding: 1.5rem;
+    min-height: min(620px, calc(100vh - 48px));
+  }
+
+  .incident-review-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    border-bottom: 1px solid var(--bs-border-color);
+    padding-bottom: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .incident-review-header h5 {
+    margin: 0;
+  }
+
+  .incident-review-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    justify-content: flex-end;
+  }
+
+  .incident-review-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem 1.25rem;
+    margin-bottom: 1rem;
+  }
+
+  .incident-review-field {
+    min-width: 0;
+  }
+
+  .incident-review-field span,
+  .incident-review-notes label {
+    color: var(--bs-secondary-color);
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.25rem;
+    text-transform: uppercase;
+  }
+
+  .incident-review-field strong,
+  .incident-review-field p {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .incident-review-field p {
+    white-space: pre-wrap;
+  }
+
+  .incident-review-full {
+    grid-column: 1 / -1;
+  }
+
+  .incident-review-notes {
+    border-top: 1px solid var(--bs-border-color);
+    padding-top: 1rem;
+  }
+
+  .incident-review-notes textarea {
+    border-radius: 0.5rem;
+    min-height: 130px;
+    resize: vertical;
+  }
+
+  .incident-review-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    border-top: 1px solid var(--bs-border-color);
+    margin-top: 1rem;
+    padding-top: 1rem;
+  }
+
+  .incident-review-actions .btn {
+    border-radius: 0.5rem;
+    min-width: 104px;
   }
 
   @media (max-width: 1199.98px) {
@@ -286,11 +408,25 @@ function incidentSeverityClass($severity) {
     .incident-toolbar {
       grid-template-columns: 1fr;
     }
+
+    .incident-review-header,
+    .incident-review-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+    }
   }
 
   @media (max-width: 575.98px) {
     .incident-summary-grid {
       grid-template-columns: 1fr;
+    }
+
+    .incident-review-modal {
+      padding: 1rem;
+    }
+
+    .incident-review-actions .btn {
+      flex: 1 1 100%;
     }
   }
 </style>

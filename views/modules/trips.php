@@ -159,21 +159,18 @@ foreach ($trips as $trip) {
       <?php if ($canSubmitIncident): ?>
           </div>
           <div class="tab-pane fade" id="driverIncidentPane" role="tabpanel" aria-labelledby="driverIncidentTab">
-            <div class="incident-driver-shell">
-              <div class="incident-driver-copy">
-                <span class="badge bg-danger-subtle text-danger mb-3"><i class="ri-shield-warning-line me-1"></i> Safety Report</span>
-                <h5 class="mb-2">Submit an Incident Report</h5>
-                <p class="text-muted mb-3">
-                  Use this when something happens during a trip: accident, vehicle breakdown, cargo damage, delay, route issue, or customer concern.
-                </p>
-                <div class="incident-driver-tip">
-                  <strong>What admins need:</strong> where it happened, what happened, how serious it is, and what you already did.
+            <form id="driverIncidentForm" class="incident-driver-form">
+              <div class="incident-form-header">
+                <div>
+                  <h5 class="mb-1">Incident Report</h5>
+                  <p class="text-muted small mb-0">Submit a quick report for any trip issue. Required fields are marked with <span class="text-danger">*</span>.</p>
                 </div>
               </div>
 
-              <form id="driverIncidentForm" class="incident-driver-form">
-                <div class="row g-3">
-                  <div class="col-12 col-lg-6">
+              <div class="incident-form-section">
+                <h6>Trip</h6>
+                <div class="incident-form-grid">
+                  <div class="incident-field">
                     <label class="form-label">Trip <span class="text-danger">*</span></label>
                     <select class="form-select" id="incidentTripID" name="tripID" required>
                       <option value="">Select assigned trip</option>
@@ -182,15 +179,21 @@ foreach ($trips as $trip) {
                       <?php endforeach; ?>
                     </select>
                   </div>
-                  <div class="col-12 col-lg-6">
+                  <div class="incident-field">
                     <label class="form-label">Booking</label>
                     <select class="form-select" id="incidentBookingID" name="bookingID">
                       <option value="">Select trip first</option>
                     </select>
-                    <div class="form-text">Optional, but helpful if the incident affects one booking.</div>
+                    <div class="form-text">Optional if the incident affects the whole trip.</div>
                   </div>
-                  <div class="col-12 col-md-6 col-xl-3">
-                    <label class="form-label">Incident Type <span class="text-danger">*</span></label>
+                </div>
+              </div>
+
+              <div class="incident-form-section">
+                <h6>Details</h6>
+                <div class="incident-form-grid incident-form-grid-compact">
+                  <div class="incident-field">
+                    <label class="form-label">Type <span class="text-danger">*</span></label>
                     <select class="form-select" id="incidentType" name="incidentType" required>
                       <option value="accident">Accident</option>
                       <option value="vehicle_breakdown">Vehicle breakdown</option>
@@ -201,7 +204,7 @@ foreach ($trips as $trip) {
                       <option value="other">Other</option>
                     </select>
                   </div>
-                  <div class="col-12 col-md-6 col-xl-3">
+                  <div class="incident-field">
                     <label class="form-label">Severity <span class="text-danger">*</span></label>
                     <select class="form-select" id="incidentSeverity" name="severity" required>
                       <option value="low">Low</option>
@@ -210,33 +213,36 @@ foreach ($trips as $trip) {
                       <option value="critical">Critical</option>
                     </select>
                   </div>
-                  <div class="col-12 col-md-6">
-                    <label class="form-label">Incident Date & Time <span class="text-danger">*</span></label>
+                  <div class="incident-field">
+                    <label class="form-label">Date & Time <span class="text-danger">*</span></label>
                     <input type="datetime-local" class="form-control" id="incidentDateTime" name="incidentDateTime" value="<?php echo htmlspecialchars(date("Y-m-d\TH:i")); ?>" required>
                   </div>
-                  <div class="col-12">
+                </div>
+              </div>
+
+              <div class="incident-form-section">
+                <h6>Notes</h6>
+                <div class="incident-form-grid">
+                  <div class="incident-field incident-field-wide">
                     <label class="form-label">Location / Address</label>
                     <input type="text" class="form-control" id="incidentLocationText" name="locationText" placeholder="Example: Lacson Street near Barangay Bata, Bacolod">
                   </div>
-                  <div class="col-12 col-lg-6">
+                  <div class="incident-field">
                     <label class="form-label">What happened? <span class="text-danger">*</span></label>
                     <textarea class="form-control" id="incidentDescription" name="description" rows="5" placeholder="Describe the incident clearly..." required></textarea>
                   </div>
-                  <div class="col-12 col-lg-6">
-                    <label class="form-label">Immediate action taken</label>
-                    <textarea class="form-control" id="incidentActionTaken" name="actionTaken" rows="5" placeholder="Example: Called admin, moved truck to safe side, checked cargo..."></textarea>
-                  </div>
-                  <div class="col-12 d-flex align-items-center justify-content-end gap-2 flex-wrap">
-                    <button type="reset" class="btn btn-light">
-                      <i class="ri-refresh-line me-1"></i> Clear
-                    </button>
-                    <button type="submit" class="btn btn-danger" id="incidentSubmitBtn">
-                      <i class="ri-send-plane-line me-1"></i> Submit Incident Report
-                    </button>
+                  <div class="incident-field">
+                    <label class="form-label">Action taken</label>
+                    <textarea class="form-control" id="incidentActionTaken" name="actionTaken" rows="5" placeholder="Example: Called admin, moved truck to safe side..."></textarea>
                   </div>
                 </div>
-              </form>
-            </div>
+              </div>
+
+              <div class="incident-form-actions">
+                <button type="reset" class="btn btn-light">Clear</button>
+                <button type="submit" class="btn btn-primary" id="incidentSubmitBtn">Submit Report</button>
+              </div>
+            </form>
           </div>
         </div>
       <?php endif; ?>
@@ -275,33 +281,92 @@ foreach ($trips as $trip) {
     color: var(--bs-primary);
   }
 
-  .incident-driver-shell {
-    display: grid;
-    grid-template-columns: minmax(280px, 0.35fr) minmax(0, 1fr);
-    gap: 1rem;
-    align-items: stretch;
-  }
-
-  .incident-driver-copy,
   .incident-driver-form {
     border: 1px solid var(--bs-border-color);
     border-radius: 0.75rem;
     background: var(--bs-body-bg);
-    padding: 1.25rem;
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 1.5rem;
   }
 
-  .incident-driver-copy {
-    background:
-      radial-gradient(circle at top left, rgba(255, 62, 29, 0.14), transparent 34%),
-      var(--bs-body-bg);
+  .incident-form-header,
+  .incident-form-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
   }
 
-  .incident-driver-tip {
-    border-left: 3px solid var(--bs-danger);
-    background: var(--bs-tertiary-bg);
-    border-radius: 0.5rem;
-    padding: 0.875rem;
+  .incident-form-header {
+    border-bottom: 1px solid var(--bs-border-color);
+    padding-bottom: 1.125rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .incident-form-section {
+    padding: 0;
+  }
+
+  .incident-form-section + .incident-form-section {
+    border-top: 1px solid var(--bs-border-color);
+    margin-top: 1.25rem;
+    padding-top: 1.25rem;
+  }
+
+  .incident-form-section h6 {
     color: var(--bs-secondary-color);
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.875rem;
+    text-transform: uppercase;
+  }
+
+  .incident-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+  }
+
+  .incident-form-grid-compact {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .incident-field-wide {
+    grid-column: 1 / -1;
+  }
+
+  .incident-driver-form .form-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin-bottom: 0.35rem;
+  }
+
+  .incident-driver-form .form-control,
+  .incident-driver-form .form-select {
+    min-height: 44px;
+    border-radius: 0.5rem;
+  }
+
+  .incident-driver-form textarea.form-control {
+    min-height: 132px;
+    resize: vertical;
+  }
+
+  .incident-form-actions {
+    border-top: 1px solid var(--bs-border-color);
+    margin-top: 1.25rem;
+    padding-top: 1.25rem;
+    justify-content: flex-end;
+  }
+
+  .incident-form-actions .btn {
+    min-height: 42px;
+    min-width: 116px;
+    border-radius: 0.5rem;
+    font-weight: 600;
   }
 
   .trip-stat-grid {
@@ -761,7 +826,8 @@ foreach ($trips as $trip) {
       grid-template-columns: 1fr;
     }
 
-    .incident-driver-shell {
+    .incident-form-grid,
+    .incident-form-grid-compact {
       grid-template-columns: 1fr;
     }
 
@@ -816,6 +882,18 @@ foreach ($trips as $trip) {
     .trip-detail-shell,
     .trip-filter-panel {
       padding: 0.875rem;
+    }
+
+    .incident-driver-form {
+      padding: 1rem;
+    }
+
+    .incident-form-actions {
+      justify-content: stretch;
+    }
+
+    .incident-form-actions .btn {
+      flex: 1 1 100%;
     }
   }
 </style>

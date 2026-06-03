@@ -6,6 +6,7 @@ class ModelReport {
     static public function mdlSummary() {
         $pdo = (new Connection)->connect();
         self::ensureDeliveryChargeTable($pdo);
+        self::ensureExpenseTable($pdo);
 
         $successfulStatusSql = self::successfulStatusSql();
         $billingTotal = self::scalar($pdo, "
@@ -138,6 +139,7 @@ class ModelReport {
 
     static public function mdlExpenseRows() {
         $pdo = (new Connection)->connect();
+        self::ensureExpenseTable($pdo);
         $meta = self::resolveMoneyTable($pdo, array("expenses", "expense"), array("amount", "cost", "total", "price"));
 
         if (!$meta) {
@@ -167,6 +169,74 @@ class ModelReport {
 
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    static public function mdlExpenseTruckRows() {
+        $stmt = (new Connection)->connect()->prepare("
+            SELECT id, plateNumber, brand, type
+            FROM truck
+            WHERE status = 'active'
+            ORDER BY plateNumber
+        ");
+
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    static public function mdlSaveExpense($data) {
+        $pdo = (new Connection)->connect();
+        self::ensureExpenseTable($pdo);
+
+        $expenseDate = trim((string) ($data["expenseDate"] ?? ""));
+        $category = strtolower(trim((string) ($data["category"] ?? "")));
+        $amount = (float) ($data["amount"] ?? 0);
+        $description = trim((string) ($data["description"] ?? ""));
+        $referenceNo = trim((string) ($data["referenceNo"] ?? ""));
+        $status = strtolower(trim((string) ($data["status"] ?? "paid")));
+        $truckID = (int) ($data["truckID"] ?? 0);
+        $createdBy = (int) ($data["createdBy"] ?? 0);
+
+        $allowedCategories = array("fuel", "truck_maintenance", "employee_salary", "truck_document", "toll", "parking", "repair", "office", "other");
+        $allowedStatuses = array("pending", "approved", "paid", "cancelled");
+
+        if ($expenseDate === "" || !in_array($category, $allowedCategories, true) || $amount <= 0 || !in_array($status, $allowedStatuses, true)) {
+            return "invalid";
+        }
+
+        $stmt = $pdo->prepare("
+            INSERT INTO expenses (
+                expenseDate,
+                category,
+                amount,
+                description,
+                truckID,
+                referenceNo,
+                status,
+                createdBy,
+                dateCreated
+            ) VALUES (
+                :expenseDate,
+                :category,
+                :amount,
+                :description,
+                :truckID,
+                :referenceNo,
+                :status,
+                :createdBy,
+                NOW()
+            )
+        ");
+
+        $stmt->bindValue(":expenseDate", $expenseDate, PDO::PARAM_STR);
+        $stmt->bindValue(":category", $category, PDO::PARAM_STR);
+        $stmt->bindValue(":amount", $amount, PDO::PARAM_STR);
+        $stmt->bindValue(":description", $description, PDO::PARAM_STR);
+        self::bindNullableInt($stmt, ":truckID", $truckID);
+        $stmt->bindValue(":referenceNo", $referenceNo, PDO::PARAM_STR);
+        $stmt->bindValue(":status", $status, PDO::PARAM_STR);
+        self::bindNullableInt($stmt, ":createdBy", $createdBy);
+
+        return $stmt->execute() ? "success" : "error";
     }
 
     static public function mdlStaffRows() {
@@ -263,6 +333,31 @@ class ModelReport {
                 PRIMARY KEY (deliveryChargeID),
                 KEY idx_deliverycharge_bookingID (bookingID),
                 KEY idx_deliverycharge_tripID (tripID)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+        ");
+    }
+
+    static private function ensureExpenseTable($pdo) {
+        $pdo->exec("
+            CREATE TABLE IF NOT EXISTS expenses (
+                expenseID int NOT NULL AUTO_INCREMENT,
+                expenseDate date NOT NULL,
+                category enum('fuel','truck_maintenance','employee_salary','truck_document','toll','parking','repair','office','other') NOT NULL,
+                amount double NOT NULL DEFAULT 0,
+                description text NULL,
+                truckID int NULL,
+                empID int NULL,
+                tripID int NULL,
+                bookingID int NULL,
+                referenceNo varchar(100) NULL,
+                receiptImage varchar(255) NULL,
+                status enum('pending','approved','paid','cancelled') NOT NULL DEFAULT 'paid',
+                createdBy int NULL,
+                dateCreated datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (expenseID),
+                KEY idx_expenses_expenseDate (expenseDate),
+                KEY idx_expenses_category (category),
+                KEY idx_expenses_truckID (truckID)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
         ");
     }

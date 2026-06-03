@@ -13,6 +13,7 @@
   var clearButton = document.getElementById("reportClearDate");
   var csvButton = document.getElementById("reportExportCsv");
   var pdfButton = document.getElementById("reportExportPdf");
+  var addExpenseButton = document.getElementById("reportAddExpense");
   var specificOptions = {
     billing: [
       { value: "all", label: "All Billing" },
@@ -321,6 +322,189 @@
     printWindow.print();
   }
 
+  function showExpenseEntryPopup() {
+    Swal.fire({
+      html: buildExpenseEntryHtml(),
+      width: "min(980px, calc(100vw - 32px))",
+      showCancelButton: true,
+      showCloseButton: true,
+      confirmButtonText: "Save Expense",
+      cancelButtonText: "Cancel",
+      confirmButtonColor: "#696cff",
+      focusConfirm: false,
+      scrollbarPadding: false,
+      customClass: {
+        popup: "expense-entry-popup",
+        actions: "expense-entry-actions",
+        confirmButton: "expense-entry-save",
+        cancelButton: "expense-entry-cancel"
+      },
+      didOpen: function () {
+        ["expenseEntryDate", "expenseEntryCategory", "expenseEntryAmount"].forEach(function (id) {
+          document.getElementById(id).addEventListener("input", function () {
+            document.getElementById("expenseEntryError").classList.add("d-none");
+          });
+        });
+      },
+      preConfirm: function () {
+        var expenseDate = document.getElementById("expenseEntryDate").value;
+        var category = document.getElementById("expenseEntryCategory").value;
+        var amount = document.getElementById("expenseEntryAmount").value;
+        var amountNumber = Number(amount);
+
+        if (!expenseDate || !category || !amount || !Number.isFinite(amountNumber) || amountNumber <= 0) {
+          document.getElementById("expenseEntryError").classList.remove("d-none");
+          return false;
+        }
+
+        document.getElementById("expenseEntryError").classList.add("d-none");
+        return {
+          expenseDate: expenseDate,
+          category: category,
+          amount: amount,
+          truckID: document.getElementById("expenseEntryTruck").value,
+          referenceNo: document.getElementById("expenseEntryReference").value,
+          status: document.getElementById("expenseEntryStatus").value,
+          description: document.getElementById("expenseEntryDescription").value
+        };
+      }
+    }).then(function (result) {
+      if (result.isConfirmed) {
+        saveExpense(result.value);
+      }
+    });
+  }
+
+  function buildExpenseEntryHtml() {
+    return (
+      '<div class="expense-entry-form">' +
+        '<div class="expense-entry-header">' +
+          '<div>' +
+            '<h4 class="mb-1">Add Expense</h4>' +
+            '<p class="text-muted mb-0">Record a manual business expense for reporting and sales deductions.</p>' +
+          '</div>' +
+        '</div>' +
+        '<div class="expense-entry-error d-none" id="expenseEntryError">Date, category, and an amount greater than zero are required.</div>' +
+        '<div class="expense-entry-section">' +
+          '<div class="expense-entry-section-title">Expense Information</div>' +
+          '<div class="expense-entry-grid expense-entry-grid-main">' +
+            expenseField("Expense Date", '<input type="date" class="form-control" id="expenseEntryDate" value="' + todayValue() + '">', true) +
+            expenseField("Category", buildExpenseCategorySelect(), true) +
+            expenseField("Amount", '<div class="input-group"><span class="input-group-text">PHP</span><input type="number" class="form-control" id="expenseEntryAmount" min="0.01" step="0.01" placeholder="0.00"></div>', true, "expense-entry-amount") +
+            expenseField("Truck", buildExpenseTruckSelect()) +
+            expenseField("Status", buildExpenseStatusSelect()) +
+          '</div>' +
+        '</div>' +
+        '<div class="expense-entry-section">' +
+          '<div class="expense-entry-section-title">Reference & Notes</div>' +
+          '<div class="expense-entry-grid">' +
+            expenseField("Reference No.", '<input type="text" class="form-control" id="expenseEntryReference" placeholder="Optional receipt or invoice number">', false, "expense-entry-wide") +
+            '<div class="expense-entry-wide">' +
+              '<label class="form-label">Description</label>' +
+              '<textarea class="form-control" id="expenseEntryDescription" placeholder="Example: Replaced brake pads and changed engine oil."></textarea>' +
+              '<div class="form-text">Add enough detail so this expense is easy to identify later.</div>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>'
+    );
+  }
+
+  function expenseField(label, inputHtml, required, className) {
+    return (
+      '<div class="' + escapeHtml(className || "") + '">' +
+        '<label class="form-label">' + escapeHtml(label) + (required ? ' <span class="text-danger">*</span>' : '') + '</label>' +
+        inputHtml +
+      '</div>'
+    );
+  }
+
+  function buildExpenseCategorySelect() {
+    var categories = [
+      ["fuel", "Fuel"],
+      ["truck_maintenance", "Truck Maintenance"],
+      ["repair", "Repair"],
+      ["truck_document", "Truck Document"],
+      ["toll", "Toll"],
+      ["parking", "Parking"],
+      ["employee_salary", "Employee Salary"],
+      ["office", "Office"],
+      ["other", "Other"]
+    ];
+
+    return '<select class="form-select" id="expenseEntryCategory">' +
+      categories.map(function (category) {
+        return '<option value="' + category[0] + '">' + category[1] + '</option>';
+      }).join("") +
+    "</select>";
+  }
+
+  function buildExpenseTruckSelect() {
+    var trucks = Array.isArray(window.reportExpenseTruckOptions) ? window.reportExpenseTruckOptions : [];
+    var options = '<option value="">No truck / general expense</option>';
+
+    trucks.forEach(function (truck) {
+      var label = [truck.plateNumber, truck.brand, truck.type].filter(Boolean).join(" | ");
+      options += '<option value="' + escapeHtml(truck.id) + '">' + escapeHtml(label || truck.id) + "</option>";
+    });
+
+    return '<select class="form-select" id="expenseEntryTruck">' + options + "</select>";
+  }
+
+  function buildExpenseStatusSelect() {
+    return (
+      '<select class="form-select" id="expenseEntryStatus">' +
+        '<option value="paid">Paid</option>' +
+        '<option value="pending">Pending</option>' +
+        '<option value="approved">Approved</option>' +
+        '<option value="cancelled">Cancelled</option>' +
+      "</select>"
+    );
+  }
+
+  function saveExpense(data) {
+    $.ajax({
+      url: "ajax/expense_save_record.ajax.php",
+      method: "POST",
+      dataType: "json",
+      data: data,
+      success: function (response) {
+        if (response && response.status === "success") {
+          Swal.fire({
+            icon: "success",
+            title: "Expense Saved",
+            text: response.message || "Expense saved successfully.",
+            confirmButtonColor: "#696cff"
+          }).then(function () {
+            location.reload();
+          });
+          return;
+        }
+
+        showExpenseError(response && response.message ? response.message : "Unable to save expense.");
+      },
+      error: function () {
+        showExpenseError("Unable to save expense.");
+      }
+    });
+  }
+
+  function showExpenseError(message) {
+    Swal.fire({
+      icon: "error",
+      title: "Save Failed",
+      text: message,
+      confirmButtonColor: "#696cff"
+    });
+  }
+
+  function todayValue() {
+    var date = new Date();
+    var month = String(date.getMonth() + 1).padStart(2, "0");
+    var day = String(date.getDate()).padStart(2, "0");
+    return date.getFullYear() + "-" + month + "-" + day;
+  }
+
   initDateRangePicker();
 
   rangeInput.addEventListener("change", applyDateFilter);
@@ -335,6 +519,9 @@
   specificSelect.addEventListener("change", applyDateFilter);
   csvButton.addEventListener("click", exportCsv);
   pdfButton.addEventListener("click", exportPdf);
+  if (addExpenseButton) {
+    addExpenseButton.addEventListener("click", showExpenseEntryPopup);
+  }
 
   renderActiveReport();
 
