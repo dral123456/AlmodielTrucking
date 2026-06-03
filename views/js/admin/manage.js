@@ -9,6 +9,14 @@ $(document).ready(function () {
     filterManageTable($(this).data('target'));
   });
 
+  $(document).on('click', '.manage-truck-view', function () {
+    const truckID = $(this).closest('tr').data('id');
+
+    if (truckID) {
+      window.location.href = '/almodieltrucking/?route=truck-details&truckID=' + encodeURIComponent(truckID);
+    }
+  });
+
   $(document).on('click', '.manage-archive', function () {
     const $row = $(this).closest('tr');
     const label = $row.find('td:first strong').text().trim() || 'this record';

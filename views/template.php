@@ -257,6 +257,7 @@
       "manage-company" => ["admin/manage.js"],
       "manage-employee" => ["admin/manage.js"],
       "manage-truck" => ["admin/manage.js"],
+      "truck-details" => ["admin/truck-details.js"],
       "bookings" => ["customer-individual/bookings.js"],
       "booking-details" => ["customer-individual/booking-details.js"]
     ];

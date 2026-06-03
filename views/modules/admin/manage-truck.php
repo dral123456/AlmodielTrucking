@@ -99,6 +99,7 @@ $assistants = ControllerTruck::ctrEmployeeListByType("assistant");
                 </td>
                 <td>
                   <div class="btn-group btn-group-sm">
+                    <button type="button" class="btn btn-light manage-truck-view" title="View truck details" aria-label="View truck details"><i class="ri-eye-line"></i></button>
                     <button type="button" class="btn btn-light manage-edit"><i class="ri-edit-line"></i></button>
                     <button type="button" class="btn btn-light manage-crew"><i class="ri-team-line"></i></button>
                     <button type="button" class="btn btn-light text-danger manage-archive"><i class="ri-archive-line"></i></button>

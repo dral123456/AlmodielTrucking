@@ -1,6 +1,7 @@
 <?php
 require_once "connection.php";
 require_once __DIR__ . "/sales.model.php";
+require_once __DIR__ . "/truck.model.php";
 require_once "location.model.php";
 
 class ModelBooking {
@@ -103,6 +104,175 @@ class ModelBooking {
     }
 
     return $crew;
+  }
+
+  static public function mdlTruckAvailability($truckID, $pickupDateTime, $excludeTripID = 0) {
+    $truckID = (int) $truckID;
+    $excludeTripID = (int) $excludeTripID;
+    $pickupDateTime = trim((string) $pickupDateTime);
+
+    if ($truckID <= 0 || !self::isValidPickupDate($pickupDateTime)) {
+      return array("available" => false, "status" => "invalid");
+    }
+
+    $pdo = (new Connection)->connect();
+    return self::truckAvailabilityWithPdo($pdo, $truckID, $pickupDateTime, $excludeTripID);
+  }
+
+  static private function truckAvailabilityWithPdo($pdo, $truckID, $pickupDateTime, $excludeTripID = 0) {
+    $stmt = $pdo->prepare("SELECT status FROM truck WHERE id = :truckID LIMIT 1");
+    $stmt->bindValue(":truckID", $truckID, PDO::PARAM_INT);
+    $stmt->execute();
+    $truckStatus = $stmt->fetchColumn();
+
+    if ($truckStatus !== "active") {
+      return array("available" => false, "status" => "inactive");
+    }
+
+    if (!self::tableExists($pdo, "tripemployee")) {
+      return array("available" => true, "status" => "available");
+    }
+
+    $stmt = $pdo->prepare("
+      SELECT DISTINCT
+        b.tripID,
+        b.pickupDateTime,
+        b.status
+      FROM booking b
+      INNER JOIN tripemployee te ON te.tripID = b.tripID
+      WHERE te.truckID = :truckID
+        AND b.tripID <> :excludeTripID
+        AND (
+          b.status IN ('in-transit', 'stopover')
+          OR (
+            b.status = 'pending'
+            AND DATE(b.pickupDateTime) = DATE(:pickupDateTime)
+          )
+        )
+      ORDER BY
+        FIELD(b.status, 'in-transit', 'stopover', 'pending'),
+        b.pickupDateTime ASC
+      LIMIT 1
+    ");
+    $stmt->bindValue(":truckID", $truckID, PDO::PARAM_INT);
+    $stmt->bindValue(":excludeTripID", $excludeTripID, PDO::PARAM_INT);
+    $stmt->bindValue(":pickupDateTime", $pickupDateTime, PDO::PARAM_STR);
+    $stmt->execute();
+    $conflict = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($conflict) {
+      return array(
+        "available" => false,
+        "status" => "conflict",
+        "tripID" => (int) $conflict["tripID"],
+        "pickupDateTime" => $conflict["pickupDateTime"],
+        "tripStatus" => $conflict["status"]
+      );
+    }
+
+    return array("available" => true, "status" => "available");
+  }
+
+  static public function mdlTruckBookedDates($truckID) {
+    $truckID = (int) $truckID;
+    if ($truckID <= 0) {
+      return array();
+    }
+
+    $pdo = (new Connection)->connect();
+    if (!self::tableExists($pdo, "tripemployee")) {
+      return array();
+    }
+
+    $stmt = $pdo->prepare("
+      SELECT
+        DATE(b.pickupDateTime) AS bookedDate,
+        COUNT(DISTINCT b.tripID) AS tripCount,
+        GROUP_CONCAT(DISTINCT b.tripID ORDER BY b.tripID SEPARATOR ',') AS tripIDs
+      FROM booking b
+      INNER JOIN tripemployee te ON te.tripID = b.tripID
+      WHERE te.truckID = :truckID
+        AND b.status IN ('pending', 'in-transit', 'stopover')
+        AND DATE(b.pickupDateTime) >= CURDATE()
+      GROUP BY DATE(b.pickupDateTime)
+      ORDER BY bookedDate ASC
+    ");
+    $stmt->bindValue(":truckID", $truckID, PDO::PARAM_INT);
+    $stmt->execute();
+
+    return array_map(function ($row) {
+      return array(
+        "date" => $row["bookedDate"],
+        "tripCount" => (int) $row["tripCount"],
+        "tripIDs" => array_values(array_filter(array_map("intval", explode(",", (string) $row["tripIDs"]))))
+      );
+    }, $stmt->fetchAll(PDO::FETCH_ASSOC));
+  }
+
+  static public function mdlTruckCalendarAvailability($truckID) {
+    $truckID = (int) $truckID;
+    if ($truckID <= 0) {
+      return array(
+        "allUnavailable" => false,
+        "status" => "invalid",
+        "dates" => array()
+      );
+    }
+
+    $pdo = (new Connection)->connect();
+    $stmt = $pdo->prepare("SELECT status FROM truck WHERE id = :truckID LIMIT 1");
+    $stmt->bindValue(":truckID", $truckID, PDO::PARAM_INT);
+    $stmt->execute();
+    $truckStatus = $stmt->fetchColumn();
+
+    if ($truckStatus !== "active") {
+      return array(
+        "allUnavailable" => true,
+        "status" => "inactive",
+        "dates" => array()
+      );
+    }
+
+    if (!self::tableExists($pdo, "tripemployee")) {
+      return array(
+        "allUnavailable" => false,
+        "status" => "available",
+        "dates" => array()
+      );
+    }
+
+    $stmt = $pdo->prepare("
+      SELECT DISTINCT
+        b.tripID,
+        b.status
+      FROM booking b
+      INNER JOIN tripemployee te ON te.tripID = b.tripID
+      WHERE te.truckID = :truckID
+        AND b.status IN ('in-transit', 'stopover')
+      ORDER BY FIELD(b.status, 'in-transit', 'stopover')
+      LIMIT 1
+    ");
+    $stmt->bindValue(":truckID", $truckID, PDO::PARAM_INT);
+    $stmt->execute();
+    $activeTrip = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($activeTrip) {
+      return array(
+        "allUnavailable" => true,
+        "status" => "active-trip",
+        "activeTrip" => array(
+          "tripID" => (int) $activeTrip["tripID"],
+          "tripStatus" => $activeTrip["status"]
+        ),
+        "dates" => self::mdlTruckBookedDates($truckID)
+      );
+    }
+
+    return array(
+      "allUnavailable" => false,
+      "status" => "available",
+      "dates" => self::mdlTruckBookedDates($truckID)
+    );
   }
 
   static public function mdlTripOverviewList($employeeID = 0, $employeeRole = "") {
@@ -363,6 +533,7 @@ class ModelBooking {
     }
 
     $pdo = (new Connection)->connect();
+    ModelTruck::mdlEnsureTruckUsageTables($pdo);
     $driverFilter = "";
 
     if (!$showAll && self::tableExists($pdo, "tripemployee")) {
@@ -377,33 +548,50 @@ class ModelBooking {
       ";
     }
 
-    $stmt = $pdo->prepare("
-      UPDATE booking
-      SET status = :status
-      WHERE tripID = :tripID
-        AND status <> 'completed'
-        {$driverFilter}
-    ");
+    try {
+      $pdo->beginTransaction();
 
-    $stmt->bindParam(":status", $status, PDO::PARAM_STR);
-    $stmt->bindParam(":tripID", $tripID, PDO::PARAM_INT);
-    if ($driverFilter !== "") {
-      $stmt->bindParam(":driverID", $driverID, PDO::PARAM_INT);
-    }
+      $stmt = $pdo->prepare("
+        UPDATE booking
+        SET status = :status
+        WHERE tripID = :tripID
+          AND status <> 'completed'
+          {$driverFilter}
+      ");
 
-    if (!$stmt->execute()) {
+      $stmt->bindParam(":status", $status, PDO::PARAM_STR);
+      $stmt->bindParam(":tripID", $tripID, PDO::PARAM_INT);
+      if ($driverFilter !== "") {
+        $stmt->bindParam(":driverID", $driverID, PDO::PARAM_INT);
+      }
+
+      if (!$stmt->execute()) {
+        $pdo->rollBack();
+        return "error";
+      }
+
+      if ($status === "completed") {
+        ModelSales::mdlSyncSalesForTrip($pdo, $tripID);
+        $usageAnswer = ModelTruck::mdlApplyCompletedTripUsage($pdo, $tripID);
+        if ($usageAnswer === "error") {
+          $pdo->rollBack();
+          return "error";
+        }
+      }
+
+      $pdo->commit();
+      return "success";
+    } catch (PDOException $e) {
+      if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+      }
       return "error";
     }
-
-    if ($status === "completed") {
-      ModelSales::mdlSyncSalesForTrip($pdo, $tripID);
-    }
-
-    return "success";
   }
 
   static public function mdlUpdateTripInfo($tripID, $data) {
     $pdo = (new Connection)->connect();
+    ModelTruck::mdlEnsureTruckUsageTables($pdo);
     $allowedStatuses = array("pending", "in-transit", "stopover", "completed");
     $status = trim($data["status"] ?? "");
     $pickupDateTime = trim($data["pickupDateTime"] ?? "");
@@ -489,6 +677,10 @@ class ModelBooking {
 
       if ($status === "completed") {
         ModelSales::mdlSyncSalesForTrip($pdo, $tripID);
+        $usageAnswer = ModelTruck::mdlApplyCompletedTripUsage($pdo, $tripID);
+        if ($usageAnswer === "error") {
+          throw new PDOException("Unable to apply completed trip truck usage.");
+        }
       }
 
       $pdo->commit();
@@ -639,6 +831,14 @@ class ModelBooking {
   static public function mdlSaveBooking($data) {
     $db = new Connection();
     $pdo = $db->connect();
+    $pickupDateTime = trim((string) ($data["pickupDateTime"] ?? ""));
+    $truckID = (int) ($data["truckID"] ?? 0);
+
+    if (!self::isValidPickupDate($pickupDateTime)) {
+      return "past-date";
+    }
+
+    $data["pickupDateTime"] = date("Y-m-d H:i:s", strtotime($pickupDateTime));
 
     try {
       $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -667,6 +867,18 @@ class ModelBooking {
       }
 
       $tripID = self::assignTripID($pdo, $data, $pickupLocationID, $destinationLocationID);
+      $assignedTruckID = self::tripAssignedTruckID($pdo, $tripID);
+
+      if ($assignedTruckID > 0 && $assignedTruckID !== $truckID) {
+        $pdo->rollBack();
+        return "truck-conflict";
+      }
+
+      $availability = self::truckAvailabilityWithPdo($pdo, $truckID, $data["pickupDateTime"], $tripID);
+      if (!$availability["available"]) {
+        $pdo->rollBack();
+        return $availability["status"] === "inactive" ? "truck-inactive" : "truck-conflict";
+      }
 
       $stmt = $pdo->prepare("
         INSERT INTO booking (
@@ -706,18 +918,19 @@ class ModelBooking {
 
       if (isset($data["truckID"], $data["crew"]) && !self::tripHasEmployees($pdo, $tripID)) {
         self::insertTripEmployees($pdo, $tripID, $data["truckID"], $data["crew"]);
+        self::insertCrewSalaryRecords($pdo, $tripID, $bookingID, $data);
       }
 
       $pdo->commit();
       return "success";
 
-    } catch (PDOException $e) {
+    } catch (Throwable $e) {
 
       if ($pdo->inTransaction()) {
         $pdo->rollBack();
       }
 
-      die("BOOKING ERROR: " . $e->getMessage());
+      return "error";
     }
   }
 
@@ -1107,6 +1320,110 @@ class ModelBooking {
     $stmt->execute();
   }
 
+  static private function insertCrewSalaryRecords($pdo, $tripID, $bookingID, $data) {
+    if (!self::tableExists($pdo, "staffsalary")) {
+      return;
+    }
+
+    $crew = $data["crew"] ?? array();
+    $driverSalary = max((float) ($crew["salary"] ?? 0), 0);
+    $assistantSalary = max($driverSalary - 100, 0);
+    $allowance = max((float) ($crew["allowance"] ?? 0), 0);
+    $driverGrossPay = $driverSalary + $allowance;
+    $assistantGrossPay = $assistantSalary + $allowance;
+
+    if ($driverGrossPay <= 0 && $assistantGrossPay <= 0) {
+      return;
+    }
+
+    $pickupDate = self::dateOnly($data["pickupDateTime"] ?? "");
+    $createdBy = isset($data["createdBy"]) && (int) $data["createdBy"] > 0 ? (int) $data["createdBy"] : null;
+    $driverRemarks = "Auto-created from booking. Driver salary: PHP " . number_format($driverSalary, 2, ".", "") .
+      "; Allowance: PHP " . number_format($allowance, 2, ".", "");
+    $assistantRemarks = "Auto-created from booking. Assistant salary is driver salary less PHP 100.00. Salary: PHP " . number_format($assistantSalary, 2, ".", "") .
+      "; Allowance: PHP " . number_format($allowance, 2, ".", "");
+
+    $stmt = $pdo->prepare("
+      INSERT INTO staffsalary (
+        empID,
+        tripID,
+        creditedBookingID,
+        creditedDistanceKm,
+        tripRole,
+        payPeriodStart,
+        payPeriodEnd,
+        payType,
+        baseRate,
+        grossPay,
+        deductions,
+        netPay,
+        datePaid,
+        status,
+        remarks,
+        createdBy,
+        dateCreated
+      ) VALUES (
+        :empID,
+        :tripID,
+        :creditedBookingID,
+        0,
+        :tripRole,
+        :payPeriodStart,
+        :payPeriodEnd,
+        'trip',
+        :baseRate,
+        :grossPay,
+        0,
+        :netPay,
+        NULL,
+        'pending',
+        :remarks,
+        :createdBy,
+        NOW()
+      )
+    ");
+
+    self::insertCrewSalaryRecord($stmt, $tripID, $bookingID, $crew["driverID"] ?? 0, "driver", $driverSalary, $driverGrossPay, $pickupDate, $driverRemarks, $createdBy);
+
+    $assistantIDs = array_unique(array_filter($crew["assistantIDs"] ?? array()));
+    foreach ($assistantIDs as $assistantID) {
+      if ((int) $assistantID !== (int) ($crew["driverID"] ?? 0)) {
+        self::insertCrewSalaryRecord($stmt, $tripID, $bookingID, $assistantID, "assistant", $assistantSalary, $assistantGrossPay, $pickupDate, $assistantRemarks, $createdBy);
+      }
+    }
+  }
+
+  static private function insertCrewSalaryRecord($stmt, $tripID, $bookingID, $empID, $role, $baseRate, $grossPay, $payDate, $remarks, $createdBy) {
+    $empID = (int) $empID;
+    if ($empID <= 0) {
+      return;
+    }
+
+    $stmt->bindValue(":empID", $empID, PDO::PARAM_INT);
+    $stmt->bindValue(":tripID", $tripID, PDO::PARAM_INT);
+    $stmt->bindValue(":creditedBookingID", $bookingID, PDO::PARAM_INT);
+    $stmt->bindValue(":tripRole", $role, PDO::PARAM_STR);
+    $stmt->bindValue(":payPeriodStart", $payDate, PDO::PARAM_STR);
+    $stmt->bindValue(":payPeriodEnd", $payDate, PDO::PARAM_STR);
+    $stmt->bindValue(":baseRate", $baseRate, PDO::PARAM_STR);
+    $stmt->bindValue(":grossPay", $grossPay, PDO::PARAM_STR);
+    $stmt->bindValue(":netPay", $grossPay, PDO::PARAM_STR);
+    $stmt->bindValue(":remarks", $remarks, PDO::PARAM_STR);
+
+    if ($createdBy === null) {
+      $stmt->bindValue(":createdBy", null, PDO::PARAM_NULL);
+    } else {
+      $stmt->bindValue(":createdBy", $createdBy, PDO::PARAM_INT);
+    }
+
+    $stmt->execute();
+  }
+
+  static private function dateOnly($value) {
+    $timestamp = strtotime((string) $value);
+    return $timestamp ? date("Y-m-d", $timestamp) : date("Y-m-d");
+  }
+
   static private function tripHasEmployees($pdo, $tripID) {
     if (!self::tableExists($pdo, "tripemployee")) {
       return false;
@@ -1122,6 +1439,40 @@ class ModelBooking {
     $stmt->execute();
 
     return (int) $stmt->fetchColumn() > 0;
+  }
+
+  static private function tripAssignedTruckID($pdo, $tripID) {
+    if (!self::tableExists($pdo, "tripemployee")) {
+      return 0;
+    }
+
+    $stmt = $pdo->prepare("
+      SELECT MIN(truckID)
+      FROM tripemployee
+      WHERE tripID = :tripID
+        AND truckID IS NOT NULL
+    ");
+    $stmt->bindValue(":tripID", $tripID, PDO::PARAM_INT);
+    $stmt->execute();
+
+    return (int) $stmt->fetchColumn();
+  }
+
+  static private function isValidPickupDate($pickupDateTime) {
+    $pickupDateTime = trim((string) $pickupDateTime);
+    if ($pickupDateTime === "") {
+      return false;
+    }
+
+    try {
+      $timezone = new DateTimeZone("Asia/Manila");
+      $pickup = new DateTimeImmutable($pickupDateTime, $timezone);
+      $today = new DateTimeImmutable("today", $timezone);
+
+      return $pickup->format("Y-m-d") >= $today->format("Y-m-d");
+    } catch (Exception $e) {
+      return false;
+    }
   }
 
   static private function tableExists($pdo, $tableName) {

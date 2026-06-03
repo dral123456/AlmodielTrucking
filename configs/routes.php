@@ -13,6 +13,7 @@ $adminRoutes = [
     'manage-employee',
     'manage-tariff',
     'manage-truck',
+    'truck-details',
     'logout',
     'signup',
 ];
