@@ -1,6 +1,7 @@
 <?php
 require_once "connection.php";
 require_once __DIR__ . "/sales.model.php";
+require_once __DIR__ . "/truck.model.php";
 require_once "location.model.php";
 
 class ModelBooking {
@@ -363,6 +364,7 @@ class ModelBooking {
     }
 
     $pdo = (new Connection)->connect();
+    ModelTruck::mdlEnsureTruckUsageTables($pdo);
     $driverFilter = "";
 
     if (!$showAll && self::tableExists($pdo, "tripemployee")) {
@@ -377,33 +379,50 @@ class ModelBooking {
       ";
     }
 
-    $stmt = $pdo->prepare("
-      UPDATE booking
-      SET status = :status
-      WHERE tripID = :tripID
-        AND status <> 'completed'
-        {$driverFilter}
-    ");
+    try {
+      $pdo->beginTransaction();
 
-    $stmt->bindParam(":status", $status, PDO::PARAM_STR);
-    $stmt->bindParam(":tripID", $tripID, PDO::PARAM_INT);
-    if ($driverFilter !== "") {
-      $stmt->bindParam(":driverID", $driverID, PDO::PARAM_INT);
-    }
+      $stmt = $pdo->prepare("
+        UPDATE booking
+        SET status = :status
+        WHERE tripID = :tripID
+          AND status <> 'completed'
+          {$driverFilter}
+      ");
 
-    if (!$stmt->execute()) {
+      $stmt->bindParam(":status", $status, PDO::PARAM_STR);
+      $stmt->bindParam(":tripID", $tripID, PDO::PARAM_INT);
+      if ($driverFilter !== "") {
+        $stmt->bindParam(":driverID", $driverID, PDO::PARAM_INT);
+      }
+
+      if (!$stmt->execute()) {
+        $pdo->rollBack();
+        return "error";
+      }
+
+      if ($status === "completed") {
+        ModelSales::mdlSyncSalesForTrip($pdo, $tripID);
+        $usageAnswer = ModelTruck::mdlApplyCompletedTripUsage($pdo, $tripID);
+        if ($usageAnswer === "error") {
+          $pdo->rollBack();
+          return "error";
+        }
+      }
+
+      $pdo->commit();
+      return "success";
+    } catch (PDOException $e) {
+      if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+      }
       return "error";
     }
-
-    if ($status === "completed") {
-      ModelSales::mdlSyncSalesForTrip($pdo, $tripID);
-    }
-
-    return "success";
   }
 
   static public function mdlUpdateTripInfo($tripID, $data) {
     $pdo = (new Connection)->connect();
+    ModelTruck::mdlEnsureTruckUsageTables($pdo);
     $allowedStatuses = array("pending", "in-transit", "stopover", "completed");
     $status = trim($data["status"] ?? "");
     $pickupDateTime = trim($data["pickupDateTime"] ?? "");
@@ -489,6 +508,10 @@ class ModelBooking {
 
       if ($status === "completed") {
         ModelSales::mdlSyncSalesForTrip($pdo, $tripID);
+        $usageAnswer = ModelTruck::mdlApplyCompletedTripUsage($pdo, $tripID);
+        if ($usageAnswer === "error") {
+          throw new PDOException("Unable to apply completed trip truck usage.");
+        }
       }
 
       $pdo->commit();

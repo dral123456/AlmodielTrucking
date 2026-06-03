@@ -13,6 +13,7 @@ return [
     'manage-company'                => 'modules/admin/manage-company.php',
     'manage-employee'               => 'modules/admin/manage-employee.php',
     'manage-truck'                  => 'modules/admin/manage-truck.php',
+    'truck-details'                 => 'modules/admin/truck-details.php',
     'customer-individual/profile'   => 'modules/customer-individual/profile.php',
     'customer-individual/bookings'  => 'modules/customer-individual/bookings.php',
     'logout'                        => 'modules/logout.php',
