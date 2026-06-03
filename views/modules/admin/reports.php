@@ -5,6 +5,7 @@ require_once "models/report.model.php";
 $summary = ControllerReport::ctrSummary();
 $billingRows = ControllerReport::ctrBillingRows();
 $expenseRows = ControllerReport::ctrExpenseRows();
+$expenseTruckRows = ControllerReport::ctrExpenseTruckRows();
 $staffRows = ControllerReport::ctrStaffRows();
 $salaryRows = ControllerReport::ctrSalaryRows();
 $billingBaseTotal = array_sum(array_map(function ($row) { return (float) ($row["price"] ?? 0); }, $billingRows));
@@ -205,6 +206,9 @@ function reportStaffName($employee) {
               <h6 class="mb-0">Expenses Report</h6>
               <p class="text-muted small mb-0">Maintenance, fuel, supplies, and other business costs.</p>
             </div>
+            <button type="button" class="btn btn-primary" id="reportAddExpense">
+              <i class="ri-add-line me-1"></i> Add Expense
+            </button>
           </div>
           <?php if (empty($expenseRows)): ?>
             <div class="report-empty">No expense records found yet.</div>
@@ -339,6 +343,10 @@ function reportStaffName($employee) {
   </div>
 </div>
 
+<script>
+  window.reportExpenseTruckOptions = <?php echo json_encode($expenseTruckRows, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
+</script>
+
 <style>
   .reports-page {
     max-width: 1440px;
@@ -423,6 +431,131 @@ function reportStaffName($employee) {
     background: var(--bs-tertiary-bg);
   }
 
+  .expense-entry-popup {
+    width: min(980px, calc(100vw - 32px)) !important;
+    max-width: min(980px, calc(100vw - 32px)) !important;
+    max-height: calc(100vh - 48px) !important;
+    border-radius: 1rem !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .expense-entry-popup .swal2-html-container {
+    max-height: calc(100vh - 150px) !important;
+    margin: 0 !important;
+    overflow-y: auto !important;
+    padding: 0 !important;
+    text-align: left !important;
+  }
+
+  .expense-entry-form {
+    color: var(--bs-body-color);
+    padding: 1.75rem 2rem 1.5rem;
+  }
+
+  .expense-entry-header {
+    border-bottom: 1px solid var(--bs-border-color);
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.25rem;
+  }
+
+  .expense-entry-header h4 {
+    font-weight: 700;
+  }
+
+  .expense-entry-error {
+    border: 1px solid rgba(255, 62, 29, 0.25);
+    border-radius: 0.5rem;
+    background: rgba(255, 62, 29, 0.06);
+    color: var(--bs-danger);
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+    padding: 0.75rem 0.875rem;
+  }
+
+  .expense-entry-section + .expense-entry-section {
+    border-top: 1px solid var(--bs-border-color);
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+  }
+
+  .expense-entry-section-title {
+    color: var(--bs-secondary-color);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    margin-bottom: 1rem;
+    text-transform: uppercase;
+  }
+
+  .expense-entry-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.125rem 1.25rem;
+  }
+
+  .expense-entry-grid-main {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .expense-entry-wide {
+    grid-column: 1 / -1;
+  }
+
+  .expense-entry-form .form-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+  }
+
+  .expense-entry-form .form-control,
+  .expense-entry-form .form-select {
+    min-height: 46px;
+    border-radius: 0.55rem;
+  }
+
+  .expense-entry-form .input-group-text {
+    border-radius: 0.55rem 0 0 0.55rem;
+    color: var(--bs-secondary-color);
+    font-weight: 600;
+  }
+
+  .expense-entry-form .input-group .form-control {
+    border-radius: 0 0.55rem 0.55rem 0;
+  }
+
+  .expense-entry-amount .form-control {
+    font-size: 1.05rem;
+    font-weight: 700;
+  }
+
+  .expense-entry-form textarea.form-control {
+    min-height: 140px;
+    resize: vertical;
+  }
+
+  .expense-entry-actions {
+    width: 100% !important;
+    justify-content: flex-end !important;
+    border-top: 1px solid var(--bs-border-color);
+    gap: 0.625rem !important;
+    margin: 0 !important;
+    padding: 1rem 2rem !important;
+  }
+
+  .expense-entry-save,
+  .expense-entry-cancel {
+    min-width: 128px;
+    min-height: 44px;
+    border-radius: 0.55rem !important;
+    font-weight: 600 !important;
+  }
+
+  .expense-entry-cancel {
+    background: var(--bs-tertiary-bg) !important;
+    color: var(--bs-body-color) !important;
+  }
+
   .report-filter-empty {
     border: 1px dashed var(--bs-border-color);
     border-radius: 0.5rem;
@@ -443,6 +576,10 @@ function reportStaffName($employee) {
 
     .report-toolbar-actions {
       justify-content: flex-start;
+    }
+
+    .expense-entry-grid-main {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
 
@@ -465,6 +602,23 @@ function reportStaffName($employee) {
 
     .report-tab-content {
       padding: 0.75rem;
+    }
+
+    .expense-entry-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .expense-entry-form {
+      padding: 1.25rem;
+    }
+
+    .expense-entry-actions {
+      padding: 1rem 1.25rem !important;
+    }
+
+    .expense-entry-save,
+    .expense-entry-cancel {
+      flex: 1 1 100%;
     }
   }
 </style>

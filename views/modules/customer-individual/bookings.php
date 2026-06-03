@@ -166,12 +166,11 @@ function bookingStatusLabel($status) {
 
                   <button
                     type="button"
-                    class="btn btn-light customer-map-focus"
-                    data-lat="<?php echo $booking["destinationLatitude"]; ?>"
-                    data-lng="<?php echo $booking["destinationLongitude"]; ?>"
+                    class="btn btn-light customer-map-focus viewDetails"
+                    data-id="<?php echo (int) $booking["bookingID"]; ?>"
                   >
-                    <i class="ri-road-map-line me-1"></i>
-                    View Destination
+                    <i class="ri-road-map-line me-1" ></i>
+                    View Details
                   </button>
 
                 </div>
@@ -232,7 +231,7 @@ function bookingStatusLabel($status) {
 .driver-trip-layout {
   display: grid;
   grid-template-columns: minmax(360px, 0.8fr) minmax(420px, 1.2fr);
-  align-items: start;
+  align-items: stretch;
   gap: 1rem;
 }
 
@@ -267,8 +266,9 @@ function bookingStatusLabel($status) {
 
 .driver-map-panel {
   min-width: 0;
-  position: sticky;
-  top: 90px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .driver-map-shell {
@@ -276,12 +276,15 @@ function bookingStatusLabel($status) {
   border-radius: 0.5rem;
   padding: 1rem;
   background: var(--bs-body-bg);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 #customerMap {
   width: 100%;
-  height: min(62vh, 620px);
-  min-height: 420px;
+  flex: 1;
+  min-height: 0;
   border-radius: 0.5rem;
   overflow: hidden;
   background: #dbeafe;

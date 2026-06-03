@@ -66,7 +66,7 @@ $(document).ready(function () {
       const address = data.address || {};
       $('#provinceIndiv').val(address.state || '');
       $('#cityIndiv').val(address.city || address.town || address.municipality || '');
-      $('#barangayIndiv').val(address.suburb || address.village || address.quarter || '');
+      $('#barangayIndiv').val(address.suburb || address.village || address.neighbourhood || address.quarter || address.hamlet || '');
       $('#streetIndiv').val(address.road || '');
     } catch (e) {
       console.error('Reverse geocode failed', e);
@@ -163,6 +163,10 @@ $(document).ready(function () {
   });
 
   // ===== NAVIGATION =====
+  $(document).on('input', '#phoneIndiv', function () {
+    this.value = String(this.value || '').replace(/\D/g, '').slice(0, 11);
+  });
+
   $(document).on('click', '#btnStep1Next', function () {
     const missing = validateStep1();
     if (missing.length > 0) { showMissingModal(missing); return; }
@@ -247,6 +251,13 @@ $(document).ready(function () {
     check('firstName',  'First Name',    missing);
     check('lastName',   'Last Name',     missing);
     check('phoneIndiv', 'Phone Number',  missing);
+    const phone = String($('#phoneIndiv').val() || '');
+
+    if (phone && !/^09\d{9}$/.test(phone)) {
+      missing.push('Phone Number (must be 11 digits and start with 09)');
+      $('#phoneIndiv').addClass('is-invalid');
+    }
+
     return missing;
   }
 
@@ -255,6 +266,9 @@ $(document).ready(function () {
     check('provinceIndiv', 'Province',            missing);
     check('cityIndiv',     'City / Municipality', missing);
     check('barangayIndiv', 'Barangay',            missing);
+    if (!String($('#lat').val() || '').trim() || !String($('#lng').val() || '').trim()) {
+      missing.push('Map Pin');
+    }
     return missing;
   }
 
@@ -361,7 +375,7 @@ $(document).ready(function () {
         } else if (res === 'existing') {
           Swal.fire({ icon: 'info',  title: 'Already Exists', text: 'This customer already exists.', confirmButtonColor: '#696cff' });
         } else {
-          Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to save customer.', confirmButtonColor: '#696cff' });
+          Swal.fire({ icon: 'error', title: 'Error', text: res || 'Failed to save customer.', confirmButtonColor: '#696cff' });
         }
       },
       error: function () {

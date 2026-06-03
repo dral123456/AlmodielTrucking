@@ -20,6 +20,18 @@ class ControllerBooking {
     return (new ModelBooking)->mdlTruckDefaultCrew($truckID);
   }
 
+  static public function ctrTruckAvailability($truckID, $pickupDateTime, $excludeTripID = 0) {
+    return (new ModelBooking)->mdlTruckAvailability($truckID, $pickupDateTime, $excludeTripID);
+  }
+
+  static public function ctrTruckBookedDates($truckID) {
+    return (new ModelBooking)->mdlTruckBookedDates($truckID);
+  }
+
+  static public function ctrTruckCalendarAvailability($truckID) {
+    return (new ModelBooking)->mdlTruckCalendarAvailability($truckID);
+  }
+
   static public function ctrTripOverviewList($employeeID = 0, $employeeRole = "") {
     return (new ModelBooking)->mdlTripOverviewList($employeeID, $employeeRole);
   }
@@ -43,4 +55,21 @@ class ControllerBooking {
   static public function ctrCustomerBookingList($customerID) {
     return (new ModelBooking)->mdlCustomerBookingList($customerID);
   }
+  static public function ctrGetBooking($bookingID) {
+    return (new ModelBooking)->mdlGetBooking($bookingID);
+  }
+  
+  static public function ctrReceiptBooking(int $bookingID): ?array {
+    return ModelBooking::mdlReceiptBooking($bookingID);
+  }
+
+  static public function ctrReceiptCargoItems(int $bookingID): array {
+      return ModelBooking::mdlReceiptCargoItems($bookingID);
+  }
+
+  static public function ctrReceiptTripCrew(int $tripID): array {
+      return ModelBooking::mdlReceiptTripCrew($tripID);
+  }
+
+
 }

@@ -83,7 +83,7 @@
                   <label class="form-label">Phone Number <span class="text-danger">*</span></label>
                   <div class="form-icon">
                     <i class="ri-phone-line text-muted"></i>
-                    <input type="tel" class="form-control form-control-icon" id="phoneIndiv" placeholder="09XXXXXXXXX">
+                    <input type="tel" class="form-control form-control-icon" id="phoneIndiv" maxlength="11" inputmode="numeric" placeholder="09XXXXXXXXX">
                   </div>
                 </div>
               </div>

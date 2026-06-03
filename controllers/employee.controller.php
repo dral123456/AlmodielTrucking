@@ -16,7 +16,7 @@ class ControllerEmployee {
       $value = $_POST["phoneNumber"];
       $answer = (new ModelEmployee)->mdlGetEmployeeCredentials($table, $item, $value);
 
-      if (!empty($answer) && $answer["empPhoneNumber"] == $_POST["phoneNumber"] && self::verifyPassword($encryptpass, $answer["empPassword"])) {
+      if (!empty($answer) && $answer["empPhoneNumber"] == $_POST["phoneNumber"] && self::verifyPassword($encryptpass, $answer["empPassword"]) && strtolower($answer["empType"]) === "assistant") {
         $_SESSION["loggedIn"] = "ok";
         $_SESSION["id"] = $answer["id"];
         $_SESSION["empType"] = $answer["empType"];
@@ -39,7 +39,7 @@ class ControllerEmployee {
       $value = $_POST["phoneNumber"];
       $answer = (new ModelEmployee)->mdlGetEmployeeCredentials($table, $item, $value);
 
-      if (!empty($answer) && $answer["empPhoneNumber"] == $_POST["phoneNumber"] && self::verifyPassword($encryptpass, $answer["empPassword"])) {
+      if (!empty($answer) && $answer["empPhoneNumber"] == $_POST["phoneNumber"] && self::verifyPassword($encryptpass, $answer["empPassword"]) && strtolower($answer["empType"]) === "driver") {
         $_SESSION["loggedIn"] = "ok";
         $_SESSION["id"] = $answer["id"];
         $_SESSION["empType"] = $answer["empType"];
@@ -64,7 +64,7 @@ class ControllerEmployee {
       $answer = (new ModelEmployee)->mdlGetEmployeeCredentials($table, $item, $value, $empType);
 
 
-      if (!empty($answer) && $answer["empPhoneNumber"] == $_POST["phoneNumber"] && self::verifyPassword($encryptpass, $answer["empPassword"])) {
+      if (!empty($answer) && $answer["empPhoneNumber"] == $_POST["phoneNumber"] && self::verifyPassword($encryptpass, $answer["empPassword"]) && strtolower($answer["empType"]) === "admin") {
         $_SESSION["loggedIn"] = "ok";
         $_SESSION["id"] = $answer["id"];
         $_SESSION["empType"] = $answer["empType"];

@@ -10,6 +10,7 @@ $trucks    = ControllerBooking::ctrTruckList();
 $drivers   = ControllerBooking::ctrEmployeeListByType("driver");
 $assistants = ControllerBooking::ctrEmployeeListByType("assistant");
 $truckCrewMap = array();
+$minimumPickupDateTime = (new DateTimeImmutable("today", new DateTimeZone("Asia/Manila")))->format("Y-m-d\T00:00");
 
 foreach ($trucks as $truck) {
   $truckCrewMap[$truck["id"]] = ControllerBooking::ctrTruckDefaultCrew($truck["id"]);
@@ -111,7 +112,15 @@ foreach ($trucks as $truck) {
 
               <div class="col-12 <?php echo $isCustomerIndividual ? 'col-lg-6' : 'col-lg-6'; ?> mb-3">
                 <label class="form-label">Pickup Date & Time <span class="text-danger">*</span></label>
-                <input type="datetime-local" class="form-control" id="bookingPickupDateTime">
+                <input type="text" class="form-control" id="bookingPickupDateTime" autocomplete="off" placeholder="Select pickup date and time" data-min-date="<?php echo htmlspecialchars($minimumPickupDateTime); ?>">
+                <?php if (!$isCustomerIndividual): ?>
+                  <div class="booking-calendar-legend mt-2" aria-label="Truck date availability legend">
+                    <span><i class="booking-calendar-key booking-calendar-key-unavailable"></i> Booked / unavailable</span>
+                  </div>
+                  <div class="form-text" id="bookingCalendarStatus">Select a truck to view its date availability.</div>
+                <?php else: ?>
+                  <div class="form-text">Select today or an upcoming date.</div>
+                <?php endif; ?>
               </div>
 
               <?php if (!$isCustomerIndividual): ?>
@@ -131,6 +140,7 @@ foreach ($trucks as $truck) {
                       </option>
                     <?php endforeach; ?>
                   </select>
+                  <div class="form-text" id="bookingTruckAvailability">Select a pickup date and truck to check availability.</div>
                 </div>
                 <div class="col-12 col-lg-6 mb-3">
                   <label class="form-label">Driver <span class="text-danger">*</span></label>
@@ -214,7 +224,7 @@ foreach ($trucks as $truck) {
             </div>
             <div id="bookingCargoList" class="booking-cargo-list">
               <div class="booking-cargo-item">
-                <div class="row g-2 align-items-end">
+                <div class="row g-2 align-items-end booking-cargo-item-row">
                   <div class="col-12 col-md-7">
                     <label class="form-label">Cargo Type <span class="text-danger">*</span></label>
                     <input type="text" class="form-control cargo-type" maxlength="100" placeholder="e.g. Construction materials">
@@ -574,6 +584,153 @@ foreach ($trucks as $truck) {
   }
 
   /* ── Location search suggestions ── */
+  .booking-calendar-legend {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    color: var(--bs-secondary-color);
+    font-size: 0.76rem;
+  }
+  .booking-calendar-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.28rem 0.62rem;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--bs-body-bg) 88%, transparent);
+    line-height: 1;
+  }
+  .booking-calendar-key {
+    width: 0.48rem;
+    height: 0.48rem;
+    border-radius: 999px;
+    display: inline-block;
+  }
+  .booking-calendar-key-unavailable {
+    background: #ef4444;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
+  }
+
+  .air-datepicker {
+    --adp-width: 328px;
+    --adp-padding: 12px;
+    --adp-border-radius: 18px;
+    --adp-cell-border-radius: 12px;
+    --adp-day-cell-height: 40px;
+    --adp-nav-height: 40px;
+    --adp-nav-action-size: 36px;
+    --adp-background-color: var(--bs-body-bg);
+    --adp-background-color-hover: color-mix(in srgb, var(--bs-primary) 8%, var(--bs-body-bg));
+    --adp-background-color-active: color-mix(in srgb, var(--bs-primary) 12%, var(--bs-body-bg));
+    --adp-border-color: color-mix(in srgb, var(--bs-border-color) 82%, transparent);
+    --adp-border-color-inner: color-mix(in srgb, var(--bs-border-color) 70%, transparent);
+    --adp-color: var(--bs-body-color);
+    --adp-color-secondary: var(--bs-secondary-color);
+    --adp-color-disabled: color-mix(in srgb, var(--bs-secondary-color) 62%, transparent);
+    --adp-day-name-color: var(--bs-secondary-color);
+    --adp-accent-color: #6366f1;
+    --adp-cell-background-color-selected: #6366f1;
+    --adp-cell-background-color-selected-hover: #5457e8;
+    border: 1px solid color-mix(in srgb, var(--bs-border-color) 78%, transparent);
+    border-radius: 20px;
+    box-shadow: 0 22px 60px rgba(15, 23, 42, 0.18);
+    overflow: hidden;
+  }
+  .air-datepicker--pointer {
+    display: none;
+  }
+  .air-datepicker-nav {
+    border-bottom: 0;
+    padding: 12px 12px 4px;
+  }
+  .air-datepicker-nav--title {
+    border-radius: 999px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .air-datepicker-nav--action {
+    border-radius: 999px;
+  }
+  .air-datepicker--content {
+    padding: 6px 14px 12px;
+  }
+  .air-datepicker-body--day-names {
+    margin: 6px 0 8px;
+  }
+  .air-datepicker-body--day-name {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+  }
+  .air-datepicker-cell {
+    font-weight: 650;
+    transition: background 160ms ease, color 160ms ease, transform 160ms ease;
+  }
+  .air-datepicker-cell.-focus- {
+    transform: translateY(-1px);
+  }
+  .air-datepicker-cell.-booking-unavailable-,
+  .air-datepicker-cell.-booking-unavailable-.-disabled- {
+    color: #dc2626;
+    background: rgba(239, 68, 68, 0.07);
+    opacity: 0.9;
+  }
+  .air-datepicker-cell.-booking-unavailable-.-focus- {
+    background: rgba(239, 68, 68, 0.12);
+  }
+  .booking-calendar-day {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: grid;
+    place-items: center;
+  }
+  .booking-calendar-day::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: 4px;
+    width: 4px;
+    height: 4px;
+    border-radius: 999px;
+    transform: translateX(-50%);
+  }
+  .booking-calendar-day--unavailable::after {
+    background: #ef4444;
+  }
+  .air-datepicker-cell.-selected- .booking-calendar-day::after {
+    background: #fff;
+  }
+  .air-datepicker--time,
+  .air-datepicker--buttons {
+    border-top: 1px solid color-mix(in srgb, var(--bs-border-color) 65%, transparent);
+  }
+  .air-datepicker-time {
+    padding: 12px 16px;
+  }
+  .air-datepicker-button {
+    border-radius: 12px;
+    font-weight: 700;
+  }
+  [data-bs-theme="dark"] .air-datepicker {
+    --adp-background-color: #151827;
+    --adp-background-color-hover: rgba(99, 102, 241, 0.12);
+    --adp-background-color-active: rgba(99, 102, 241, 0.16);
+    --adp-border-color: rgba(255, 255, 255, 0.09);
+    --adp-border-color-inner: rgba(255, 255, 255, 0.08);
+    --adp-color: #eef2ff;
+    --adp-color-secondary: rgba(226, 232, 240, 0.68);
+    --adp-color-disabled: rgba(226, 232, 240, 0.34);
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.42);
+  }
+  [data-bs-theme="dark"] .air-datepicker-cell.-booking-unavailable-,
+  [data-bs-theme="dark"] .air-datepicker-cell.-booking-unavailable-.-disabled- {
+    color: #fca5a5;
+    background: rgba(248, 113, 113, 0.11);
+  }
+
   .booking-map-search-wrap {
     position: relative;
   }

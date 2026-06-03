@@ -6,12 +6,14 @@ $adminRoutes = [
     'truck-reg',
     'booking-reg',
     'trips',
+    'incident-reports',
     'reports',
     'sales',
     'manage-company',
     'manage-employee',
     'manage-tariff',
     'manage-truck',
+    'truck-details',
     'logout',
     'signup',
 ];
@@ -34,6 +36,7 @@ $customerRoutes = [
     'booking-reg',
     'logout',
     'bookings',
+    'booking-details',
 ];
 
 return [

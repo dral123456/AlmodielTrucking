@@ -10,6 +10,7 @@ $drivers = ControllerBooking::ctrEmployeeListByType("driver");
 $assistants = ControllerBooking::ctrEmployeeListByType("assistant");
 $canModifyTrips = $role === "admin";
 $canUpdateTripStatus = $role === "driver";
+$canSubmitIncident = $role === "driver";
 $tripStats = array(
   "total" => count($trips),
   "pending" => 0,
@@ -40,6 +41,23 @@ foreach ($trips as $trip) {
     </div>
 
     <div class="card-body p-4">
+      <?php if ($canSubmitIncident): ?>
+        <ul class="nav nav-tabs driver-trips-tabs mb-4" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button type="button" class="nav-link active" id="driverTripsTab" data-bs-toggle="tab" data-bs-target="#driverTripsPane" role="tab" aria-controls="driverTripsPane" aria-selected="true">
+              <i class="ri-route-line me-1"></i> My Trips
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button type="button" class="nav-link" id="driverIncidentTab" data-bs-toggle="tab" data-bs-target="#driverIncidentPane" role="tab" aria-controls="driverIncidentPane" aria-selected="false">
+              <i class="ri-alarm-warning-line me-1"></i> Incident Report
+            </button>
+          </li>
+        </ul>
+        <div class="tab-content driver-trips-tab-content">
+          <div class="tab-pane fade show active" id="driverTripsPane" role="tabpanel" aria-labelledby="driverTripsTab">
+      <?php endif; ?>
+
       <div class="trip-stat-grid mb-4">
         <button type="button" class="trip-stat-card active" data-status-shortcut="all">
           <span class="trip-stat-icon bg-primary-subtle text-primary"><i class="ri-route-line"></i></span>
@@ -137,6 +155,97 @@ foreach ($trips as $trip) {
           </div>
         </section>
       </div>
+
+      <?php if ($canSubmitIncident): ?>
+          </div>
+          <div class="tab-pane fade" id="driverIncidentPane" role="tabpanel" aria-labelledby="driverIncidentTab">
+            <form id="driverIncidentForm" class="incident-driver-form">
+              <div class="incident-form-header">
+                <div>
+                  <h5 class="mb-1">Incident Report</h5>
+                  <p class="text-muted small mb-0">Submit a quick report for any trip issue. Required fields are marked with <span class="text-danger">*</span>.</p>
+                </div>
+              </div>
+
+              <div class="incident-form-section">
+                <h6>Trip</h6>
+                <div class="incident-form-grid">
+                  <div class="incident-field">
+                    <label class="form-label">Trip <span class="text-danger">*</span></label>
+                    <select class="form-select" id="incidentTripID" name="tripID" required>
+                      <option value="">Select assigned trip</option>
+                      <?php foreach ($trips as $trip): ?>
+                        <option value="<?php echo (int) $trip["tripID"]; ?>">Trip #<?php echo (int) $trip["tripID"]; ?> - <?php echo htmlspecialchars(date("M d, Y h:i A", strtotime($trip["firstPickupDateTime"]))); ?></option>
+                      <?php endforeach; ?>
+                    </select>
+                  </div>
+                  <div class="incident-field">
+                    <label class="form-label">Booking</label>
+                    <select class="form-select" id="incidentBookingID" name="bookingID">
+                      <option value="">Select trip first</option>
+                    </select>
+                    <div class="form-text">Optional if the incident affects the whole trip.</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="incident-form-section">
+                <h6>Details</h6>
+                <div class="incident-form-grid incident-form-grid-compact">
+                  <div class="incident-field">
+                    <label class="form-label">Type <span class="text-danger">*</span></label>
+                    <select class="form-select" id="incidentType" name="incidentType" required>
+                      <option value="accident">Accident</option>
+                      <option value="vehicle_breakdown">Vehicle breakdown</option>
+                      <option value="cargo_damage">Cargo damage</option>
+                      <option value="delay">Delay</option>
+                      <option value="route_issue">Route issue</option>
+                      <option value="customer_issue">Customer issue</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                  <div class="incident-field">
+                    <label class="form-label">Severity <span class="text-danger">*</span></label>
+                    <select class="form-select" id="incidentSeverity" name="severity" required>
+                      <option value="low">Low</option>
+                      <option value="medium" selected>Medium</option>
+                      <option value="high">High</option>
+                      <option value="critical">Critical</option>
+                    </select>
+                  </div>
+                  <div class="incident-field">
+                    <label class="form-label">Date & Time <span class="text-danger">*</span></label>
+                    <input type="datetime-local" class="form-control" id="incidentDateTime" name="incidentDateTime" value="<?php echo htmlspecialchars(date("Y-m-d\TH:i")); ?>" required>
+                  </div>
+                </div>
+              </div>
+
+              <div class="incident-form-section">
+                <h6>Notes</h6>
+                <div class="incident-form-grid">
+                  <div class="incident-field incident-field-wide">
+                    <label class="form-label">Location / Address</label>
+                    <input type="text" class="form-control" id="incidentLocationText" name="locationText" placeholder="Example: Lacson Street near Barangay Bata, Bacolod">
+                  </div>
+                  <div class="incident-field">
+                    <label class="form-label">What happened? <span class="text-danger">*</span></label>
+                    <textarea class="form-control" id="incidentDescription" name="description" rows="5" placeholder="Describe the incident clearly..." required></textarea>
+                  </div>
+                  <div class="incident-field">
+                    <label class="form-label">Action taken</label>
+                    <textarea class="form-control" id="incidentActionTaken" name="actionTaken" rows="5" placeholder="Example: Called admin, moved truck to safe side..."></textarea>
+                  </div>
+                </div>
+              </div>
+
+              <div class="incident-form-actions">
+                <button type="reset" class="btn btn-light">Clear</button>
+                <button type="submit" class="btn btn-primary" id="incidentSubmitBtn">Submit Report</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      <?php endif; ?>
     </div>
   </div>
 </div>
@@ -148,6 +257,7 @@ foreach ($trips as $trip) {
   window.tripAssistantOptions = <?php echo json_encode($assistants, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
   window.tripCanModifyInfo = <?php echo $canModifyTrips ? "true" : "false"; ?>;
   window.tripCanUpdateStatus = <?php echo $canUpdateTripStatus ? "true" : "false"; ?>;
+  window.tripCanSubmitIncident = <?php echo $canSubmitIncident ? "true" : "false"; ?>;
 </script>
 
 <style>
@@ -155,6 +265,108 @@ foreach ($trips as $trip) {
     max-width: 1480px;
     margin: 0 auto;
     width: 100%;
+  }
+
+  .driver-trips-tabs {
+    border-bottom-color: var(--bs-border-color);
+  }
+
+  .driver-trips-tabs .nav-link {
+    border-radius: 0.625rem 0.625rem 0 0;
+    color: var(--bs-secondary-color);
+    font-weight: 600;
+  }
+
+  .driver-trips-tabs .nav-link.active {
+    color: var(--bs-primary);
+  }
+
+  .incident-driver-form {
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.75rem;
+    background: var(--bs-body-bg);
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 1.5rem;
+  }
+
+  .incident-form-header,
+  .incident-form-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .incident-form-header {
+    border-bottom: 1px solid var(--bs-border-color);
+    padding-bottom: 1.125rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .incident-form-section {
+    padding: 0;
+  }
+
+  .incident-form-section + .incident-form-section {
+    border-top: 1px solid var(--bs-border-color);
+    margin-top: 1.25rem;
+    padding-top: 1.25rem;
+  }
+
+  .incident-form-section h6 {
+    color: var(--bs-secondary-color);
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.875rem;
+    text-transform: uppercase;
+  }
+
+  .incident-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+  }
+
+  .incident-form-grid-compact {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .incident-field-wide {
+    grid-column: 1 / -1;
+  }
+
+  .incident-driver-form .form-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin-bottom: 0.35rem;
+  }
+
+  .incident-driver-form .form-control,
+  .incident-driver-form .form-select {
+    min-height: 44px;
+    border-radius: 0.5rem;
+  }
+
+  .incident-driver-form textarea.form-control {
+    min-height: 132px;
+    resize: vertical;
+  }
+
+  .incident-form-actions {
+    border-top: 1px solid var(--bs-border-color);
+    margin-top: 1.25rem;
+    padding-top: 1.25rem;
+    justify-content: flex-end;
+  }
+
+  .incident-form-actions .btn {
+    min-height: 42px;
+    min-width: 116px;
+    border-radius: 0.5rem;
+    font-weight: 600;
   }
 
   .trip-stat-grid {
@@ -614,6 +826,11 @@ foreach ($trips as $trip) {
       grid-template-columns: 1fr;
     }
 
+    .incident-form-grid,
+    .incident-form-grid-compact {
+      grid-template-columns: 1fr;
+    }
+
     #tripMap {
       height: 460px;
       min-height: 460px;
@@ -665,6 +882,18 @@ foreach ($trips as $trip) {
     .trip-detail-shell,
     .trip-filter-panel {
       padding: 0.875rem;
+    }
+
+    .incident-driver-form {
+      padding: 1rem;
+    }
+
+    .incident-form-actions {
+      justify-content: stretch;
+    }
+
+    .incident-form-actions .btn {
+      flex: 1 1 100%;
     }
   }
 </style>
