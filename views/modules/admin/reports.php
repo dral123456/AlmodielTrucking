@@ -204,7 +204,7 @@ function reportStaffName($employee) {
           <div class="report-section-heading">
             <div>
               <h6 class="mb-0">Expenses Report</h6>
-              <p class="text-muted small mb-0">Maintenance, fuel, supplies, and other business costs.</p>
+              <p class="text-muted small mb-0">Maintenance, fuel, supplies, completed crew salary, and other business costs.</p>
             </div>
             <button type="button" class="btn btn-primary" id="reportAddExpense">
               <i class="ri-add-line me-1"></i> Add Expense
