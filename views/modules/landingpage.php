@@ -1,303 +1,801 @@
 <?php
-// Simple PHP Landing Page
 $title = "Almodiel Trucking Service - Reliable Delivery Solutions";
 $year = date("Y");
 ?>
-
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-bs-theme="dark">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $title; ?></title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><?php echo $title; ?></title>
 
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: Arial, sans-serif;
-        }
+  <link href="views/assets/css/bootstrap.min.css" rel="stylesheet">
+  <link href="views/assets/css/icons.min.css" rel="stylesheet">
 
-        body {
-            background: #f4f6f9;
-            color: #333;
-        }
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500&display=swap" rel="stylesheet">
 
-        header {
-            background: #111827;
-            color: white;
-            padding: 20px 60px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+  <style>
+    :root {
+      --brand-primary:   #696cff;
+      --brand-dark:      #0d0e1a;
+      --brand-surface:   #13152a;
+      --brand-card:      #1a1d35;
+      --brand-border:    rgba(105,108,255,0.18);
+      --brand-muted:     #7b7f9e;
+      --brand-accent:    #ff6b35;
+      --brand-text:      #e8e9f5;
+    }
 
-        .logo {
-            font-size: 24px;
-            font-weight: bold;
-        }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        nav a {
-            color: white;
-            text-decoration: none;
-            margin-left: 20px;
-            transition: 0.3s;
-        }
+    html { scroll-behavior: smooth; }
 
-        nav a:hover {
-            color: #60a5fa;
-        }
+    body {
+      font-family: 'Barlow', sans-serif;
+      background: var(--brand-dark);
+      color: var(--brand-text);
+      overflow-x: hidden;
+    }
 
-        .hero {
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            padding: 20px;
-            position: relative;
-            overflow: hidden;
-            background:
-                linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)),
-                url('https://images.unsplash.com/photo-1519003722824-194d4455a60c?q=80&w=2070&auto=format&fit=crop');
-            background-size: cover;
-            background-position: center;
-            color: white;
-        }
+    /* ── NOISE OVERLAY ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.4;
+    }
 
-        .hero-content {
-            max-width: 800px;
-            position: relative;
-            z-index: 2;
-        }
+    /* ── NAVBAR ── */
+    .site-nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 1000;
+      padding: 1rem 0;
+      transition: background 0.3s, backdrop-filter 0.3s, box-shadow 0.3s;
+    }
+    .site-nav.scrolled {
+      background: rgba(13, 14, 26, 0.92);
+      backdrop-filter: blur(16px);
+      box-shadow: 0 1px 0 var(--brand-border);
+    }
+    .nav-inner {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav-logo {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 800;
+      font-size: 1.4rem;
+      letter-spacing: 0.04em;
+      color: #fff;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .nav-logo-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--brand-primary);
+      display: inline-block;
+      box-shadow: 0 0 10px var(--brand-primary);
+    }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+      list-style: none;
+    }
+    .nav-links a {
+      color: var(--brand-muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: #fff; }
+    .nav-cta {
+      background: var(--brand-primary);
+      color: #fff !important;
+      padding: 0.5rem 1.25rem;
+      border-radius: 6px;
+      font-weight: 600 !important;
+      transition: opacity 0.2s !important;
+    }
+    .nav-cta:hover { opacity: 0.85; color: #fff !important; }
 
-        .hero-overlay {
-            position: absolute;
-            inset: 0;
-            background: rgba(0,0,0,0.4);
-        }
+    /* ── HERO ── */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      position: relative;
+      overflow: hidden;
+      padding: 7rem 2rem 4rem;
+    }
+    .hero-bg {
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(135deg, rgba(105,108,255,0.12) 0%, transparent 50%),
+        linear-gradient(rgba(13,14,26,0.7), rgba(13,14,26,0.85)),
+        url('https://images.unsplash.com/photo-1519003722824-194d4455a60c?q=80&w=2070&auto=format&fit=crop') center/cover no-repeat;
+    }
+    /* grid lines */
+    .hero-bg::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(105,108,255,0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(105,108,255,0.06) 1px, transparent 1px);
+      background-size: 60px 60px;
+    }
+    /* glow blob */
+    .hero-glow {
+      position: absolute;
+      width: 700px; height: 700px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(105,108,255,0.18) 0%, transparent 70%);
+      top: -150px; left: -150px;
+      pointer-events: none;
+    }
+    .hero-inner {
+      max-width: 1280px;
+      margin: 0 auto;
+      width: 100%;
+      position: relative;
+      z-index: 2;
+    }
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(105,108,255,0.12);
+      border: 1px solid var(--brand-border);
+      border-radius: 100px;
+      padding: 0.35rem 1rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--brand-primary);
+      margin-bottom: 1.5rem;
+      animation: fadeUp 0.6s ease both;
+    }
+    .hero-eyebrow-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--brand-primary);
+      animation: pulse 2s infinite;
+    }
+    .hero h1 {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: clamp(3rem, 7vw, 6rem);
+      font-weight: 800;
+      line-height: 1.0;
+      letter-spacing: -0.01em;
+      color: #fff;
+      margin-bottom: 1.5rem;
+      animation: fadeUp 0.6s 0.1s ease both;
+    }
+    .hero h1 span {
+      color: var(--brand-primary);
+      position: relative;
+    }
+    .hero-sub {
+      font-size: 1.1rem;
+      font-weight: 300;
+      color: var(--brand-muted);
+      max-width: 560px;
+      line-height: 1.7;
+      margin-bottom: 2.5rem;
+      animation: fadeUp 0.6s 0.2s ease both;
+    }
+    .hero-actions {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      animation: fadeUp 0.6s 0.3s ease both;
+    }
+    .btn-primary-brand {
+      background: var(--brand-primary);
+      color: #fff;
+      border: none;
+      padding: 0.85rem 2rem;
+      border-radius: 8px;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 700;
+      font-size: 1rem;
+      letter-spacing: 0.05em;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
+      box-shadow: 0 4px 24px rgba(105,108,255,0.35);
+    }
+    .btn-primary-brand:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(105,108,255,0.5);
+      color: #fff;
+      opacity: 0.92;
+    }
+    .btn-ghost-brand {
+      background: transparent;
+      color: var(--brand-text);
+      border: 1px solid var(--brand-border);
+      padding: 0.85rem 2rem;
+      border-radius: 8px;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 600;
+      font-size: 1rem;
+      letter-spacing: 0.05em;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: border-color 0.2s, color 0.2s, background 0.2s;
+    }
+    .btn-ghost-brand:hover {
+      border-color: var(--brand-primary);
+      color: var(--brand-primary);
+      background: rgba(105,108,255,0.06);
+    }
+    .hero-stats {
+      display: flex;
+      gap: 3rem;
+      margin-top: 4rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--brand-border);
+      animation: fadeUp 0.6s 0.4s ease both;
+      flex-wrap: wrap;
+    }
+    .hero-stat-value {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: #fff;
+      line-height: 1;
+    }
+    .hero-stat-label {
+      font-size: 0.8rem;
+      color: var(--brand-muted);
+      margin-top: 0.25rem;
+      letter-spacing: 0.04em;
+    }
 
-        .hero h1 {
-            font-size: 55px;
-            margin-bottom: 20px;
-        }
+    /* ── SECTION BASE ── */
+    .section {
+      padding: 6rem 2rem;
+      position: relative;
+    }
+    .section-inner {
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+    .section-tag {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--brand-primary);
+      margin-bottom: 0.75rem;
+    }
+    .section-heading {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: clamp(2rem, 4vw, 3.2rem);
+      font-weight: 800;
+      color: #fff;
+      line-height: 1.1;
+      margin-bottom: 1rem;
+    }
+    .section-sub {
+      color: var(--brand-muted);
+      font-size: 1rem;
+      font-weight: 300;
+      max-width: 560px;
+      line-height: 1.7;
+    }
 
-        .hero p {
-            font-size: 18px;
-            margin-bottom: 30px;
-            line-height: 1.6;
-        }
+    /* ── FEATURES ── */
+    .features-section {
+      background: var(--brand-surface);
+    }
+    .features-section::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--brand-border), transparent);
+    }
+    .features-section::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--brand-border), transparent);
+    }
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+      margin-top: 3rem;
+    }
+    .feature-card {
+      background: var(--brand-card);
+      border: 1px solid var(--brand-border);
+      border-radius: 12px;
+      padding: 2rem;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.25s, border-color 0.25s, box-shadow 0.25s;
+    }
+    .feature-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--brand-primary), transparent);
+      opacity: 0;
+      transition: opacity 0.25s;
+    }
+    .feature-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(105,108,255,0.4);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+    }
+    .feature-card:hover::before { opacity: 1; }
+    .feature-icon {
+      width: 48px; height: 48px;
+      border-radius: 10px;
+      background: rgba(105,108,255,0.12);
+      border: 1px solid var(--brand-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      color: var(--brand-primary);
+      margin-bottom: 1.25rem;
+    }
+    .feature-card h3 {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 700;
+      font-size: 1.15rem;
+      letter-spacing: 0.02em;
+      color: #fff;
+      margin-bottom: 0.6rem;
+    }
+    .feature-card p {
+      color: var(--brand-muted);
+      font-size: 0.9rem;
+      line-height: 1.65;
+      font-weight: 300;
+    }
 
-        .btn {
-            display: inline-block;
-            padding: 15px 30px;
-            background: white;
-            color: #2563eb;
-            border-radius: 8px;
-            text-decoration: none;
-            font-weight: bold;
-            transition: 0.3s;
-        }
+    /* ── ABOUT ── */
+    .about-section { background: var(--brand-dark); }
+    .about-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5rem;
+      align-items: center;
+      margin-top: 3rem;
+    }
+    .about-visual {
+      position: relative;
+    }
+    .about-img-wrap {
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid var(--brand-border);
+      aspect-ratio: 4/3;
+      background: var(--brand-card);
+    }
+    .about-img-wrap img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      opacity: 0.75;
+    }
+    .about-badge {
+      position: absolute;
+      bottom: -1rem;
+      right: -1rem;
+      background: var(--brand-primary);
+      color: #fff;
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 800;
+      font-size: 0.85rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      box-shadow: 0 8px 24px rgba(105,108,255,0.4);
+    }
+    .about-text p {
+      color: var(--brand-muted);
+      font-size: 1rem;
+      line-height: 1.8;
+      font-weight: 300;
+      margin-bottom: 1rem;
+    }
+    .about-list {
+      list-style: none;
+      display: grid;
+      gap: 0.6rem;
+      margin-top: 1.5rem;
+    }
+    .about-list li {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      color: var(--brand-text);
+      font-size: 0.95rem;
+    }
+    .about-list li i {
+      color: var(--brand-primary);
+      font-size: 1rem;
+    }
 
-        .btn:hover {
-            background: #dbeafe;
-        }
+    /* ── SPONSOR ── */
+    .sponsor-section {
+      background: var(--brand-surface);
+    }
+    .sponsor-section::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--brand-border), transparent);
+    }
+    .sponsor-card {
+      background: var(--brand-card);
+      border: 1px solid var(--brand-border);
+      border-radius: 16px;
+      padding: 2.5rem;
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+      max-width: 640px;
+      margin: 3rem auto 0;
+      transition: border-color 0.25s;
+    }
+    .sponsor-card:hover { border-color: rgba(105,108,255,0.4); }
+    .sponsor-icon {
+      width: 64px; height: 64px;
+      border-radius: 14px;
+      background: rgba(255,107,53,0.12);
+      border: 1px solid rgba(255,107,53,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.8rem;
+      color: var(--brand-accent);
+      flex-shrink: 0;
+    }
+    .sponsor-card h3 {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: #fff;
+      margin-bottom: 0.4rem;
+    }
+    .sponsor-card p {
+      color: var(--brand-muted);
+      font-size: 0.875rem;
+      line-height: 1.6;
+      font-weight: 300;
+    }
 
-        .features {
-            padding: 80px 60px;
-            background: white;
-        }
+    /* ── CTA STRIP ── */
+    .cta-section {
+      background: var(--brand-dark);
+      padding: 5rem 2rem;
+    }
+    .cta-inner {
+      max-width: 1280px;
+      margin: 0 auto;
+      background: linear-gradient(135deg, rgba(105,108,255,0.15), rgba(105,108,255,0.05));
+      border: 1px solid var(--brand-border);
+      border-radius: 20px;
+      padding: 4rem 3rem;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .cta-inner::before {
+      content: '';
+      position: absolute;
+      top: -80px; left: 50%;
+      transform: translateX(-50%);
+      width: 400px; height: 200px;
+      background: radial-gradient(ellipse, rgba(105,108,255,0.2) 0%, transparent 70%);
+    }
+    .cta-inner h2 {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: clamp(2rem, 4vw, 3rem);
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 1rem;
+      position: relative;
+    }
+    .cta-inner p {
+      color: var(--brand-muted);
+      font-size: 1rem;
+      font-weight: 300;
+      margin-bottom: 2rem;
+      position: relative;
+    }
 
-        .section-title {
-            text-align: center;
-            margin-bottom: 50px;
-        }
+    /* ── FOOTER ── */
+    footer {
+      background: var(--brand-surface);
+      border-top: 1px solid var(--brand-border);
+      padding: 2rem;
+      text-align: center;
+      color: var(--brand-muted);
+      font-size: 0.875rem;
+    }
+    footer a { color: var(--brand-primary); text-decoration: none; }
 
-        .section-title h2 {
-            font-size: 40px;
-            margin-bottom: 10px;
-        }
+    /* ── ANIMATIONS ── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(105,108,255,0.5); }
+      50%       { opacity: 0.7; box-shadow: 0 0 0 6px rgba(105,108,255,0); }
+    }
+    .reveal {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.55s ease, transform 0.55s ease;
+    }
+    .reveal.visible {
+      opacity: 1;
+      transform: none;
+    }
 
-        .feature-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 25px;
-        }
+    /* ── MOBILE NAV ── */
+    .nav-toggle {
+      display: none;
+      background: none;
+      border: 1px solid var(--brand-border);
+      border-radius: 6px;
+      color: var(--brand-text);
+      padding: 0.4rem 0.6rem;
+      font-size: 1.1rem;
+      cursor: pointer;
+    }
 
-        .feature-card {
-            background: #f9fafb;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.08);
-            transition: 0.3s;
-        }
-
-        .feature-card:hover {
-            transform: translateY(-5px);
-        }
-
-        .feature-card h3 {
-            margin-bottom: 15px;
-            color: #2563eb;
-        }
-
-        .sponsors {
-            padding: 80px 60px;
-            background: #ffffff;
-        }
-
-        .about {
-            padding: 80px 60px;
-            background: #eef2ff;
-            text-align: center;
-        }
-
-        .about p {
-            max-width: 800px;
-            margin: auto;
-            line-height: 1.8;
-            font-size: 18px;
-        }
-
-        footer {
-            background: #111827;
-            color: white;
-            text-align: center;
-            padding: 20px;
-        }
-
-        @media (max-width: 768px) {
-            header {
-                flex-direction: column;
-                gap: 15px;
-                text-align: center;
-            }
-
-            .hero h1 {
-                font-size: 38px;
-            }
-
-            .hero p {
-                font-size: 16px;
-            }
-
-            .features,
-            .about {
-                padding: 60px 20px;
-            }
-        }
-    </style>
+    /* ── RESPONSIVE ── */
+    @media (max-width: 991.98px) {
+      .feature-grid { grid-template-columns: 1fr 1fr; }
+      .about-grid   { grid-template-columns: 1fr; gap: 2.5rem; }
+      .nav-links    { display: none; }
+      .nav-toggle   { display: block; }
+    }
+    @media (max-width: 575.98px) {
+      .feature-grid { grid-template-columns: 1fr; }
+      .hero-stats   { gap: 1.5rem; }
+      .cta-inner    { padding: 2.5rem 1.5rem; }
+      .sponsor-card { flex-direction: column; text-align: center; }
+    }
+  </style>
 </head>
 <body>
 
-<header>
-    <div class="logo">Almodiel Trucking </div>
+<!-- ── NAVBAR ── -->
+<nav class="site-nav" id="siteNav">
+  <div class="nav-inner">
+    <a href="#home" class="nav-logo">
+      <span class="nav-logo-dot"></span>
+      ALMODIEL TRUCKING
+    </a>
+    <ul class="nav-links">
+      <li><a href="#features">Features</a></li>
+      <li><a href="#about">About</a></li>
+      <li><a href="#sponsors">Sponsors</a></li>
+      <li><a href="customer-login" class="nav-cta">Book a Service</a></li>
+    </ul>
+    <button class="nav-toggle" id="navToggle" aria-label="Toggle menu">
+      <i class="ri-menu-line"></i>
+    </button>
+  </div>
+</nav>
 
-    <nav>
-        <a href="#home">Home</a>
-        <a href="#features">Features</a>
-        <a href="#about">About</a>
-        <a href="#contact">Contact</a>
-    </nav>
-</header>
-
+<!-- ── HERO ── -->
 <section class="hero" id="home">
-    <div class="hero-overlay"></div>
+  <div class="hero-bg"></div>
+  <div class="hero-glow"></div>
+  <div class="hero-inner">
+    <div class="hero-eyebrow">
+      <span class="hero-eyebrow-dot"></span>
+      Trusted Since 2010 · Negros Island
+    </div>
+    <h1>Move Your Cargo<br>With <span>Confidence</span></h1>
+    <p class="hero-sub">
+      Fast, secure, and professional trucking across Negros Island.
+      Almodiel Trucking Service delivers your goods safely — every time.
+    </p>
+    <div class="hero-actions">
+      <a href="customer-login" class="btn-primary-brand" id="bookServiceBtn">
+        <i class="ri-truck-line"></i> Book a Service
+      </a>
+      <a href="#features" class="btn-ghost-brand">
+        <i class="ri-arrow-down-line"></i> Learn More
+      </a>
+    </div>
+    <div class="hero-stats">
+      <div>
+        <div class="hero-stat-value">500+</div>
+        <div class="hero-stat-label">Deliveries Completed</div>
+      </div>
+      <div>
+        <div class="hero-stat-value">14+</div>
+        <div class="hero-stat-label">Years in Operation</div>
+      </div>
+      <div>
+        <div class="hero-stat-value">100%</div>
+        <div class="hero-stat-label">On-time Commitment</div>
+      </div>
+    </div>
+  </div>
+</section>
 
-    <div class="hero-content">
-        <h1>Reliable Trucking Services Across The Country</h1>
+<!-- ── FEATURES ── -->
+<section class="section features-section" id="features">
+  <div class="section-inner">
+    <div class="reveal">
+      <div class="section-tag">What We Offer</div>
+      <h2 class="section-heading">Built for Reliable Delivery</h2>
+      <p class="section-sub">Everything your business needs to move cargo safely, efficiently, and with full visibility.</p>
+    </div>
+    <div class="feature-grid">
+      <div class="feature-card reveal">
+        <div class="feature-icon"><i class="ri-truck-line"></i></div>
+        <h3>Fleet-Ready Operations</h3>
+        <p>Multiple truck types ready for various cargo sizes. Every vehicle maintained and crew-assigned before dispatch.</p>
+      </div>
+      <div class="feature-card reveal">
+        <div class="feature-icon"><i class="ri-map-pin-2-line"></i></div>
+        <h3>Route Transparency</h3>
+        <p>Track your booking from pickup to destination with real-time location mapping and status updates.</p>
+      </div>
+      <div class="feature-card reveal">
+        <div class="feature-icon"><i class="ri-file-list-3-line"></i></div>
+        <h3>Digital Booking System</h3>
+        <p>Book, manage, and review all your deliveries online. No paperwork, no hassle — just a few clicks.</p>
+      </div>
+      <div class="feature-card reveal">
+        <div class="feature-icon"><i class="ri-team-line"></i></div>
+        <h3>Professional Crew</h3>
+        <p>Experienced drivers and assistants assigned per trip to ensure your cargo is in safe, capable hands.</p>
+      </div>
+      <div class="feature-card reveal">
+        <div class="feature-icon"><i class="ri-shield-check-line"></i></div>
+        <h3>Cargo Safety First</h3>
+        <p>Special handling instructions honored. Fragile, sealed, or bulk — we handle it with care.</p>
+      </div>
+      <div class="feature-card reveal">
+        <div class="feature-icon"><i class="ri-line-chart-line"></i></div>
+        <h3>Sales Transparency</h3>
+        <p>Full visibility into gross sales, expenses, and net totals. Business-ready reports at your fingertips.</p>
+      </div>
+    </div>
+  </div>
+</section>
 
+<!-- ── ABOUT ── -->
+<section class="section about-section" id="about">
+  <div class="section-inner">
+    <div class="about-grid">
+      <div class="about-visual reveal">
+        <div class="about-img-wrap">
+          <img src="https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?q=80&w=1200&auto=format&fit=crop" alt="Trucking Operations">
+        </div>
+        <div class="about-badge">
+          <i class="ri-award-line me-1"></i> Est. 2010
+        </div>
+      </div>
+      <div class="about-text reveal">
+        <div class="section-tag">About Us</div>
+        <h2 class="section-heading">Negros Island's Trusted Trucking Partner</h2>
         <p>
-            Fast, secure, and professional delivery solutions for businesses and customers.
-            Almodiel Trucking Service helps move your cargo safely and efficiently.
+          Almodiel Trucking Service has been serving businesses and individuals across Negros Island
+          for over a decade. We specialize in reliable cargo delivery with a commitment to punctuality,
+          safety, and transparency.
         </p>
-
-        <a href="" class="btn" id="bookServiceBtn">Book a Service</a>
+        <p>
+          Our digital platform lets customers book, track, and manage deliveries with ease — while
+          our operations team handles the rest.
+        </p>
+        <ul class="about-list">
+          <li><i class="ri-check-double-line"></i> Full digital booking and tracking</li>
+          <li><i class="ri-check-double-line"></i> Dedicated crew per trip</li>
+          <li><i class="ri-check-double-line"></i> Company and individual customer support</li>
+          <li><i class="ri-check-double-line"></i> Transparent tariff-based pricing</li>
+        </ul>
+      </div>
     </div>
+  </div>
 </section>
 
-<section class="features" id="features">
-    <div class="section-title">
-        <h2>Our Features</h2>
-        <p>Everything you need for your website</p>
+<!-- ── SPONSOR ── -->
+<section class="section sponsor-section" id="sponsors">
+  <div class="section-inner" style="text-align:center;">
+    <div class="reveal">
+      <div class="section-tag">Official Sponsor</div>
+      <h2 class="section-heading">Trusted Partner</h2>
+      <p class="section-sub" style="margin: 0 auto;">Supporting our operations and our team on the road.</p>
     </div>
-
-    <div class="feature-grid">
-        <div class="feature-card">
-            <h3>Fast Performance</h3>
-            <p>
-                Optimized design and clean code for better speed and responsiveness.
-            </p>
-        </div>
-
-        <div class="feature-card">
-            <h3>Responsive Design</h3>
-            <p>
-                Looks perfect on desktop, tablet, and mobile devices.
-            </p>
-        </div>
-
-        <div class="feature-card">
-            <h3>Easy Customization</h3>
-            <p>
-                Edit colors, text, and layouts quickly based on your needs.
-            </p>
-        </div>
+    <div class="sponsor-card reveal">
+      <div class="sponsor-icon"><i class="ri-restaurant-line"></i></div>
+      <div style="text-align:left;">
+        <h3>Gamay's Eatery</h3>
+        <p>A cozy place where delicious homemade meals, warm smiles, and affordable prices come together to make every customer feel at home. Fueling our drivers, one meal at a time.</p>
+      </div>
     </div>
+  </div>
 </section>
 
-<section class="sponsors">
-    <div class="section-title">
-        <h2>Official Sponsor</h2>
-        <p>Trusted partner supporting our trucking operations</p>
-    </div>
-
-    <div class="feature-grid">
-        <div class="feature-card">
-            <h3>Gamay's Eatery</h3>
-            <p>
-                A cozy place where delicious homemade meals, warm smiles, and affordable prices come together to make every customer feel at home.
-            </p>
-        </div>
-    </div>
+<!-- ── CTA ── -->
+<section class="cta-section">
+  <div class="cta-inner reveal">
+    <h2>Ready to Move Your Cargo?</h2>
+    <p>Sign up or log in to create your first booking in minutes.</p>
+    <a href="customer-login" class="btn-primary-brand" style="display:inline-flex;">
+      <i class="ri-truck-line"></i> Get Started Now
+    </a>
+  </div>
 </section>
 
-<section class="about" id="about">
-    <div class="section-title">
-        <h2>About Us</h2>
-    </div>
-
-    <p>
-        We create modern and professional web solutions using PHP, HTML, CSS, and JavaScript.
-        This landing page can be used for portfolios, businesses, school projects, or startup websites.
-    </p>
-</section>
-
-<footer id="contact">
-    <p>
-        © <?php echo $year; ?> Almodiel Trucking Service. All Rights Reserved.
-    </p>
+<!-- ── FOOTER ── -->
+<footer>
+  <p>© <?php echo $year; ?> Almodiel Trucking Service. All Rights Reserved.</p>
 </footer>
 
-</body>
+<link href="views/assets/css/icons.min.css" rel="stylesheet">
+
 <script>
-document.addEventListener("DOMContentLoaded", function () {
+  // Navbar scroll effect
+  const nav = document.getElementById('siteNav');
+  window.addEventListener('scroll', () => {
+    nav.classList.toggle('scrolled', window.scrollY > 40);
+  });
 
-    const bookBtn = document.getElementById("bookServiceBtn");
+  // Scroll reveal
+  const reveals = document.querySelectorAll('.reveal');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry, i) => {
+      if (entry.isIntersecting) {
+        setTimeout(() => entry.target.classList.add('visible'), i * 80);
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1 });
+  reveals.forEach(el => observer.observe(el));
 
-    if(bookBtn){
-
-        bookBtn.addEventListener("click", function (e) {
-
-            e.preventDefault();
-
-            window.location.href = "customer-login";
-
-        });
-
+  // Mobile nav toggle (simple show/hide)
+  document.getElementById('navToggle').addEventListener('click', function () {
+    const links = document.querySelector('.nav-links');
+    if (links.style.display === 'flex') {
+      links.style.display = '';
+    } else {
+      links.style.cssText = 'display:flex;flex-direction:column;position:absolute;top:100%;left:0;right:0;background:rgba(13,14,26,0.97);backdrop-filter:blur(16px);padding:1.5rem 2rem;gap:1.25rem;border-bottom:1px solid var(--brand-border);';
     }
-
-});
+  });
 </script>
+
+</body>
 </html>
