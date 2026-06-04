@@ -9,6 +9,7 @@ class ControllerCustomer{
 	  $answer = (new ModelCustomer)->mdlSaveCustomer($data);
 		return $answer;
 	}
+
   static public function ctrCustomerLogin(){
 		if (isset($_POST["loginUser"])) {
       $encryptpass = $_POST["password"];
@@ -53,5 +54,9 @@ class ControllerCustomer{
     }
 
     return hash_equals($storedPassword, $plainPassword);
+  }
+
+  static public function ctrGetCustomer($customerId) {
+    return (new ModelCustomer)->mdlGetCustomer($customerId);
   }
 }

@@ -23,5 +23,6 @@ return [
     'booking-details'               => 'modules/customer-individual/booking-details.php',
     'assistantDashboard'            => 'modules/assistant/assistantDashboard.php',
     'driverDashboard'               => 'modules/driver/driverDashboard.php',
-    'trip-details'                 => 'modules/trip-details.php',
+    'trip-details'                  => 'modules/trip-details.php',
+    'user-profile'                  => 'modules/user-profile.php',
 ];

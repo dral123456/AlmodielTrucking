@@ -157,4 +157,12 @@ class ModelEmployee {
 
         return (int) $stmt->fetchColumn() > 0;
     }
+
+    static public function mdlGetEmployee($employeeId) {
+        $pdo = (new Connection)->connect();
+        $stmt = $pdo->prepare("SELECT * FROM employee WHERE id = :employeeId");
+        $stmt->bindParam(":employeeId", $employeeId, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
 }

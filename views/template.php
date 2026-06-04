@@ -19,6 +19,8 @@
       document.documentElement.setAttribute('data-layout', layout);
       document.documentElement.setAttribute('data-theme-colors', themeColor);
     })();
+
+    
   </script>
   <title>Almodiel Trucking Service </title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
@@ -68,6 +70,10 @@
   <link rel="stylesheet" href="views/assets/libs/air-datepicker/air-datepicker.css">
   <link rel="stylesheet" href="views/assets/libs/leaflet/leaflet.css">
 
+    
+
+  <link rel="stylesheet" href="views/assets/libs/dropzone/dropzone.css">
+
   <script src="views/assets/js/jquery-4.0.0.min.js"></script>
   <style>
     .layout-container {
@@ -96,6 +102,14 @@
     html[data-sidebar="medium"] .layout-page {
       margin-left: var(--pe-app-sidebar-medium-width) !important;
       width: calc(100% - var(--pe-app-sidebar-medium-width)) !important;
+    }
+    .page-profile .layout-page {
+      margin-left: 0 !important;
+      width: 100% !important;
+    }
+
+    .page-profile .content-wrapper {
+      padding-top: 0 !important;
     }
 
     @media (max-width: 1199.98px) {
@@ -129,7 +143,7 @@
 
 </head>
 
-<body>
+<body >
 
   <?php
     if(!(isset($_SESSION["loggedIn"]) && $_SESSION["loggedIn"] == "ok") && isset($_GET["route"])){
@@ -165,8 +179,6 @@
       $modulePaths = include "configs/module-paths.php";
 
       $allowedRoutes = $routeMap[$role] ?? [];
-      echo '<script>console.log("User role: ' . $role . '")</script>';
-      echo '<script>console.log("Allowed routes for this role: ' . implode(", ", $allowedRoutes) . '")</script>';
       echo '<div class="layout-wrapper layout-content-navbar">';
         echo '<div class="layout-container">';
           include "partials/sidebar.php";
@@ -175,13 +187,15 @@
             echo '<div class="content-wrapper">';
               echo '<div class="container-fluid py-4">';
               $route = isset($_GET["route"]) ? basename($_GET["route"]) : 'sample';
+              // In your routing logic, before rendering
+              
             if (isset($_GET["route"])) {
               $raw = $_GET["route"];
               // Allow only alphanumeric, hyphens, and ONE slash
               if (preg_match('/^[a-zA-Z0-9\-]+(\/[a-zA-Z0-9\-]+)?$/', $raw)) {
-                  $route = $raw;
+                $route = $raw;
               } else {
-                  $route = '404';
+                $route = '404';
               }
             }
           if (in_array($route, $allowedRoutes) && isset($modulePaths[$route])) {
@@ -210,7 +224,6 @@
 <script src="views/assets/libs/swiper/swiper-bundle.min.js"></script>
 <script src="views/assets/libs/bootstrap/js/bootstrap.bundle.min.js"></script>
 <script src="views/assets/libs/simplebar/simplebar.min.js"></script>
-<script src="views/assets/js/scroll-top.init.js"></script>
 <script src="views/assets/js/auth/auth.init.js"></script>
 
 <!-- DATE PICKER -->
@@ -237,7 +250,55 @@
 <script src="views/assets/libs/sweetalert2/sweetalert2.all.min.js"></script>
 <script src="views/assets/js/ui/sweetalert.init.js"></script>
 
+<script src="views/assets/js/scroll-top.init.js"></script>
+<!-- Uploaded js -->
+<script src="views/assets/libs/dropzone/dropzone-min.js"></script>
 
+<!-- Upload -->
+<script src="views/assets/js/pages/profile.init.js"></script>
+<!-- App js -->
+<script src="views/assets/js/app.js"></script>
+
+<!-- <script>
+  (function() {
+
+    const TAB_ID = Date.now() + "_" + Math.random();
+
+    // Check if another tab is already active
+    const activeTab = localStorage.getItem("activeTab");
+
+    if (activeTab && activeTab !== TAB_ID) {
+
+      Swal.fire({
+          icon: 'warning',
+          title: 'Session Already Open',
+          text: 'This account is already open in another tab.',
+          allowOutsideClick: false,
+          allowEscapeKey: false
+      }).then(() => {
+
+          // Redirect
+          window.location.href = "logout";
+
+      });
+
+    } else {
+
+      localStorage.setItem("activeTab", TAB_ID);
+
+    }
+
+    // Remove lock when tab closes
+    window.addEventListener("beforeunload", function() {
+
+      if (localStorage.getItem("activeTab") === TAB_ID) {
+        localStorage.removeItem("activeTab");
+      }
+
+    });
+
+  })();
+</script> -->
 
 
 

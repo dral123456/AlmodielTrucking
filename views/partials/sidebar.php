@@ -34,10 +34,16 @@ $sidebarItems = [
     'id'    => 'collapseRegistration',
     'items' => [
       ['label' => 'Individual Customer', 'route' => 'signup'],
-      ['label' => 'Booking',             'route' => 'booking-reg'],
+      ['label' => 'Book Here',           'route' => 'booking-reg'],
       ['label' => 'Trips',               'route' => 'trips'],
-      ['label' => 'Bookings',            'route' => 'bookings'],
     ],
+  ],
+  
+  [
+    'type'  => 'link',
+    'icon'  => 'ri-book-line',
+    'label' => 'Bookings',
+    'route' => 'bookings',
   ],
   [
     'type'  => 'title',

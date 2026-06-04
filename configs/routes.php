@@ -16,14 +16,16 @@ $adminRoutes = [
     'truck-details',
     'logout',
     'signup',
-    'trip-details'
+    'trip-details',
+    'user-profile',
 ];
 
 $driverRoutes = [
     'trips',
     'logout',
     'driverDashboard',
-    'trip-details'
+    'trip-details',
+    'user-profile',
 ];
 
 $assistantRoutes = [
@@ -32,16 +34,16 @@ $assistantRoutes = [
     'logout',
     'assistantDashboard',
     'trip-details',
+    'user-profile',
 ];
 
 $customerRoutes = [
     'sample',
-    'customer-individual/profile',
-    'customer-individual/bookings',
     'booking-reg',
     'logout',
     'bookings',
     'booking-details',
+    'user-profile',
 ];
 
 return [

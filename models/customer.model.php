@@ -1,5 +1,6 @@
 <?php
 require_once "connection.php";
+require_once "location.model.php";
 
 class ModelCustomer {
 
@@ -75,135 +76,230 @@ class ModelCustomer {
     return $rows;
   }
 
-  static public function mdlSaveCustomer($data) {
+  static public function mdlSaveIndividualCustomer($data) {
     $pdo = (new Connection)->connect();
 
     try {
-      $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-      $pdo->beginTransaction();
+        $pdo->beginTransaction();
 
-      $customerFName = "";
-      $customerLName = "";
-      $customerMI = "";
-      $contactPerson = "";
-      $companyDoc = "";
-      $locationID = !empty($data["locationID"]) ? (int) $data["locationID"] : null;
-      $province = trim($data["province"] ?? "");
-      $warehouseLat = null;
-      $warehouseLng = null;
+        // ── 1. Resolve locationID (deduplication) ─────────────────────
+        $locationID = isset($data["locationID"]) && (int)($data["locationID"]) > 0
+            ? (int) $data["locationID"]
+            : null;
 
-      if ($data["customerType"] === "individual") {
-        $customerFName = $data["firstName"] ?? "";
-        $customerLName = $data["lastName"] ?? "";
-        $customerMI = $data["middleInitial"] ?? "";
-      }
+        if (!$locationID) {
+            $street = trim(
+                ltrim(trim($data["houseNumber"] ?? "") . " " . trim($data["street"] ?? ""))
+            );
 
-      if ($data["customerType"] === "company") {
-        $customerFName = $data["companyName"] ?? "";
-        $contactPerson = $data["contactPerson"] ?? "";
-        $warehouseLat = trim($data["warehouseLatitude"] ?? "") !== "" ? (float) $data["warehouseLatitude"] : null;
-        $warehouseLng = trim($data["warehouseLongitude"] ?? "") !== "" ? (float) $data["warehouseLongitude"] : null;
+            // Individuals have no map pin — coordinates intentionally omitted
+            $locationID = ModelLocation::mdlSaveOrReuseLocation([
+                "province"    => trim($data["province"]    ?? ""),
+                "city"        => trim($data["city"]        ?? ""),
+                "barangay"    => trim($data["barangay"]    ?? ""),
+                "street"      => $street,
+                "description" => trim($data["description"] ?? ""),
+                "latitude"    => "",
+                "longitude"   => "",
+            ]);
+        }
+
+        if (!$locationID) {
+            $pdo->rollBack();
+            return "error";
+        }
+
+        // ── 2. Duplicate check ────────────────────────────────────────
+        $check = $pdo->prepare("
+            SELECT COUNT(*) FROM customer
+            WHERE phoneNumber = :phoneNumber
+              AND customerType = 'individual'
+              AND status = 'active'
+        ");
+        $check->bindValue(":phoneNumber", trim($data["phoneNumber"] ?? ""));
+        $check->execute();
+
+        if ((int) $check->fetchColumn() > 0) {
+            $pdo->rollBack();
+            return "existing";
+        }
+
+        // ── 3. Insert customer ────────────────────────────────────────
+        $stmt = $pdo->prepare("
+            INSERT INTO customer (
+                customerType,
+                customerFName,
+                customerLName,
+                customerMI,
+                contactPerson,
+                email,
+                phoneNumber,
+                locationID,
+                companyDocument,
+                password,
+                dateRegistered,
+                status
+            ) VALUES (
+                'individual',
+                :firstName,
+                :lastName,
+                :middleInitial,
+                '',
+                :email,
+                :phoneNumber,
+                :locationID,
+                '',
+                :password,
+                CURDATE(),
+                'active'
+            )
+        ");
+
+        $stmt->bindValue(":firstName",     trim($data["firstName"]     ?? ""));
+        $stmt->bindValue(":lastName",      trim($data["lastName"]      ?? ""));
+        $stmt->bindValue(":middleInitial", trim($data["middleInitial"] ?? ""));
+        $stmt->bindValue(":email",         trim($data["email"]         ?? ""));
+        $stmt->bindValue(":phoneNumber",   trim($data["phoneNumber"]   ?? ""));
+        $stmt->bindValue(":locationID",    $locationID, PDO::PARAM_INT);
+        $stmt->bindValue(":password",      $data["password"]);
+        $stmt->execute();
+
+        $pdo->commit();
+        return "success";
+
+    } catch (PDOException $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        error_log("INDIVIDUAL SAVE ERROR: " . $e->getMessage());
+        return "error";
+    }
+  }
+
+  static public function mdlSaveCompanyCustomer($data) {
+    $pdo = (new Connection)->connect();
+
+    try {
+        $pdo->beginTransaction();
+
+        // ── 1. Resolve locationID (deduplication) ─────────────────────
+        $locationID = isset($data["locationID"]) && (int)($data["locationID"]) > 0
+            ? (int) $data["locationID"]
+            : null;
+
+        if (!$locationID) {
+            $street = trim(
+                ltrim(trim($data["houseNumber"] ?? "") . " " . trim($data["street"] ?? ""))
+            );
+
+            $locationID = ModelLocation::mdlSaveOrReuseLocation([
+                "province"    => trim($data["province"]    ?? ""),
+                "city"        => trim($data["city"]        ?? ""),
+                "barangay"    => trim($data["barangay"]    ?? ""),
+                "street"      => $street,
+                "description" => trim($data["description"] ?? ""),
+                "latitude"    => trim($data["warehouseLatitude"]  ?? ""),
+                "longitude"   => trim($data["warehouseLongitude"] ?? ""),
+            ]);
+        }
+
+        if (!$locationID) {
+            $pdo->rollBack();
+            return "error";
+        }
+
+        // ── 2. Duplicate check ────────────────────────────────────────
+        $check = $pdo->prepare("
+            SELECT COUNT(*) FROM customer
+            WHERE contactPerson = :contactPerson
+              AND status = 'active'
+        ");
+        $check->bindValue(":contactPerson", trim($data["contactPerson"] ?? ""));
+        $check->execute();
+
+        if ((int) $check->fetchColumn() > 0) {
+            $pdo->rollBack();
+            return "existing";
+        }
+
+        // ── 3. Handle companyDocument filename ────────────────────────
+        $companyDocument = "";
 
         if (!empty($data["businessDoc"]["tmp_name"])) {
-          $targetDir = __DIR__ . "/../uploads/";
-          $fileName = time() . "_" . basename($data["businessDoc"]["name"]);
-          $targetFile = $targetDir . $fileName;
+            $uploadDir = __DIR__ . "/../uploads/";
 
-          if (move_uploaded_file($data["businessDoc"]["tmp_name"], $targetFile)) {
-            $companyDoc = $fileName;
-          }
+            if (!is_dir($uploadDir)) {
+                mkdir($uploadDir, 0755, true);
+            }
+
+            $ext             = pathinfo($data["businessDoc"]["name"], PATHINFO_EXTENSION);
+            $companyDocument = time() . "_" . basename($data["businessDoc"]["name"]);
+            $targetPath      = $uploadDir . $companyDocument;
+
+            if (!move_uploaded_file($data["businessDoc"]["tmp_name"], $targetPath)) {
+                $pdo->rollBack();
+                return "error";
+            }
         }
 
-        if (self::tableExists($pdo, "location") && self::columnExists($pdo, "customer", "locationID")) {
-          $newLocationID = self::saveCompanyLocation($pdo, $data);
-          if ($newLocationID) {
-            $locationID = $newLocationID;
-          }
-        }
-      }
+        // ── 4. Insert customer ────────────────────────────────────────
+        $stmt = $pdo->prepare("
+            INSERT INTO customer (
+                customerType,
+                customerFName,
+                customerLName,
+                customerMI,
+                contactPerson,
+                email,
+                phoneNumber,
+                locationID,
+                companyDocument,
+                password,
+                dateRegistered,
+                status
+            ) VALUES (
+                'company',
+                :companyName,
+                '',
+                '',
+                :contactPerson,
+                :email,
+                :phoneNumber,
+                :locationID,
+                :companyDocument,
+                :password,
+                CURDATE(),
+                'active'
+            )
+        ");
 
-      if ($province === "" && $locationID) {
-        $province = self::getLocationProvince($pdo, $locationID);
-      }
+        $stmt->bindValue(":companyName",      trim($data["companyName"]   ?? ""));
+        $stmt->bindValue(":contactPerson",    trim($data["contactPerson"] ?? ""));
+        $stmt->bindValue(":email",            trim($data["email"]         ?? ""));
+        $stmt->bindValue(":phoneNumber",      trim($data["phoneNumber"]   ?? ""));
+        $stmt->bindValue(":locationID",       $locationID, PDO::PARAM_INT);
+        $stmt->bindValue(":companyDocument",  $companyDocument);
+        $stmt->bindValue(":password",         $data["password"]);
+        $stmt->execute();
 
-      $columns = array(
-        "customerType",
-        "customerFName",
-        "customerLName",
-        "customerMI",
-        "contactPerson",
-        "email",
-        "phoneNumber",
-        "companyDocument",
-        "password",
-        "dateRegistered",
-        "status"
-      );
+        $pdo->commit();
+        return "success";
 
-      $values = array(
-        ":customerType",
-        ":customerFName",
-        ":customerLName",
-        ":customerMI",
-        ":contactPerson",
-        ":email",
-        ":phoneNumber",
-        ":companyDocument",
-        ":password",
-        "CURRENT_DATE",
-        "'active'"
-      );
-
-      foreach (array("province", "warehouseLatitude", "warehouseLongitude", "locationID") as $columnName) {
-        if (self::columnExists($pdo, "customer", $columnName)) {
-          $columns[] = $columnName;
-          $values[] = ":" . $columnName;
-        }
-      }
-
-      $stmt = $pdo->prepare("
-        INSERT INTO customer (`" . implode("`, `", $columns) . "`)
-        VALUES (" . implode(", ", $values) . ")
-      ");
-
-      $stmt->bindParam(":customerType", $data["customerType"], PDO::PARAM_STR);
-      $stmt->bindParam(":customerFName", $customerFName, PDO::PARAM_STR);
-      $stmt->bindParam(":customerLName", $customerLName, PDO::PARAM_STR);
-      $stmt->bindParam(":customerMI", $customerMI, PDO::PARAM_STR);
-      $stmt->bindParam(":contactPerson", $contactPerson, PDO::PARAM_STR);
-      $stmt->bindValue(":email", $data["email"] ?? "", PDO::PARAM_STR);
-      $stmt->bindValue(":phoneNumber", $data["phoneNumber"] ?? "", PDO::PARAM_STR);
-      $stmt->bindParam(":companyDocument", $companyDoc, PDO::PARAM_STR);
-      $stmt->bindValue(":password", $data["password"] ?? "", PDO::PARAM_STR);
-
-      if (in_array("province", $columns, true)) {
-        $stmt->bindValue(":province", $province, PDO::PARAM_STR);
-      }
-      if (in_array("warehouseLatitude", $columns, true)) {
-        $stmt->bindValue(":warehouseLatitude", $warehouseLat);
-      }
-      if (in_array("warehouseLongitude", $columns, true)) {
-        $stmt->bindValue(":warehouseLongitude", $warehouseLng);
-      }
-      if (in_array("locationID", $columns, true)) {
-        $stmt->bindValue(":locationID", $locationID, $locationID === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
-      }
-
-      $stmt->execute();
-
-      $pdo->commit();
-      return "success";
     } catch (PDOException $e) {
-      if ($pdo->inTransaction()) {
-        $pdo->rollBack();
-      }
-
-      if (isset($e->errorInfo[1]) && $e->errorInfo[1] == 1062) {
-        return "existing";
-      }
-
-      return $e->getMessage();
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        error_log("COMPANY SAVE ERROR: " . $e->getMessage());
+        return "error";
     }
+  }
+
+  static public function mdlSaveCustomer($data) {
+    if (($data["customerType"] ?? "") === "company") {
+        return self::mdlSaveCompanyCustomer($data);
+    }
+
+    return self::mdlSaveIndividualCustomer($data);
   }
 
   static public function mdlGetCustomerCredentials($tableUsers, $item, $value) {
@@ -300,5 +396,13 @@ class ModelCustomer {
     $stmt->execute();
 
     return (int) $stmt->fetchColumn() > 0;
+  }
+
+  static public function mdlGetCustomer($customerId) {
+    $pdo = (new Connection)->connect();
+    $stmt = $pdo->prepare("SELECT * FROM customer WHERE id = :customerId");
+    $stmt->bindParam(":customerId", $customerId, PDO::PARAM_INT);
+    $stmt->execute();
+    return $stmt->fetch(PDO::FETCH_ASSOC);
   }
 }

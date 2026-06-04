@@ -1,5 +1,6 @@
 <?php
 class ControllerEmployee {
+
   static public function ctrEmployeeList() {
     return (new ModelEmployee)->mdlEmployeeList();
   }
@@ -101,5 +102,9 @@ class ControllerEmployee {
     }
 
     return "employee";
+  }
+
+  static public function ctrGetEmployee($employeeId) {
+    return (new ModelEmployee)->mdlGetEmployee($employeeId);
   }
 }
