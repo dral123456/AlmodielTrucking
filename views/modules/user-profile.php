@@ -38,7 +38,7 @@ if (!$user) {
 }
 
 // Name
-$displayName = $isCustomerIndividual || $isCustomerCompany
+$displayName = ($isCustomerIndividual || $isCustomerCompany)
     ? trim($user["customerFName"] . " " . ($user["customerMI"] ?? '') . " " . $user["customerLName"])
     : trim($user["empFName"] . " " . $user["empMI"] . " " . $user["empLName"]);
 
@@ -56,10 +56,10 @@ if ($location) {
 }
 ?>
 
-<!-- ===================== THEME ===================== -->
+<!-- ===================== THEME STYLE ===================== -->
 <style>
 
-/* LIGHT MODE */
+/* LIGHT MODE VARIABLES */
 :root {
     --card-bg: #ffffff;
     --card-header: #f8f9fa;
@@ -67,61 +67,125 @@ if ($location) {
     --muted: #6c757d;
 }
 
-/* DARK MODE */
-body.dark-mode,
-html.dark-mode {
+/* LIGHT MODE CARDS */
+body .card {
+    background: var(--card-bg) !important;
+    color: var(--text) !important;
+    border: 1px solid rgba(0,0,0,0.1) !important;
+}
+
+body .card-header {
+    background: var(--card-header) !important;
+    color: var(--text) !important;
+}
+
+body .text-muted {
+    color: var(--muted) !important;
+}
+
+/* DARK MODE VARIABLES */
+body.dark-mode {
     --card-bg: #1b1b28;
     --card-header: #242436;
     --text: #e9ecef;
     --muted: #a9b0bb;
 }
 
-/* FORCE CARDS */
-body.dark-mode .card,
-html.dark-mode .card {
+/* DARK MODE CARDS */
+body.dark-mode .card {
     background: var(--card-bg) !important;
     color: var(--text) !important;
     border: 1px solid rgba(255,255,255,0.1) !important;
 }
 
-body.dark-mode .card-header,
-html.dark-mode .card-header {
+body.dark-mode .card-header {
     background: var(--card-header) !important;
     color: var(--text) !important;
 }
 
-body.dark-mode .bg-white,
-html.dark-mode .bg-white {
+body.dark-mode .bg-white {
     background: var(--card-header) !important;
 }
 
-body.dark-mode .text-muted,
-html.dark-mode .text-muted {
+body.dark-mode .text-muted {
     color: var(--muted) !important;
 }
 
-/* HEADER */
-body.dark-mode {
-    --title-color: #66b2ff;
-}
-
-/* BUTTON */
-.theme-toggle {
-    position: fixed;
-    top: 15px;
-    right: 15px;
-    z-index: 9999;
-    padding: 8px 14px;
-    border: none;
-    border-radius: 20px;
-    cursor: pointer;
-}
 </style>
 
-<!-- ===================== TOGGLE BUTTON ===================== -->
-<button class="theme-toggle btn btn-primary" onclick="toggleTheme()">
-    Toggle Theme
-</button>
+<!-- ===================== AUTO THEME FIX ===================== -->
+<script>
+
+(function () {
+
+    const theme = localStorage.getItem("theme");
+
+    // 🔥 IMPORTANT: ALWAYS RESET FIRST
+    document.body.classList.remove("dark-mode");
+    document.documentElement.classList.remove("dark-mode");
+
+    // APPLY DARK ONLY IF SAVED
+    if (theme === "dark") {
+        document.body.classList.add("dark-mode");
+        document.documentElement.classList.add("dark-mode");
+    }
+
+})();
+
+// THEME TOGGLE FUNCTION
+window.toggleTheme = function(mode) {
+    if (mode === "light") {
+        // REMOVE dark-mode class
+        document.body.classList.remove("dark-mode");
+        document.documentElement.classList.remove("dark-mode");
+        localStorage.setItem("theme", "light");
+
+        // Update button active states
+        document.getElementById("lightModeBtn").classList.add("active");
+        document.getElementById("darkModeBtn").classList.remove("active");
+    } else if (mode === "dark") {
+        // ADD dark-mode class
+        document.body.classList.add("dark-mode");
+        document.documentElement.classList.add("dark-mode");
+        localStorage.setItem("theme", "dark");
+
+        // Update button active states
+        document.getElementById("lightModeBtn").classList.remove("active");
+        document.getElementById("darkModeBtn").classList.add("active");
+    }
+};
+
+// ATTACH CLICK LISTENERS TO BUTTONS
+document.addEventListener("DOMContentLoaded", function() {
+    const lightModeBtn = document.getElementById("lightModeBtn");
+    const darkModeBtn = document.getElementById("darkModeBtn");
+
+    if (lightModeBtn) {
+        lightModeBtn.addEventListener("click", function(e) {
+            e.preventDefault();
+            toggleTheme("light");
+        });
+    }
+
+    if (darkModeBtn) {
+        darkModeBtn.addEventListener("click", function(e) {
+            e.preventDefault();
+            toggleTheme("dark");
+        });
+    }
+
+    // Set initial button state based on current theme
+    const currentTheme = localStorage.getItem("theme") || "light";
+    if (currentTheme === "dark") {
+        if (lightModeBtn) lightModeBtn.classList.remove("active");
+        if (darkModeBtn) darkModeBtn.classList.add("active");
+    } else {
+        if (lightModeBtn) lightModeBtn.classList.add("active");
+        if (darkModeBtn) darkModeBtn.classList.remove("active");
+    }
+});
+
+</script>
 
 <!-- ===================== HEADER ===================== -->
 <div class="main-profile-bg position-relative mb-4">
@@ -138,7 +202,7 @@ body.dark-mode {
 
 </div>
 
-<!-- ===================== PROFILE CARD ===================== -->
+<!-- PROFILE CARD -->
 <div class="card shadow-sm mb-4">
     <div class="card-body d-flex gap-3 align-items-center">
 
@@ -155,7 +219,7 @@ body.dark-mode {
     </div>
 </div>
 
-<!-- ===================== DETAILS ===================== -->
+<!-- DETAILS -->
 <div class="row g-4">
 
     <div class="col-lg-4">
@@ -171,7 +235,7 @@ body.dark-mode {
 
     <div class="col-lg-8">
         <div class="card">
-            <div class="card-header">Personal Info</div>
+            <div class="card-header">Personal Information</div>
             <div class="card-body">
 
                 <?php if ($isCustomerIndividual): ?>
@@ -188,30 +252,3 @@ body.dark-mode {
     </div>
 
 </div>
-
-<!-- ===================== DARK MODE SCRIPT ===================== -->
-<script>
-
-// Load saved theme
-(function () {
-    const theme = localStorage.getItem("theme");
-
-    if (theme === "dark") {
-        document.body.classList.add("dark-mode");
-        document.documentElement.classList.add("dark-mode");
-    }
-})();
-
-// Toggle theme
-function toggleTheme() {
-    document.body.classList.toggle("dark-mode");
-    document.documentElement.classList.toggle("dark-mode");
-
-    if (document.body.classList.contains("dark-mode")) {
-        localStorage.setItem("theme", "dark");
-    } else {
-        localStorage.setItem("theme", "light");
-    }
-}
-
-</script>
