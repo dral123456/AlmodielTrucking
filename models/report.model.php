@@ -5,15 +5,31 @@ class ModelReport {
 
     static public function mdlSummary() {
         $pdo = (new Connection)->connect();
+        self::ensureDeliveryChargeTable($pdo);
+        self::ensureExpenseTable($pdo);
 
-        $billingTotal = self::scalar($pdo, "SELECT COALESCE(SUM(price), 0) FROM booking");
-        $bookingCount = self::scalar($pdo, "SELECT COUNT(*) FROM booking");
+        $successfulStatusSql = self::successfulStatusSql();
+        $billingTotal = self::scalar($pdo, "
+            SELECT COALESCE(SUM(b.price), 0) + COALESCE((
+                SELECT SUM(dc.amount)
+                FROM deliverycharge dc
+                INNER JOIN booking b2 ON b2.bookingID = dc.bookingID
+                WHERE " . self::successfulStatusSql("b2") . "
+            ), 0)
+            FROM booking b
+            WHERE {$successfulStatusSql}
+        ");
+        $bookingCount = self::scalar($pdo, "SELECT COUNT(*) FROM booking WHERE {$successfulStatusSql}");
         $pendingCount = self::bookingStatusCount($pdo, "pending");
         $inTransitCount = self::bookingStatusCount($pdo, "in-transit");
         $completedCount = self::bookingStatusCount($pdo, "completed");
 
         $expenseMeta = self::resolveMoneyTable($pdo, array("expenses", "expense"), array("amount", "cost", "total", "price"));
-        $salaryMeta = self::resolveMoneyTable($pdo, array("staffsalary", "staff_salary", "employee_salary", "payroll", "salary"), array("amount", "salary", "grossPay", "netPay", "rate", "pay"));
+        $salaryMeta = self::resolveSalaryTable($pdo);
+
+        $salaryTotalSql = $salaryMeta
+            ? "SELECT COALESCE(SUM(" . self::quoteIdentifier($salaryMeta["amountColumn"]) . "), 0) FROM " . self::quoteIdentifier($salaryMeta["table"]) . ($salaryMeta["statusColumn"] ? " WHERE " . self::quoteIdentifier($salaryMeta["statusColumn"]) . " <> 'cancelled'" : "")
+            : null;
 
         return array(
             "billingTotal" => (float) $billingTotal,
@@ -22,7 +38,7 @@ class ModelReport {
             "inTransitCount" => (int) $inTransitCount,
             "completedCount" => (int) $completedCount,
             "expenseTotal" => $expenseMeta ? (float) self::scalar($pdo, "SELECT COALESCE(SUM(" . self::quoteIdentifier($expenseMeta["amountColumn"]) . "), 0) FROM " . self::quoteIdentifier($expenseMeta["table"])) : 0,
-            "salaryTotal" => $salaryMeta ? (float) self::scalar($pdo, "SELECT COALESCE(SUM(" . self::quoteIdentifier($salaryMeta["amountColumn"]) . "), 0) FROM " . self::quoteIdentifier($salaryMeta["table"])) : 0,
+            "salaryTotal" => $salaryMeta ? (float) self::scalar($pdo, $salaryTotalSql) : 0,
             "staffCount" => (int) self::scalar($pdo, "SELECT COUNT(*) FROM employee"),
             "activeStaffCount" => (int) self::scalar($pdo, "SELECT COUNT(*) FROM employee WHERE empStatus = 'active'"),
             "hasExpenseTable" => $expenseMeta !== null,
@@ -31,7 +47,10 @@ class ModelReport {
     }
 
     static public function mdlBillingRows() {
-        $stmt = (new Connection)->connect()->prepare("
+        $pdo = (new Connection)->connect();
+        self::ensureDeliveryChargeTable($pdo);
+
+        $stmt = $pdo->prepare("
             SELECT
                 b.bookingID,
                 b.tripID,
@@ -39,9 +58,34 @@ class ModelReport {
                 b.price,
                 b.status,
                 COALESCE(NULLIF(TRIM(CONCAT(c.customerFName, ' ', c.customerLName)), ''), c.contactPerson, 'Customer') AS customerName,
-                c.customerType
+                c.customerType,
+                destination.province AS destinationProvince,
+                destination.city AS destinationCity,
+                destination.barangay AS destinationBarangay,
+                destination.street AS destinationStreet,
+                t.plateNumber,
+                t.type AS truckSize,
+                COALESCE(extra.extraAmount, 0) AS extraAmount,
+                COALESCE(extra.extraTypes, '') AS extraTypes,
+                b.price + COALESCE(extra.extraAmount, 0) AS grossAmount
             FROM booking b
             LEFT JOIN customer c ON c.id = b.customerID
+            LEFT JOIN location destination ON destination.locationID = b.destinationLocationID
+            LEFT JOIN (
+                SELECT tripID, MIN(truckID) AS truckID
+                FROM tripemployee
+                GROUP BY tripID
+            ) tripTruck ON tripTruck.tripID = b.tripID
+            LEFT JOIN truck t ON t.id = tripTruck.truckID
+            LEFT JOIN (
+                SELECT
+                    bookingID,
+                    SUM(amount) AS extraAmount,
+                    GROUP_CONCAT(DISTINCT chargeType ORDER BY chargeType SEPARATOR ', ') AS extraTypes
+                FROM deliverycharge
+                GROUP BY bookingID
+            ) extra ON extra.bookingID = b.bookingID
+            WHERE " . self::successfulStatusSql("b") . "
             ORDER BY b.pickupDateTime DESC, b.bookingID DESC
             LIMIT 50
         ");
@@ -50,8 +94,52 @@ class ModelReport {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    static public function mdlSaveDeliveryCharge($data) {
+        $pdo = (new Connection)->connect();
+        self::ensureDeliveryChargeTable($pdo);
+
+        $bookingID = (int) ($data["bookingID"] ?? 0);
+        $tripID = (int) ($data["tripID"] ?? 0);
+        $amount = (float) ($data["amount"] ?? 0);
+        $chargeType = strtolower(trim((string) ($data["chargeType"] ?? "hauling")));
+
+        if ($bookingID <= 0 || $tripID <= 0 || $amount < 0 || !in_array($chargeType, array("hauling", "others"), true)) {
+            return "invalid";
+        }
+
+        $stmt = $pdo->prepare("
+            INSERT INTO deliverycharge (
+                bookingID,
+                tripID,
+                chargeType,
+                amount,
+                notes,
+                createdBy,
+                dateCreated
+            ) VALUES (
+                :bookingID,
+                :tripID,
+                :chargeType,
+                :amount,
+                :notes,
+                :createdBy,
+                NOW()
+            )
+        ");
+
+        $stmt->bindValue(":bookingID", $bookingID, PDO::PARAM_INT);
+        $stmt->bindValue(":tripID", $tripID, PDO::PARAM_INT);
+        $stmt->bindValue(":chargeType", $chargeType, PDO::PARAM_STR);
+        $stmt->bindValue(":amount", $amount, PDO::PARAM_STR);
+        $stmt->bindValue(":notes", trim((string) ($data["notes"] ?? "")), PDO::PARAM_STR);
+        self::bindNullableInt($stmt, ":createdBy", $data["createdBy"] ?? null);
+
+        return $stmt->execute() ? "success" : "error";
+    }
+
     static public function mdlExpenseRows() {
         $pdo = (new Connection)->connect();
+        self::ensureExpenseTable($pdo);
         $meta = self::resolveMoneyTable($pdo, array("expenses", "expense"), array("amount", "cost", "total", "price"));
 
         if (!$meta) {
@@ -83,6 +171,74 @@ class ModelReport {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    static public function mdlExpenseTruckRows() {
+        $stmt = (new Connection)->connect()->prepare("
+            SELECT id, plateNumber, brand, type
+            FROM truck
+            WHERE status = 'active'
+            ORDER BY plateNumber
+        ");
+
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    static public function mdlSaveExpense($data) {
+        $pdo = (new Connection)->connect();
+        self::ensureExpenseTable($pdo);
+
+        $expenseDate = trim((string) ($data["expenseDate"] ?? ""));
+        $category = strtolower(trim((string) ($data["category"] ?? "")));
+        $amount = (float) ($data["amount"] ?? 0);
+        $description = trim((string) ($data["description"] ?? ""));
+        $referenceNo = trim((string) ($data["referenceNo"] ?? ""));
+        $status = strtolower(trim((string) ($data["status"] ?? "paid")));
+        $truckID = (int) ($data["truckID"] ?? 0);
+        $createdBy = (int) ($data["createdBy"] ?? 0);
+
+        $allowedCategories = array("fuel", "truck_maintenance", "employee_salary", "truck_document", "toll", "parking", "repair", "office", "other");
+        $allowedStatuses = array("pending", "approved", "paid", "cancelled");
+
+        if ($expenseDate === "" || !in_array($category, $allowedCategories, true) || $amount <= 0 || !in_array($status, $allowedStatuses, true)) {
+            return "invalid";
+        }
+
+        $stmt = $pdo->prepare("
+            INSERT INTO expenses (
+                expenseDate,
+                category,
+                amount,
+                description,
+                truckID,
+                referenceNo,
+                status,
+                createdBy,
+                dateCreated
+            ) VALUES (
+                :expenseDate,
+                :category,
+                :amount,
+                :description,
+                :truckID,
+                :referenceNo,
+                :status,
+                :createdBy,
+                NOW()
+            )
+        ");
+
+        $stmt->bindValue(":expenseDate", $expenseDate, PDO::PARAM_STR);
+        $stmt->bindValue(":category", $category, PDO::PARAM_STR);
+        $stmt->bindValue(":amount", $amount, PDO::PARAM_STR);
+        $stmt->bindValue(":description", $description, PDO::PARAM_STR);
+        self::bindNullableInt($stmt, ":truckID", $truckID);
+        $stmt->bindValue(":referenceNo", $referenceNo, PDO::PARAM_STR);
+        $stmt->bindValue(":status", $status, PDO::PARAM_STR);
+        self::bindNullableInt($stmt, ":createdBy", $createdBy);
+
+        return $stmt->execute() ? "success" : "error";
+    }
+
     static public function mdlStaffRows() {
         $stmt = (new Connection)->connect()->prepare("
             SELECT
@@ -106,7 +262,7 @@ class ModelReport {
 
     static public function mdlSalaryRows() {
         $pdo = (new Connection)->connect();
-        $meta = self::resolveMoneyTable($pdo, array("staffsalary", "staff_salary", "employee_salary", "payroll", "salary"), array("amount", "salary", "grossPay", "netPay", "rate", "pay"));
+        $meta = self::resolveSalaryTable($pdo);
 
         if (!$meta) {
             return array();
@@ -114,10 +270,18 @@ class ModelReport {
 
         $table = $meta["table"];
         $amountColumn = $meta["amountColumn"];
-        $idColumn = self::firstExistingColumn($pdo, $table, array("salaryID", "payrollID", "id"));
-        $empColumn = self::firstExistingColumn($pdo, $table, array("empID", "employeeID", "employeeId", "employee_id"));
-        $dateColumn = self::firstExistingColumn($pdo, $table, array("salaryDate", "payrollDate", "dateCreated", "createdAt", "date"));
-        $statusColumn = self::firstExistingColumn($pdo, $table, array("status", "salaryStatus", "payrollStatus"));
+        $idColumn = $meta["idColumn"];
+        $empColumn = $meta["empColumn"];
+        $dateColumn = $meta["dateColumn"];
+        $statusColumn = $meta["statusColumn"];
+        $periodStartColumn = $meta["periodStartColumn"];
+        $periodEndColumn = $meta["periodEndColumn"];
+        $grossColumn = $meta["grossColumn"];
+        $deductionColumn = $meta["deductionColumn"];
+        $payTypeColumn = $meta["payTypeColumn"];
+        $tripColumn = $meta["tripColumn"];
+        $creditedBookingColumn = $meta["creditedBookingColumn"];
+        $creditedDistanceColumn = $meta["creditedDistanceColumn"];
 
         $join = $empColumn ? "LEFT JOIN employee e ON e.id = s." . self::quoteIdentifier($empColumn) : "";
         $employeeName = $empColumn ? "COALESCE(NULLIF(TRIM(CONCAT(e.empFName, ' ', e.empLName)), ''), 'Employee')" : "'Employee'";
@@ -126,8 +290,16 @@ class ModelReport {
             SELECT
                 " . self::selectAlias($idColumn, "recordID", "s") . ",
                 {$employeeName} AS employeeName,
+                " . self::selectAlias($periodStartColumn, "periodStart", "s") . ",
+                " . self::selectAlias($periodEndColumn, "periodEnd", "s") . ",
+                " . self::selectAlias($tripColumn, "tripID", "s") . ",
+                " . self::selectAlias($creditedBookingColumn, "creditedBookingID", "s") . ",
+                " . self::selectAlias($creditedDistanceColumn, "creditedDistanceKm", "s") . ",
                 " . self::selectAlias($dateColumn, "recordDate", "s") . ",
                 s." . self::quoteIdentifier($amountColumn) . " AS amount,
+                " . self::selectAlias($grossColumn, "grossPay", "s") . ",
+                " . self::selectAlias($deductionColumn, "deductions", "s") . ",
+                " . self::selectAlias($payTypeColumn, "payType", "s") . ",
                 " . self::selectAlias($statusColumn, "status", "s") . "
             FROM " . self::quoteIdentifier($table) . " s
             {$join}
@@ -147,6 +319,63 @@ class ModelReport {
         return $stmt->fetchColumn();
     }
 
+    static private function ensureDeliveryChargeTable($pdo) {
+        $pdo->exec("
+            CREATE TABLE IF NOT EXISTS deliverycharge (
+                deliveryChargeID int NOT NULL AUTO_INCREMENT,
+                bookingID int NOT NULL,
+                tripID int NOT NULL,
+                chargeType enum('hauling','others') NOT NULL DEFAULT 'hauling',
+                amount double NOT NULL DEFAULT 0,
+                notes text NULL,
+                createdBy int NULL,
+                dateCreated datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (deliveryChargeID),
+                KEY idx_deliverycharge_bookingID (bookingID),
+                KEY idx_deliverycharge_tripID (tripID)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+        ");
+    }
+
+    static private function ensureExpenseTable($pdo) {
+        $pdo->exec("
+            CREATE TABLE IF NOT EXISTS expenses (
+                expenseID int NOT NULL AUTO_INCREMENT,
+                expenseDate date NOT NULL,
+                category enum('fuel','truck_maintenance','employee_salary','truck_document','toll','parking','repair','office','other') NOT NULL,
+                amount double NOT NULL DEFAULT 0,
+                description text NULL,
+                truckID int NULL,
+                empID int NULL,
+                tripID int NULL,
+                bookingID int NULL,
+                referenceNo varchar(100) NULL,
+                receiptImage varchar(255) NULL,
+                status enum('pending','approved','paid','cancelled') NOT NULL DEFAULT 'paid',
+                createdBy int NULL,
+                dateCreated datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (expenseID),
+                KEY idx_expenses_expenseDate (expenseDate),
+                KEY idx_expenses_category (category),
+                KEY idx_expenses_truckID (truckID)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+        ");
+    }
+
+    static private function bindNullableInt($stmt, $key, $value) {
+        if ($value === null || $value === "") {
+            $stmt->bindValue($key, null, PDO::PARAM_NULL);
+            return;
+        }
+
+        $stmt->bindValue($key, (int) $value, PDO::PARAM_INT);
+    }
+
+    static private function successfulStatusSql($alias = null) {
+        $prefix = $alias ? self::quoteIdentifier($alias) . "." : "";
+        return $prefix . "`status` IN ('completed', 'delivered', 'success', 'successful')";
+    }
+
     static private function scalar($pdo, $sql) {
         $stmt = $pdo->prepare($sql);
         $stmt->execute();
@@ -164,6 +393,38 @@ class ModelReport {
             if ($amountColumn) {
                 return array("table" => $table, "amountColumn" => $amountColumn);
             }
+        }
+
+        return null;
+    }
+
+    static private function resolveSalaryTable($pdo) {
+        foreach (array("staffsalary", "staff_salary", "employee_salary", "payroll", "salary") as $table) {
+            if (!self::tableExists($pdo, $table)) {
+                continue;
+            }
+
+            $amountColumn = self::firstExistingColumn($pdo, $table, array("netPay", "amount", "salary", "grossPay", "rate", "pay"));
+            if (!$amountColumn) {
+                continue;
+            }
+
+            return array(
+                "table" => $table,
+                "amountColumn" => $amountColumn,
+                "idColumn" => self::firstExistingColumn($pdo, $table, array("salaryID", "payrollID", "id")),
+                "empColumn" => self::firstExistingColumn($pdo, $table, array("empID", "employeeID", "employeeId", "employee_id")),
+                "dateColumn" => self::firstExistingColumn($pdo, $table, array("datePaid", "salaryDate", "payrollDate", "dateCreated", "createdAt", "date")),
+                "statusColumn" => self::firstExistingColumn($pdo, $table, array("status", "salaryStatus", "payrollStatus")),
+                "periodStartColumn" => self::firstExistingColumn($pdo, $table, array("payPeriodStart", "periodStart", "salaryStart")),
+                "periodEndColumn" => self::firstExistingColumn($pdo, $table, array("payPeriodEnd", "periodEnd", "salaryEnd")),
+                "tripColumn" => self::firstExistingColumn($pdo, $table, array("tripID", "tripId")),
+                "creditedBookingColumn" => self::firstExistingColumn($pdo, $table, array("creditedBookingID", "bookingID")),
+                "creditedDistanceColumn" => self::firstExistingColumn($pdo, $table, array("creditedDistanceKm", "distanceKm")),
+                "grossColumn" => self::firstExistingColumn($pdo, $table, array("grossPay", "grossAmount", "salary")),
+                "deductionColumn" => self::firstExistingColumn($pdo, $table, array("deductions", "deductionAmount", "totalDeductions")),
+                "payTypeColumn" => self::firstExistingColumn($pdo, $table, array("payType", "salaryType", "rateType"))
+            );
         }
 
         return null;

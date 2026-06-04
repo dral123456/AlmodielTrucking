@@ -4,144 +4,380 @@ $(document).ready(function () {
   let destinationMarker = null;
   let currentStep = 0;
   const totalSteps = 4;
+  let NEGROS_BOUNDS = null;
+  // Track locationIDs chosen from existing DB records (skip re-saving)
+  let pickedPickupLocationID    = null;
+  let pickedDestinationLocationID = null;
+  let bookingDatePicker = null;
+  let truckBookedDates = {};
+  let selectedCalendarTruckID = '';
+  let truckCalendarLoaded = false;
+  let truckCalendarAllUnavailable = false;
+  let truckCalendarStatus = '';
+  let truckCalendarActiveTrip = null;
 
-  const pickupIcon = createMarkerIcon('primary');
-  const destinationIcon = createMarkerIcon('danger');
+  let pickupIcon     = null;
+  let destinationIcon = null;
+
+  // ─── Role flag — set by PHP via window globals ───────────────────────────────
+  const IS_CUSTOMER_INDIVIDUAL = !!window.bookingIsCustomerIndividual;
+  const SESSION_CUSTOMER_ID    = window.bookingSessionCustomerID || '';
 
   initMap();
   updateStepper();
-  syncAssistantOptions();
+  initBookingDatePicker();
+  if (!IS_CUSTOMER_INDIVIDUAL) syncAssistantOptions();
+  initLocationSearch('pickup');
+  initLocationSearch('destination');
 
   $(document).on('change', 'input[name="bookingMapMode"]', updateMapStatus);
 
-  $(document).on('change', '#bookingTruck', function () {
-    applyTruckDefaultCrew($(this).val());
-  });
+  if (!IS_CUSTOMER_INDIVIDUAL) {
+    $(document).on('change', '#bookingTruck', function () {
+      applyTruckDefaultCrew($(this).val());
+      lookupTariffPrice();
+      checkTruckAvailability(false);
+      loadTruckBookedDates($(this).val());
+    });
 
-  $(document).on('change', '#bookingCustomer', function () {
-    applyCompanyWarehousePickup();
-  });
+    $(document).on('change', '#bookingPickupDateTime', function () {
+      checkTruckAvailability(false);
+    });
 
-  $(document).on('change', '#bookingDriver, .booking-assistant', function () {
-    syncAssistantOptions();
-  });
+    $(document).on('change', '#bookingCustomer', function () {
+      applyCompanyWarehousePickup();
+      lookupTariffPrice();
+    });
 
-  $(document).on('click', '#bookingAddAssistant', function () {
-    addAssistantSelect('');
-    syncAssistantOptions();
-  });
+    $(document).on('input change', '#bookingFuelPrice', lookupTariffPrice);
+    $(document).on('input change', '#bookingPrice', function () {
+      if (!$(this).data('settingTariffPrice')) {
+        $(this).data('tariffAutofilled', false);
+      }
+    });
 
-  $(document).on('click', '.booking-remove-assistant', function () {
-    $(this).closest('.booking-assistant-item').remove();
-    syncAssistantOptions();
-  });
+    $(document).on('change', '#bookingDriver, .booking-assistant', function () {
+      syncAssistantOptions();
+    });
+
+    $(document).on('click', '#bookingAddAssistant', function () {
+      addAssistantSelect('');
+      syncAssistantOptions();
+    });
+
+    $(document).on('click', '.booking-remove-assistant', function () {
+      $(this).closest('.booking-assistant-item').remove();
+      syncAssistantOptions();
+    });
+  }
 
   $(document).on('click', '.booking-step-pill', function () {
     const targetStep = Number($(this).data('step'));
-
-    if (targetStep <= currentStep) {
-      currentStep = targetStep;
-      updateStepper();
-      return;
-    }
-
+    if (targetStep <= currentStep) { currentStep = targetStep; updateStepper(); return; }
     for (let step = currentStep; step < targetStep; step++) {
       const missing = validateStep(step);
-      if (missing.length > 0) {
-        showMissingModal(missing);
-        return;
-      }
+      if (missing.length > 0) { showMissingModal(missing); return; }
     }
-
     currentStep = targetStep;
     updateStepper();
   });
 
   $(document).on('click', '#bookingBtnNext', function () {
     const missing = validateStep(currentStep);
-
-    if (missing.length > 0) {
-      showMissingModal(missing);
-      return;
-    }
-
-    if (currentStep < totalSteps - 1) {
-      currentStep++;
-      updateStepper();
-    }
+    if (missing.length > 0) { showMissingModal(missing); return; }
+    if (currentStep < totalSteps - 1) { currentStep++; updateStepper(); }
   });
 
   $(document).on('click', '#bookingBtnPrev', function () {
-    if (currentStep > 0) {
-      currentStep--;
-      updateStepper();
-    }
+    if (currentStep > 0) { currentStep--; updateStepper(); }
   });
 
   $(document).on('click', '#toggleSidebar', function () {
-    setTimeout(function () {
-      if (map) {
-        map.invalidateSize();
+    setTimeout(function () { if (map) map.invalidateSize(); }, 250);
+  });
+
+  $(window).on('resize', function () { if (map) map.invalidateSize(); });
+
+  // Clear autofill flag when user manually edits address fields
+  $(document).on('input',
+    '#pickupProvince, #pickupCity, #pickupBarangay, #pickupStreet, #pickupDescription, ' +
+    '#destinationProvince, #destinationCity, #destinationBarangay, #destinationStreet, #destinationDescription',
+    function () {
+      $(this).data('autofilled', false);
+      if (!IS_CUSTOMER_INDIVIDUAL && this.id.indexOf('destination') === 0) {
+        lookupTariffPrice();
       }
-    }, 250);
-  });
-
-  $(window).on('resize', function () {
-    if (map) {
-      map.invalidateSize();
     }
-  });
-
-  $(document).on('input', '#pickupProvince, #pickupCity, #pickupBarangay, #pickupStreet, #pickupDescription, #destinationProvince, #destinationCity, #destinationBarangay, #destinationStreet, #destinationDescription', function () {
-    $(this).data('autofilled', false);
-  });
+  );
 
   $(document).on('click', '#bookingBtnReset', function () {
-    $('#bookingCustomer, #bookingPickupDateTime, #bookingPrice, #bookingTruck, #bookingDriver').val('');
-    $('#bookingAssistantList .booking-assistant-item').slice(2).remove();
-    $('.booking-assistant').val('');
-    $('#cargoType, #cargoQuantity, #cargoCondition, #cargoDescription, #cargoSpecialHandling').val('');
+    if (!IS_CUSTOMER_INDIVIDUAL) {
+      $('#bookingCustomer, #bookingPrice, #bookingFuelPrice, #bookingTruck, #bookingDriver').val('');
+      $('#bookingCrewSalary, #bookingCrewAllowance').val('');
+      $('#bookingPrice').data('tariffAutofilled', false).data('settingTariffPrice', false);
+      $('#bookingAssistantList .booking-assistant-item').slice(2).remove();
+      $('.booking-assistant').val('');
+      loadTruckBookedDates('');
+    }
+    if (bookingDatePicker) bookingDatePicker.clear();
+    else $('#bookingPickupDateTime').val('');
+    if (!IS_CUSTOMER_INDIVIDUAL) {
+      setTruckAvailabilityMessage('Select a pickup date and truck to check availability.', 'muted');
+      setBookingCalendarStatus('Select a truck to view its date availability.', 'muted');
+    }
+    $('#bookingCargoList .booking-cargo-item').slice(1).remove();
+    $('#bookingCargoList .cargo-type, #bookingCargoList .cargo-quantity, #cargoCondition, #cargoDescription, #cargoSpecialHandling').val('');
     $('#pickupProvince, #pickupCity, #pickupBarangay, #pickupStreet, #pickupDescription, #pickupLatitude, #pickupLongitude').val('');
     $('#destinationProvince, #destinationCity, #destinationBarangay, #destinationStreet, #destinationDescription, #destinationLatitude, #destinationLongitude').val('');
-    setPickupLocked(false);
+    if (!IS_CUSTOMER_INDIVIDUAL) setPickupLocked(false);
     $('.is-invalid').removeClass('is-invalid');
-
-    if (pickupMarker) {
-      map.removeLayer(pickupMarker);
-      pickupMarker = null;
-    }
-
-    if (destinationMarker) {
-      map.removeLayer(destinationMarker);
-      destinationMarker = null;
-    }
-
+    if (pickupMarker)      { map.removeLayer(pickupMarker);      pickupMarker      = null; }
+    if (destinationMarker) { map.removeLayer(destinationMarker); destinationMarker = null; }
     $('#pickupCoordinateText').text('Not pinned');
     $('#destinationCoordinateText').text('Not pinned');
     $('#mapModePickup').prop('checked', true);
+    pickedPickupLocationID      = null;
+    pickedDestinationLocationID = null;
     currentStep = 0;
     updateStepper();
     updateMapStatus();
-    syncAssistantOptions();
+    if (!IS_CUSTOMER_INDIVIDUAL) syncAssistantOptions();
   });
 
   $(document).on('click', '#bookingBtnRegister', function () {
     const missing = validateInputs();
+    if (missing.length > 0) { showMissingModal(missing); return; }
 
-    if (missing.length > 0) {
-      showMissingModal(missing);
+    if (!IS_CUSTOMER_INDIVIDUAL) {
+      checkTruckAvailability(true).then(function (available) {
+        if (available) showConfirmModal();
+      });
       return;
     }
 
     showConfirmModal();
   });
 
-  function initMap() {
-    if (typeof L === 'undefined' || !document.getElementById('bookingMap')) {
-      return;
+  $("#bookingAddCargo").on("click", function () {
+    console.log("clicked");
+    
+    $(".booking-cargo-item").append(`
+      <div class="row g-2 align-items-end mt-2 booking-cargo-item-row">
+        <div class="col-12 col-md-7">
+          <input type="text" class="form-control cargo-type" maxlength="100" placeholder="e.g. Construction materials">
+        </div>
+        <div class="col-12 col-md-4">
+          <input type="number" class="form-control cargo-quantity" min="1" step="1" placeholder="Quantity">
+        </div>
+        <div class="col-12 col-md-1 d-grid">
+          <button class="btn btn-outline-danger booking-remove-cargo" type="button" aria-label="Remove cargo" disabled>
+            <i class="ri-close-line"></i>
+          </button>
+        </div>
+      </div>`
+    );
+  });
+  $(document).on("click", ".booking-remove-cargo:not([disabled])", function () {
+    $(this).closest(".booking-cargo-item-row").remove();
+  });
+
+  // ─── Location search with local-first suggestions ──────────────────────────
+  function initLocationSearch(type) {
+    const searchId     = '#' + type + 'MapSearch';
+    const suggestId    = '#' + type + 'MapSuggestions';
+    const searchBtnId  = '#' + type + 'MapSearchBtn';
+    let debounceTimer  = null;
+
+    $(document).on('input', searchId, function () {
+      clearTimeout(debounceTimer);
+      const query = $(this).val().trim();
+      if (query.length < 2) { $(suggestId).hide().empty(); return; }
+
+      debounceTimer = setTimeout(function () {
+        fetchLocalSuggestions(query, suggestId, type);
+      }, 280);
+    });
+
+    $(document).on('click', function (e) {
+      if (!$(e.target).closest(searchId + ', ' + suggestId).length) {
+        $(suggestId).hide();
+      }
+    });
+
+    $(document).on('click', searchBtnId, function () {
+      doSearch(type);
+    });
+
+    $(document).on('keydown', searchId, function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); doSearch(type); }
+    });
+  }
+
+  function fetchLocalSuggestions(query, suggestId, type) {
+    $.getJSON('ajax/location_search.ajax.php', { q: query })
+      .done(function (results) {
+        const $box = $(suggestId);
+        $box.empty();
+
+        if (!results || !results.length) { $box.hide(); return; }
+
+        results.forEach(function (loc) {
+          const $item = $('<div class="location-suggestion-item"></div>').text(loc.label);
+          $item.on('click', function () {
+            applyLocationSuggestion(type, loc);
+            $box.hide().empty();
+            $('#' + type + 'MapSearch').val(loc.label);
+          });
+          $box.append($item);
+        });
+
+        $box.show();
+      })
+      .fail(function () { /* silently ignore */ });
+  }
+
+  function applyLocationSuggestion(type, loc) {
+    setAddressFields(type, {
+      province:    loc.province,
+      city:        loc.city,
+      barangay:    loc.barangay,
+      street:      loc.street,
+      description: loc.description,
+    });
+
+    const latlng = L.latLng(loc.lat, loc.lng);
+    if (type === 'pickup') {
+      if (!pickupMarker) {
+        pickupMarker = L.marker(latlng, { draggable: true, icon: pickupIcon }).addTo(map);
+        pickupMarker.on('dragend', function () {
+          const pos = pickupMarker.getLatLng();
+          setPickupCoordinates(pos.lat, pos.lng);
+          fillAddressFromPin('pickup', pos.lat, pos.lng);
+          pickedPickupLocationID = null;
+        });
+      } else {
+        pickupMarker.setLatLng(latlng);
+      }
+      setPickupCoordinates(loc.lat, loc.lng);
+      pickedPickupLocationID = loc.locationID;
+    } else {
+      if (!destinationMarker) {
+        destinationMarker = L.marker(latlng, { draggable: true, icon: destinationIcon }).addTo(map);
+        destinationMarker.on('dragend', function () {
+          const pos = destinationMarker.getLatLng();
+          if (!isInNegros(pos)) {
+            destinationMarker.setLatLng(L.latLng(
+              Math.min(Math.max(pos.lat, 9.0), 11.0),
+              Math.min(Math.max(pos.lng, 122.2), 123.4)
+            ));
+            $('#bookingMapStatus').text('Pin snapped back — must stay within Negros Island.');
+            return;
+          }
+          setDestinationCoordinates(pos.lat, pos.lng);
+          fillAddressFromPin('destination', pos.lat, pos.lng);
+          pickedDestinationLocationID = null;
+        });
+      } else {
+        destinationMarker.setLatLng(latlng);
+      }
+      setDestinationCoordinates(loc.lat, loc.lng);
+      pickedDestinationLocationID = loc.locationID;
+      if (!IS_CUSTOMER_INDIVIDUAL) lookupTariffPrice();
     }
 
-    map = L.map('bookingMap').setView([10.6765, 122.9509], 12);
+    map.setView(latlng, Math.max(map.getZoom(), 15));
+    updateMapStatus();
+  }
+
+  function setAddressFields(type, addr) {
+    $('#' + type + 'Province').val(addr.province    || '');
+    $('#' + type + 'City').val(addr.city             || '');
+    $('#' + type + 'Barangay').val(addr.barangay     || '');
+    $('#' + type + 'Street').val(addr.street         || '');
+    $('#' + type + 'Description').val(addr.description || '');
+    ['Province','City','Barangay','Street','Description'].forEach(function (f) {
+      $('#' + type + f).data('autofilled', true);
+    });
+  }
+
+  function doSearch(type) {
+    const searchId    = '#' + type + 'MapSearch';
+    const suggestId   = '#' + type + 'MapSuggestions';
+    const searchBtnId = '#' + type + 'MapSearchBtn';
+    const query = $(searchId).val().trim();
+
+    if (!query) { $(searchId).addClass('is-invalid'); return; }
+    $(searchId).removeClass('is-invalid');
+    $(suggestId).hide().empty();
+
+    $.getJSON('ajax/location_search.ajax.php', { q: query })
+      .done(function (results) {
+        if (results && results.length > 0) {
+          applyLocationSuggestion(type, results[0]);
+          return;
+        }
+        nominatimSearch(type, query, searchBtnId);
+      })
+      .fail(function () {
+        nominatimSearch(type, query, searchBtnId);
+      });
+  }
+
+  function nominatimSearch(type, query, searchBtnId) {
+    $(searchBtnId).prop('disabled', true)
+      .html('<span class="spinner-border spinner-border-sm me-1"></span> Searching');
+
+    const url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&addressdetails=1&q=' +
+      encodeURIComponent(query);
+
+    fetch(url, { headers: { 'Accept': 'application/json' } })
+      .then(function (r) { return r.ok ? r.json() : []; })
+      .then(function (results) {
+        if (!Array.isArray(results) || !results.length) {
+          $('#bookingMapStatus').text('No location found. Try a more specific address.');
+          return;
+        }
+        const result  = results[0];
+        const latlng  = { lat: Number(result.lat), lng: Number(result.lon) };
+        if (!Number.isFinite(latlng.lat) || !Number.isFinite(latlng.lng)) return;
+
+        if (!isInNegros(L.latLng(latlng.lat, latlng.lng))) {
+          $('#bookingMapStatus').text('That location is outside Negros Island. Please search within Negros.');
+          return;
+        }
+
+        setActiveMarkerAt(type, latlng);
+        map.setView(L.latLng(latlng.lat, latlng.lng), 16);
+      })
+      .catch(function () {
+        $('#bookingMapStatus').text('Search failed. Check your connection or click the map manually.');
+      })
+      .finally(function () {
+        $(searchBtnId).prop('disabled', false).html('Search');
+      });
+  }
+
+  // ─── Map ────────────────────────────────────────────────────────────────────
+  function isInNegros(latlng) {
+    if (!NEGROS_BOUNDS) return true;
+    return NEGROS_BOUNDS.contains(latlng);
+  }
+
+  function initMap() {
+    if (typeof L === 'undefined' || !document.getElementById('bookingMap')) return;
+
+    NEGROS_BOUNDS = L.latLngBounds(
+      L.latLng(9.0,  122.2),
+      L.latLng(11.0, 123.4)
+    );
+    pickupIcon     = createMarkerIcon('primary');
+    destinationIcon = createMarkerIcon('danger');
+
+    map = L.map('bookingMap', {
+      maxBounds: NEGROS_BOUNDS,
+      maxBoundsViscosity: 1.0,
+      minZoom: 9
+    }).setView([10.6765, 122.9509], 12);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
@@ -149,44 +385,58 @@ $(document).ready(function () {
     }).addTo(map);
 
     map.on('click', function (event) {
+      if (!isInNegros(event.latlng)) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Out of range',
+          text: 'Please select a location within Negros Island.',
+          confirmButtonColor: '#696cff',
+          timer: 2500,
+          showConfirmButton: false
+        });
+        return;
+      }
       setActiveMarker(event.latlng);
     });
 
-    setTimeout(function () {
-      map.invalidateSize();
-    }, 300);
-
+    setTimeout(function () { map.invalidateSize(); }, 300);
     updateMapStatus();
   }
 
   function getSelectedCustomerOption() {
+    if (IS_CUSTOMER_INDIVIDUAL) return $(); // no visible select for individual customers
     const $option = $('#bookingCustomer option:selected');
     return $option.length && $option.val() ? $option : $();
   }
 
+  function selectedCustomerIsCompany() {
+    if (IS_CUSTOMER_INDIVIDUAL) return false;
+    return getSelectedCustomerOption().data('type') === 'company';
+  }
+
   function applyCompanyWarehousePickup() {
     const $option = getSelectedCustomerOption();
-    const isCompany = $option.data('type') === 'company';
+    const isCompany = selectedCustomerIsCompany();
 
     setPickupLocked(isCompany);
 
     if (!isCompany) {
-      if (pickupMarker && map) {
-        map.removeLayer(pickupMarker);
-        pickupMarker = null;
-      }
+      if (pickupMarker && map) { map.removeLayer(pickupMarker); pickupMarker = null; }
       $('#pickupProvince, #pickupCity, #pickupBarangay, #pickupStreet, #pickupDescription, #pickupLatitude, #pickupLongitude').val('');
       $('#pickupCoordinateText').text('Not pinned');
+      pickedPickupLocationID = null;
       return;
     }
 
-    const latitude = Number($option.data('latitude'));
+    const latitude  = Number($option.data('latitude'));
     const longitude = Number($option.data('longitude'));
 
-    $('#pickupProvince').val($option.data('province') || '');
-    $('#pickupCity').val($option.data('city') || '');
-    $('#pickupBarangay').val($option.data('barangay') || '');
-    $('#pickupStreet').val($option.data('street') || '');
+    pickedPickupLocationID = $option.data('location-id') || null;
+
+    $('#pickupProvince').val($option.data('province')    || '');
+    $('#pickupCity').val($option.data('city')            || '');
+    $('#pickupBarangay').val($option.data('barangay')    || '');
+    $('#pickupStreet').val($option.data('street')        || '');
     $('#pickupDescription').val('Company warehouse pickup point');
 
     if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
@@ -196,14 +446,10 @@ $(document).ready(function () {
           pickupMarker = L.marker(latlng, { draggable: false, icon: pickupIcon }).addTo(map);
         } else {
           pickupMarker.setLatLng(latlng);
-          if (pickupMarker.dragging) {
-            pickupMarker.dragging.disable();
-          }
+          if (pickupMarker.dragging) pickupMarker.dragging.disable();
         }
-
         map.setView(latlng, Math.max(map.getZoom(), 13));
       }
-
       setPickupCoordinates(latitude, longitude);
     }
 
@@ -213,14 +459,10 @@ $(document).ready(function () {
 
   function setPickupLocked(locked) {
     $('#pickupProvince, #pickupCity, #pickupBarangay, #pickupStreet, #pickupDescription')
-      .prop('readonly', locked)
-      .toggleClass('bg-light', locked);
+      .prop('readonly', locked).toggleClass('bg-light', locked);
     $('#mapModePickup').prop('disabled', locked);
     $('label[for="mapModePickup"]').toggleClass('disabled', locked);
-
-    if (locked && $('#mapModePickup').is(':checked')) {
-      $('#mapModeDestination').prop('checked', true);
-    }
+    if (locked && $('#mapModePickup').is(':checked')) $('#mapModeDestination').prop('checked', true);
   }
 
   function updateStepper() {
@@ -229,8 +471,8 @@ $(document).ready(function () {
 
     $('.booking-step-pill').each(function () {
       const step = Number($(this).data('step'));
-      $(this).toggleClass('active', step === currentStep);
-      $(this).toggleClass('complete', step < currentStep);
+      $(this).toggleClass('active', step === currentStep)
+             .toggleClass('complete', step < currentStep);
       $(this).find('span').html(step < currentStep ? '<i class="ri-check-line"></i>' : String(step + 1));
     });
 
@@ -239,20 +481,12 @@ $(document).ready(function () {
     $('#bookingBtnNext').toggleClass('d-none', currentStep === totalSteps - 1);
     $('#bookingBtnRegister').toggleClass('d-none', currentStep !== totalSteps - 1);
 
-    if (currentStep === 2 && map) {
-      setTimeout(function () {
-        map.invalidateSize();
-      }, 150);
-    }
-
-    if (currentStep === 3) {
-      updateReview();
-    }
+    if (currentStep === 2 && map) setTimeout(function () { map.invalidateSize(); }, 150);
+    if (currentStep === 3) updateReview();
   }
 
   function createMarkerIcon(type) {
     const color = type === 'danger' ? '#ff3e1d' : '#696cff';
-
     return L.divIcon({
       className: '',
       html: '<span style="display:block;width:18px;height:18px;border-radius:50%;background:' + color + ';border:3px solid #fff;box-shadow:0 4px 12px rgba(0,0,0,.35);"></span>',
@@ -263,42 +497,28 @@ $(document).ready(function () {
 
   function applyTruckDefaultCrew(truckID) {
     const crew = (window.bookingTruckCrew && window.bookingTruckCrew[truckID]) ? window.bookingTruckCrew[truckID] : null;
-
     $('#bookingDriver').val(crew ? crew.driverID : '');
     $('#bookingAssistantList .booking-assistant-item').slice(2).remove();
     $('.booking-assistant').val('');
-
     if (crew && Array.isArray(crew.assistantIDs)) {
       crew.assistantIDs.forEach(function (assistantID, index) {
-        if (index < 2) {
-          $('.booking-assistant').eq(index).val(assistantID);
-          return;
-        }
-
+        if (index < 2) { $('.booking-assistant').eq(index).val(assistantID); return; }
         addAssistantSelect(assistantID);
       });
     }
-
     syncAssistantOptions();
   }
 
   function addAssistantSelect(value) {
     const $first = $('.booking-assistant').first();
-    if (!$first.length) {
-      return;
-    }
-
-    const $item = $('<div class="col-12 col-md-6 mb-3 booking-assistant-item"></div>');
+    if (!$first.length) return;
+    const $item  = $('<div class="col-12 col-md-6 mb-3 booking-assistant-item"></div>');
     const $group = $('<div class="input-group"></div>');
     const $select = $first.clone();
-
-    $select.val(value || '');
-    $select.removeAttr('data-default-slot');
-    $select.removeClass('is-invalid');
-
+    $select.val(value || '').removeAttr('data-default-slot').removeClass('is-invalid');
     $group.append($select);
     $group.append(
-      '<button class="btn btn-outline-danger booking-remove-assistant" type="button" aria-label="Remove assistant">' +
+      '<button class="btn btn-outline-danger booking-remove-assistant" type="button">' +
         '<i class="ri-close-line"></i>' +
       '</button>'
     );
@@ -307,19 +527,18 @@ $(document).ready(function () {
   }
 
   function getAssistantIDs() {
+    if (IS_CUSTOMER_INDIVIDUAL) return [null, null];
     return $('.booking-assistant').map(function () {
       return String($(this).val() || '').trim();
     }).get().filter(Boolean);
   }
 
   function syncAssistantOptions() {
+    if (IS_CUSTOMER_INDIVIDUAL) return;
     const selectedAssistants = getAssistantIDs();
-
     $('.booking-assistant option').prop('hidden', false).prop('disabled', false);
-
     $('.booking-assistant').each(function () {
       const currentValue = String($(this).val() || '');
-
       selectedAssistants.forEach(function (assistantID) {
         if (assistantID !== currentValue) {
           $(this).find('option[value="' + assistantID + '"]').prop('hidden', true).prop('disabled', true);
@@ -334,13 +553,12 @@ $(document).ready(function () {
 
   function updateMapStatus() {
     const mode = getMapMode();
-    const customerIsCompany = getSelectedCustomerOption().data('type') === 'company';
+    const customerIsCompany = selectedCustomerIsCompany();
 
     if (customerIsCompany) {
       $('#bookingMapStatus').text('Company warehouse is fixed as pickup. Click the map to place the destination pin.');
       return;
     }
-
     $('#bookingMapStatus').text(
       mode === 'pickup'
         ? 'Click the map to place the pickup pin.'
@@ -350,124 +568,188 @@ $(document).ready(function () {
 
   function setActiveMarker(latlng) {
     const mode = getMapMode();
-    const customerIsCompany = getSelectedCustomerOption().data('type') === 'company';
+    const customerIsCompany = selectedCustomerIsCompany();
 
     if (customerIsCompany && mode === 'pickup') {
       $('#mapModeDestination').prop('checked', true);
       updateMapStatus();
       return;
     }
+    setActiveMarkerAt(mode === 'pickup' ? 'pickup' : 'destination', latlng);
+    if (mode === 'pickup') { $('#mapModeDestination').prop('checked', true); updateMapStatus(); }
+  }
 
-    const lat = latlng.lat.toFixed(8);
-    const lng = latlng.lng.toFixed(8);
+  function setActiveMarkerAt(type, latlng) {
+    const lat = latlng.lat.toFixed ? Number(latlng.lat).toFixed(8) : latlng.lat;
+    const lng = latlng.lng.toFixed ? Number(latlng.lng).toFixed(8) : latlng.lng;
+    const ll  = L.latLng(latlng.lat, latlng.lng);
 
-    if (mode === 'pickup') {
+    if (type === 'pickup') {
       if (!pickupMarker) {
-        pickupMarker = L.marker(latlng, { draggable: true, icon: pickupIcon }).addTo(map);
+        pickupMarker = L.marker(ll, { draggable: true, icon: pickupIcon }).addTo(map);
         pickupMarker.on('dragend', function () {
-          const position = pickupMarker.getLatLng();
-          setPickupCoordinates(position.lat, position.lng);
-          fillAddressFromPin('pickup', position.lat, position.lng);
+          const pos = pickupMarker.getLatLng();
+          if (!isInNegros(pos)) {
+            pickupMarker.setLatLng(L.latLng(
+              Math.min(Math.max(pos.lat, 9.0), 11.0),
+              Math.min(Math.max(pos.lng, 122.2), 123.4)
+            ));
+            $('#bookingMapStatus').text('Pin snapped back — must stay within Negros Island.');
+            return;
+          }
+          setPickupCoordinates(pos.lat, pos.lng);
+          fillAddressFromPin('pickup', pos.lat, pos.lng);
+          pickedPickupLocationID = null;
         });
       } else {
-        pickupMarker.setLatLng(latlng);
+        pickupMarker.setLatLng(ll);
       }
-
       setPickupCoordinates(lat, lng);
       fillAddressFromPin('pickup', lat, lng);
-      $('#mapModeDestination').prop('checked', true);
-      updateMapStatus();
-      return;
-    }
-
-    if (!destinationMarker) {
-      destinationMarker = L.marker(latlng, { draggable: true, icon: destinationIcon }).addTo(map);
-      destinationMarker.on('dragend', function () {
-        const position = destinationMarker.getLatLng();
-        setDestinationCoordinates(position.lat, position.lng);
-        fillAddressFromPin('destination', position.lat, position.lng);
-      });
+      pickedPickupLocationID = null;
     } else {
-      destinationMarker.setLatLng(latlng);
+      if (!destinationMarker) {
+        destinationMarker = L.marker(ll, { draggable: true, icon: destinationIcon }).addTo(map);
+        destinationMarker.on('dragend', function () {
+          const pos = destinationMarker.getLatLng();
+          setDestinationCoordinates(pos.lat, pos.lng);
+          fillAddressFromPin('destination', pos.lat, pos.lng);
+          pickedDestinationLocationID = null;
+        });
+      } else {
+        destinationMarker.setLatLng(ll);
+      }
+      setDestinationCoordinates(lat, lng);
+      fillAddressFromPin('destination', lat, lng);
+      pickedDestinationLocationID = null;
     }
-
-    setDestinationCoordinates(lat, lng);
-    fillAddressFromPin('destination', lat, lng);
   }
 
   function setPickupCoordinates(lat, lng) {
-    const formattedLat = Number(lat).toFixed(8);
-    const formattedLng = Number(lng).toFixed(8);
-
-    $('#pickupLatitude').val(formattedLat);
-    $('#pickupLongitude').val(formattedLng);
-    $('#pickupCoordinateText').text(formattedLat + ', ' + formattedLng);
+    const fLat = Number(lat).toFixed(8);
+    const fLng = Number(lng).toFixed(8);
+    $('#pickupLatitude').val(fLat);
+    $('#pickupLongitude').val(fLng);
+    $('#pickupCoordinateText').text(fLat + ', ' + fLng);
     $('#pickupLatitude, #pickupLongitude').removeClass('is-invalid');
   }
 
   function setDestinationCoordinates(lat, lng) {
-    const formattedLat = Number(lat).toFixed(8);
-    const formattedLng = Number(lng).toFixed(8);
-
-    $('#destinationLatitude').val(formattedLat);
-    $('#destinationLongitude').val(formattedLng);
-    $('#destinationCoordinateText').text(formattedLat + ', ' + formattedLng);
+    const fLat = Number(lat).toFixed(8);
+    const fLng = Number(lng).toFixed(8);
+    $('#destinationLatitude').val(fLat);
+    $('#destinationLongitude').val(fLng);
+    $('#destinationCoordinateText').text(fLat + ', ' + fLng);
     $('#destinationLatitude, #destinationLongitude').removeClass('is-invalid');
+    if (!IS_CUSTOMER_INDIVIDUAL) lookupTariffPrice();
   }
 
   function fillAddressFromPin(type, lat, lng) {
     const label = type === 'pickup' ? 'Pickup' : 'Destination';
-    const prefix = type === 'pickup' ? 'pickup' : 'destination';
-    const previousStatus = $('#bookingMapStatus').text();
-    const url = 'https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=' +
+    const url   = 'https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=' +
       encodeURIComponent(lat) + '&lon=' + encodeURIComponent(lng) + '&addressdetails=1';
 
     $('#bookingMapStatus').text('Looking up ' + label.toLowerCase() + ' address...');
 
-    fetch(url, {
-      headers: {
-        'Accept': 'application/json'
-      }
-    })
-      .then(function (response) {
-        if (!response.ok) {
-          throw new Error('Address lookup failed');
-        }
-        return response.json();
-      })
+    fetch(url, { headers: { 'Accept': 'application/json' } })
+      .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (data) {
-        const address = data.address || {};
-        const province = address.state || address.region || address.province || '';
-        const city = address.city || address.town || address.municipality || address.county || '';
-        const barangay = address.suburb || address.village || address.neighbourhood || address.quarter || address.city_district || '';
-        const streetParts = [address.road, address.house_number].filter(Boolean);
-        const street = streetParts.join(' ');
-
-        setIfEmptyOrAutofilled(prefix + 'Province', province);
-        setIfEmptyOrAutofilled(prefix + 'City', city);
-        setIfEmptyOrAutofilled(prefix + 'Barangay', barangay);
-        setIfEmptyOrAutofilled(prefix + 'Street', street);
-        setIfEmptyOrAutofilled(prefix + 'Description', data.display_name || '');
-
-        $('#' + prefix + 'Province, #' + prefix + 'City, #' + prefix + 'Barangay, #' + prefix + 'Street').removeClass('is-invalid');
+        if (!data || !data.address) { updateMapStatus(); return; }
+        const a = data.address;
+        setIfEmptyOrAutofilled(type + 'Province',    a.state || a.region || a.province || '');
+        setIfEmptyOrAutofilled(type + 'City',        a.city  || a.town   || a.municipality || a.county || '');
+        setIfEmptyOrAutofilled(type + 'Barangay',    a.suburb || a.village || a.neighbourhood || a.quarter || '');
+        setIfEmptyOrAutofilled(type + 'Street',      [a.road, a.house_number].filter(Boolean).join(' '));
+        setIfEmptyOrAutofilled(type + 'Description', data.display_name || '');
+        $('#' + type + 'Province, #' + type + 'City, #' + type + 'Barangay, #' + type + 'Street').removeClass('is-invalid');
         updateMapStatus();
+        if (!IS_CUSTOMER_INDIVIDUAL && type === 'destination') lookupTariffPrice();
       })
-      .catch(function () {
-        $('#bookingMapStatus').text(previousStatus || 'Address lookup failed. You can enter the address manually.');
-      });
+      .catch(function () { updateMapStatus(); });
   }
 
   function setIfEmptyOrAutofilled(id, value) {
-    if (!value) {
+    if (!value) return;
+    const $el = $('#' + id);
+    if (String($el.val() || '').trim() === '' || $el.data('autofilled') === true) {
+      $el.val(value).data('autofilled', true);
+    }
+  }
+
+  function lookupTariffPrice() {
+    if (IS_CUSTOMER_INDIVIDUAL) return; // no tariff lookup for individual customers
+
+    const customerID = $('#bookingCustomer').val();
+    const $customer = getSelectedCustomerOption();
+    const truckType = $('#bookingTruck option:selected').data('type') || '';
+    const fuelPrice = $('#bookingFuelPrice').val();
+    const destinationText = [
+      $('#destinationStreet').val(),
+      $('#destinationBarangay').val(),
+      $('#destinationCity').val(),
+      $('#destinationProvince').val(),
+      $('#destinationDescription').val()
+    ].filter(Boolean).join(' ');
+
+    if (!customerID || !$customer.length || $customer.data('type') !== 'company' || !truckType || !destinationText.trim()) {
+      clearAutofilledTariffPrice();
+      $('#bookingTariffHint').text('Select company, truck, and destination to use tariff pricing.');
       return;
     }
 
-    const $el = $('#' + id);
-    const currentValue = String($el.val() || '').trim();
+    $('#bookingTariffHint').text('Checking tariff for this destination...');
 
-    if (currentValue === '' || $el.data('autofilled') === true) {
-      $el.val(value);
-      $el.data('autofilled', true);
+    $.ajax({
+      url: 'ajax/tariff_lookup.ajax.php',
+      method: 'POST',
+      dataType: 'json',
+      data: {
+        customerID: customerID,
+        truckType: truckType,
+        destinationText: destinationText,
+        fuelPrice: fuelPrice
+      },
+      success: function (response) {
+        if (!response || response.status !== 'success') {
+          clearAutofilledTariffPrice();
+          $('#bookingTariffHint').text('No matching tariff was found for the selected company, truck, and destination. You may enter the booking price manually.');
+          return;
+        }
+
+        const totalRate = Number(response.totalRate || response.baseRate || 0);
+        const fuelSubsidy = Number(response.fuelSubsidy || 0);
+        $('#bookingPrice')
+          .data('settingTariffPrice', true)
+          .val(totalRate.toFixed(2))
+          .removeClass('is-invalid')
+          .data('tariffAutofilled', true)
+          .data('settingTariffPrice', false);
+        const fuelBaseMin = Number(response.fuelBaseMin || 0);
+        const fuelBaseMax = Number(response.fuelBaseMax || 0);
+        const fuelBaseRange = fuelBaseMin > 0 && fuelBaseMax > 0 ? fuelBaseMin + '-' + fuelBaseMax : '';
+        const fuelNote = fuelSubsidy > 0
+          ? ' + fuel subsidy PHP ' + fuelSubsidy.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+          : ' + no fuel subsidy' + (fuelBaseRange ? ' because fuel is within base range ' + fuelBaseRange : '');
+
+        $('#bookingTariffHint').text(
+          'Tariff matched: ' + response.origin + ' to ' + response.destination +
+          ' | ' + response.distanceKm + ' km | base PHP ' + Number(response.baseRate || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) +
+          fuelNote +
+          ' = PHP ' + totalRate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+        );
+      },
+      error: function () {
+        clearAutofilledTariffPrice();
+        $('#bookingTariffHint').text('Tariff lookup failed. You may enter the booking price manually.');
+      }
+    });
+  }
+
+  function clearAutofilledTariffPrice() {
+    const $price = $('#bookingPrice');
+
+    if ($price.data('tariffAutofilled')) {
+      $price.val('').removeClass('is-invalid').data('tariffAutofilled', false);
     }
   }
 
@@ -478,103 +760,483 @@ $(document).ready(function () {
       allMissing.push(...validateStep(step));
     }
 
+    if (!IS_CUSTOMER_INDIVIDUAL) checkFinalPrice(allMissing);
+
     return [...new Set(allMissing)];
   }
 
   function validateStep(step) {
     const missing = [];
-
     const check = (id, label) => {
       const $el = $('#' + id);
-      const ok = String($el.val() || '').trim() !== '';
-
-      if (!ok) {
-        missing.push(label);
-        $el.addClass('is-invalid');
-      } else {
-        $el.removeClass('is-invalid');
-      }
+      const ok  = String($el.val() || '').trim() !== '';
+      if (!ok) { missing.push(label); $el.addClass('is-invalid'); }
+      else { $el.removeClass('is-invalid'); }
     };
 
     if (step === 0) {
+      // Customer: always required — for individual role the hidden input is pre-filled from session
       check('bookingCustomer', 'Customer');
-      check('bookingTruck', 'Truck');
-      check('bookingDriver', 'Driver');
       check('bookingPickupDateTime', 'Pickup Date & Time');
-      check('bookingPrice', 'Price');
-
-      const assistantIDs = getAssistantIDs();
-      if (assistantIDs.length < 2) {
-        missing.push('At least 2 assistants');
-        $('.booking-assistant').each(function () {
-          if (!$(this).val()) {
-            $(this).addClass('is-invalid');
-          }
-        });
-      } else {
-        $('.booking-assistant').removeClass('is-invalid');
+      if ($('#bookingPickupDateTime').val() && !isPickupDateAllowed($('#bookingPickupDateTime').val())) {
+        missing.push('Pickup Date & Time must be today or an upcoming date');
+        $('#bookingPickupDateTime').addClass('is-invalid');
       }
 
-      if (new Set(assistantIDs).size !== assistantIDs.length) {
-        missing.push('Assistants must be different employees');
-        $('.booking-assistant').addClass('is-invalid');
-      }
+      if (!IS_CUSTOMER_INDIVIDUAL) {
+        // Crew fields only required for non-individual roles
+        check('bookingTruck', 'Truck');
+        check('bookingDriver', 'Driver');
 
-      const price = Number($('#bookingPrice').val());
-      if ($('#bookingPrice').val() !== '' && (Number.isNaN(price) || price < 0)) {
-        missing.push('Price must be a valid number');
-        $('#bookingPrice').addClass('is-invalid');
+        const assistantIDs = getAssistantIDs();
+        console.log(assistantIDs.length);
+        
+        if (assistantIDs.length < 2) {
+          missing.push('At least 2 assistants');
+          $('.booking-assistant').each(function () { if (!$(this).val()) $(this).addClass('is-invalid'); });
+        } else { $('.booking-assistant').removeClass('is-invalid'); }
+        if (new Set(assistantIDs).size !== assistantIDs.length) {
+          missing.push('Assistants must be different employees');
+          $('.booking-assistant').addClass('is-invalid');
+        }
+
+        checkMoneyInput('bookingCrewSalary', 'Crew Salary', missing);
+        checkMoneyInput('bookingCrewAllowance', 'Crew Allowance', missing);
       }
     }
 
     if (step === 1) {
-      check('cargoType', 'Cargo Type');
-      check('cargoQuantity', 'Cargo Quantity');
+      let hasCompleteCargo = false;
 
-      const quantity = Number($('#cargoQuantity').val());
-      if ($('#cargoQuantity').val() !== '' && (!Number.isInteger(quantity) || quantity < 1)) {
-        missing.push('Cargo Quantity must be a whole number greater than 0');
-        $('#cargoQuantity').addClass('is-invalid');
+      $('.booking-cargo-item').each(function () {
+        const $type     = $(this).find('.cargo-type');
+        const $quantity = $(this).find('.cargo-quantity');
+        const type      = String($type.val() || '').trim();
+        const rawQty    = String($quantity.val() || '').trim();
+        const quantity  = Number(rawQty);
+        const quantityIsValid = rawQty !== '' && !Number.isNaN(quantity) && Math.floor(quantity) === quantity && quantity >= 1;
+
+        $type.toggleClass('is-invalid', type === '');
+        $quantity.toggleClass('is-invalid', !quantityIsValid);
+        if (type !== '' && quantityIsValid) {
+          hasCompleteCargo = true;
+        }
+      });
+
+      if (!hasCompleteCargo) {
+        missing.push('At least 1 cargo item with type and quantity');
+      }
+
+      if ($('.booking-cargo-item .cargo-quantity.is-invalid').length) {
+        missing.push('Each cargo quantity must be a whole number greater than 0');
       }
     }
 
     if (step === 2) {
-      check('pickupProvince', 'Pickup Province');
-      check('pickupCity', 'Pickup City');
-      check('pickupBarangay', 'Pickup Barangay');
-      check('pickupStreet', 'Pickup Street');
-      check('pickupLatitude', 'Pickup Map Pin');
-      check('pickupLongitude', 'Pickup Map Pin');
+      checkMapPin('pickup', 'Pickup Map Pin', missing);
+      if (hasValidNegrosPin('pickup')) {
+        $('#pickupProvince, #pickupCity, #pickupBarangay, #pickupStreet').removeClass('is-invalid');
+      } else {
+        check('pickupProvince', 'Pickup Province');
+        check('pickupCity', 'Pickup City');
+        check('pickupBarangay', 'Pickup Barangay');
+        check('pickupStreet', 'Pickup Street');
+      }
 
       check('destinationProvince', 'Destination Province');
-      check('destinationCity', 'Destination City');
+      check('destinationCity',     'Destination City');
       check('destinationBarangay', 'Destination Barangay');
       check('destinationStreet', 'Destination Street');
-      check('destinationLatitude', 'Destination Map Pin');
-      check('destinationLongitude', 'Destination Map Pin');
+      checkMapPin('destination', 'Destination Map Pin', missing);
+
+      // Price validation only for non-individual roles
+      if (!IS_CUSTOMER_INDIVIDUAL) {
+        check('bookingPrice', selectedCustomerIsCompany() ? 'Company tariff price' : 'Price');
+        checkPriceValue(missing);
+      }
     }
 
     return [...new Set(missing)];
   }
 
-  function updateReview() {
-    const pickupAddress = formatAddress('pickup');
-    const destinationAddress = formatAddress('destination');
-    const assistantNames = $('.booking-assistant').map(function () {
-      return $(this).find('option:selected').text().trim();
-    }).get().filter(Boolean).join(', ');
+  function checkMapPin(prefix, label, missing) {
+    const $lat = $('#' + prefix + 'Latitude');
+    const $lng = $('#' + prefix + 'Longitude');
 
-    $('#reviewCustomer').text($('#bookingCustomer option:selected').text().trim() || '-');
-    $('#reviewTripSchedule').text('Generated on save / ' + ($('#bookingPickupDateTime').val() || '-'));
-    $('#reviewCrew').text(
-      ($('#bookingTruck option:selected').text().trim() || '-') +
-      ' / Driver: ' + ($('#bookingDriver option:selected').text().trim() || '-') +
-      ' / Assistants: ' + (assistantNames || '-')
-    );
-    $('#reviewCargo').text(($('#cargoType').val() || '-') + ' x ' + ($('#cargoQuantity').val() || '-'));
-    $('#reviewPrice').text($('#bookingPrice').val() || '-');
-    $('#reviewPickup').text(pickupAddress + ' (' + ($('#pickupCoordinateText').text() || '-') + ')');
-    $('#reviewDestination').text(destinationAddress + ' (' + ($('#destinationCoordinateText').text() || '-') + ')');
+    if (!hasValidNegrosPin(prefix)) {
+      missing.push(label + ' must be within Negros');
+      $lat.add($lng).addClass('is-invalid');
+      return;
+    }
+
+    $lat.add($lng).removeClass('is-invalid');
+  }
+
+  function checkMoneyInput(id, label, missing) {
+    const $field = $('#' + id);
+    const raw = String($field.val() || '').trim();
+    if (raw === '') {
+      $field.removeClass('is-invalid');
+      return;
+    }
+
+    const amount = Number(raw);
+    if (!Number.isFinite(amount) || amount < 0) {
+      missing.push(label + ' must be a valid amount');
+      $field.addClass('is-invalid');
+      return;
+    }
+
+    $field.removeClass('is-invalid');
+  }
+
+  function hasValidNegrosPin(prefix) {
+    const latRaw = String($('#' + prefix + 'Latitude').val() || '').trim();
+    const lngRaw = String($('#' + prefix + 'Longitude').val() || '').trim();
+    const lat = Number(latRaw);
+    const lng = Number(lngRaw);
+
+    return latRaw !== '' &&
+      lngRaw !== '' &&
+      Number.isFinite(lat) &&
+      Number.isFinite(lng) &&
+      lat >= 9 &&
+      lat <= 11.2 &&
+      lng >= 122 &&
+      lng <= 123.6;
+  }
+
+  function checkFinalPrice(missing) {
+    if (IS_CUSTOMER_INDIVIDUAL) return;
+
+    if (String($('#bookingPrice').val() || '').trim() === '') {
+      missing.push(selectedCustomerIsCompany() ? 'Company tariff price' : 'Price');
+      $('#bookingPrice').addClass('is-invalid');
+
+      if (selectedCustomerIsCompany()) {
+        $('#bookingTariffHint').text('Select a matching destination and truck so the company tariff can fill the price.');
+      }
+      return;
+    }
+
+    checkPriceValue(missing);
+  }
+
+  function setPickupDateMinimum() {
+    $('#bookingPickupDateTime').attr('data-min-date', localTodayValue() + 'T00:00');
+  }
+
+  function initBookingDatePicker() {
+    setPickupDateMinimum();
+
+    if (typeof AirDatepicker === 'undefined') {
+      return;
+    }
+
+    const localeEn = {
+      days: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+      daysShort: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      daysMin: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'],
+      months: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
+      monthsShort: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+      today: 'Today',
+      clear: 'Clear',
+      dateFormat: 'yyyy-MM-dd',
+      timeFormat: 'HH:mm',
+      firstDay: 0
+    };
+
+    bookingDatePicker = new AirDatepicker('#bookingPickupDateTime', {
+      minDate: new Date(localTodayValue() + 'T00:00:00'),
+      timepicker: true,
+      minutesStep: 15,
+      dateFormat: 'yyyy-MM-dd',
+      timeFormat: 'HH:mm',
+      dateTimeSeparator: ' ',
+      locale: localeEn,
+      autoClose: false,
+      buttons: ['today', 'clear'],
+      onRenderCell: renderBookedDateCell,
+      onSelect: function () {
+        $('#bookingPickupDateTime').removeClass('is-invalid');
+        if (!IS_CUSTOMER_INDIVIDUAL) checkTruckAvailability(false);
+      }
+    });
+  }
+
+  function renderBookedDateCell({ date, cellType }) {
+    if (cellType !== 'day') return {};
+
+    const dateKey = formatCalendarDate(date);
+    if (!selectedCalendarTruckID || !truckCalendarLoaded || dateKey < localTodayValue()) return {};
+
+    const booking = truckBookedDates[dateKey];
+    if (truckCalendarAllUnavailable || booking) {
+      const label = truckCalendarUnavailableLabel(booking);
+      return {
+        disabled: true,
+        html: '<span class="booking-calendar-day booking-calendar-day--unavailable">' + date.getDate() + '</span>',
+        classes: '-booking-unavailable-',
+        attrs: { title: label }
+      };
+    }
+
+    return {};
+  }
+
+  function loadTruckBookedDates(truckID) {
+    selectedCalendarTruckID = String(truckID || '');
+    truckBookedDates = {};
+    truckCalendarLoaded = false;
+    truckCalendarAllUnavailable = false;
+    truckCalendarStatus = '';
+    truckCalendarActiveTrip = null;
+    refreshBookingDatePicker();
+
+    if (!truckID) {
+      setBookingCalendarStatus('Select a truck to view its date availability.', 'muted');
+      return;
+    }
+
+    setBookingCalendarStatus('Loading truck date availability...', 'muted');
+
+    $.ajax({
+      url: 'ajax/booking_truck_booked_dates.ajax.php',
+      method: 'POST',
+      dataType: 'json',
+      data: { truckID: truckID },
+      success: function (response) {
+        if (String(truckID) !== selectedCalendarTruckID) return;
+
+        if (!response || response.requestStatus !== 'success' || !Array.isArray(response.dates)) {
+          setBookingCalendarStatus('Unable to load truck date availability.', 'danger');
+          return;
+        }
+
+        response.dates.forEach(function (item) {
+          truckBookedDates[item.date] = item;
+        });
+        truckCalendarLoaded = true;
+        truckCalendarAllUnavailable = !!response.allUnavailable;
+        truckCalendarStatus = response.status || '';
+        truckCalendarActiveTrip = response.activeTrip || null;
+        refreshBookingDatePicker();
+        updateBookingCalendarStatus();
+        clearUnavailableSelectedDate();
+      },
+      error: function () {
+        if (String(truckID) !== selectedCalendarTruckID) return;
+        setBookingCalendarStatus('Unable to load truck date availability.', 'danger');
+      }
+    });
+  }
+
+  function refreshBookingDatePicker() {
+    if (bookingDatePicker) {
+      bookingDatePicker.update({ onRenderCell: renderBookedDateCell }, { silent: true });
+    }
+  }
+
+  function formatCalendarDate(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return year + '-' + month + '-' + day;
+  }
+
+  function truckCalendarUnavailableLabel(booking) {
+    if (truckCalendarStatus === 'inactive') {
+      return 'Unavailable: truck is inactive';
+    }
+
+    if (truckCalendarStatus === 'active-trip') {
+      const tripLabel = truckCalendarActiveTrip && truckCalendarActiveTrip.tripID
+        ? ' on Trip #' + truckCalendarActiveTrip.tripID
+        : '';
+      return 'Unavailable: truck is currently assigned' + tripLabel;
+    }
+
+    if (booking) {
+      return 'Unavailable: ' + booking.tripCount + ' active trip' + (booking.tripCount === 1 ? '' : 's');
+    }
+
+    return 'Unavailable';
+  }
+
+  function updateBookingCalendarStatus() {
+    if (truckCalendarStatus === 'inactive') {
+      setBookingCalendarStatus('This truck is inactive. All dates are unavailable.', 'danger');
+      return;
+    }
+
+    if (truckCalendarStatus === 'active-trip') {
+      const tripLabel = truckCalendarActiveTrip && truckCalendarActiveTrip.tripID
+        ? ' Trip #' + truckCalendarActiveTrip.tripID + ' is still active.'
+        : '';
+      setBookingCalendarStatus('This truck is currently in use.' + tripLabel + ' All dates are unavailable.', 'danger');
+      return;
+    }
+
+    const bookedCount = Object.keys(truckBookedDates).length;
+    const message = bookedCount > 0
+      ? 'Red dates are already booked and cannot be selected.'
+      : 'No unavailable dates found for this truck.';
+    setBookingCalendarStatus(message, 'success');
+  }
+
+  function clearUnavailableSelectedDate() {
+    const selectedDate = String($('#bookingPickupDateTime').val() || '').slice(0, 10);
+    if (!selectedDate || (!truckCalendarAllUnavailable && !truckBookedDates[selectedDate])) return;
+
+    if (bookingDatePicker) bookingDatePicker.clear();
+    else $('#bookingPickupDateTime').val('');
+    setTruckAvailabilityMessage('Choose a green available date for this truck.', 'danger');
+  }
+
+  function setBookingCalendarStatus(message, tone) {
+    $('#bookingCalendarStatus')
+      .removeClass('text-muted text-success text-danger')
+      .addClass(tone === 'success' ? 'text-success' : (tone === 'danger' ? 'text-danger' : 'text-muted'))
+      .text(message);
+  }
+
+  function isPickupDateAllowed(value) {
+    const selectedDate = String(value || '').slice(0, 10);
+    return selectedDate !== '' && selectedDate >= localTodayValue();
+  }
+
+  function localTodayValue() {
+    const date = new Date();
+    const offset = date.getTimezoneOffset();
+    return new Date(date.getTime() - offset * 60000).toISOString().slice(0, 10);
+  }
+
+  function checkTruckAvailability(showAlert) {
+    if (IS_CUSTOMER_INDIVIDUAL) return Promise.resolve(true);
+
+    const truckID = $('#bookingTruck').val();
+    const pickupDateTime = $('#bookingPickupDateTime').val();
+
+    if (!truckID || !pickupDateTime || !isPickupDateAllowed(pickupDateTime)) {
+      setTruckAvailabilityMessage('Select a valid pickup date and truck to check availability.', 'muted');
+      return Promise.resolve(false);
+    }
+
+    setTruckAvailabilityMessage('Checking truck availability...', 'muted');
+
+    return new Promise(function (resolve) {
+      $.ajax({
+        url: 'ajax/booking_truck_availability.ajax.php',
+        method: 'POST',
+        dataType: 'json',
+        data: {
+          truckID: truckID,
+          pickupDateTime: pickupDateTime.replace('T', ' ')
+        },
+        success: function (response) {
+          if (response && response.available) {
+            $('#bookingTruck').removeClass('is-invalid');
+            setTruckAvailabilityMessage('Truck is available for the selected pickup date.', 'success');
+            resolve(true);
+            return;
+          }
+
+          $('#bookingTruck').addClass('is-invalid');
+          const message = truckAvailabilityError(response);
+          setTruckAvailabilityMessage(message, 'danger');
+
+          if (showAlert) {
+            Swal.fire({
+              icon: 'warning',
+              title: 'Truck Not Available',
+              text: message,
+              confirmButtonColor: '#696cff'
+            });
+          }
+          resolve(false);
+        },
+        error: function () {
+          const message = 'Unable to check truck availability. Please try again.';
+          setTruckAvailabilityMessage(message, 'danger');
+          if (showAlert) {
+            Swal.fire({ icon: 'error', title: 'Availability Check Failed', text: message, confirmButtonColor: '#696cff' });
+          }
+          resolve(false);
+        }
+      });
+    });
+  }
+
+  function truckAvailabilityError(response) {
+    if (response && response.status === 'inactive') {
+      return 'This truck is inactive and cannot be assigned.';
+    }
+
+    if (response && response.status === 'conflict') {
+      const trip = response.tripID ? ' Trip #' + response.tripID + ' is already using it.' : '';
+      return 'This truck has a conflicting active booking.' + trip;
+    }
+
+    return 'This truck is not available for the selected pickup date.';
+  }
+
+  function setTruckAvailabilityMessage(message, tone) {
+    $('#bookingTruckAvailability')
+      .removeClass('text-muted text-success text-danger')
+      .addClass(tone === 'success' ? 'text-success' : (tone === 'danger' ? 'text-danger' : 'text-muted'))
+      .text(message);
+  }
+
+  function checkPriceValue(missing) {
+    if (IS_CUSTOMER_INDIVIDUAL) return;
+
+    const price = Number($('#bookingPrice').val());
+    if ($('#bookingPrice').val() !== '' && (Number.isNaN(price) || price < 0)) {
+      missing.push('Price must be a valid number');
+      $('#bookingPrice').addClass('is-invalid');
+      return;
+    }
+
+    if ($('#bookingPrice').val() !== '') {
+      $('#bookingPrice').removeClass('is-invalid');
+    }
+  }
+
+  function updateReview() {
+    let customerLabel;
+    if (IS_CUSTOMER_INDIVIDUAL) {
+      // No visible select — show the session customer ID or a placeholder
+      customerLabel = SESSION_CUSTOMER_ID ? 'Customer #' + SESSION_CUSTOMER_ID : '-';
+    } else {
+      customerLabel = $('#bookingCustomer option:selected').text().trim() || '-';
+    }
+
+    $('#reviewCustomer').text(customerLabel);
+    $('#reviewTripSchedule').text($('#bookingPickupDateTime').val() || '-');
+
+    if (!IS_CUSTOMER_INDIVIDUAL) {
+      const assistantNames = $('.booking-assistant').map(function () {
+        return $(this).find('option:selected').text().trim();
+      }).get().filter(Boolean).join(', ');
+
+      $('#reviewCrew').text(
+        ($('#bookingTruck option:selected').text().trim()  || '-') +
+        ' / Driver: '     + ($('#bookingDriver option:selected').text().trim() || '-') +
+        ' / Assistants: ' + (assistantNames || '-')
+      );
+
+      $('#reviewPrice').text($('#bookingPrice').val() || '-');
+    }
+
+    const cargoSummary = [];
+    $('.booking-cargo-item').each(function () {
+      const t = $(this).find('.cargo-type').val().trim();
+      const q = $(this).find('.cargo-quantity').val().trim();
+      if (t && q) cargoSummary.push(t + ' x ' + q);
+    });
+    $('#reviewCargo').text(cargoSummary.length ? cargoSummary.join(', ') : '-');
+    $('#reviewPickup').text(formatAddress('pickup')      + ' (' + ($('#pickupCoordinateText').text()      || '-') + ')');
+    $('#reviewDestination').text(formatAddress('destination') + ' (' + ($('#destinationCoordinateText').text() || '-') + ')');
   }
 
   function formatAddress(prefix) {
@@ -588,62 +1250,141 @@ $(document).ready(function () {
 
   function showMissingModal(missing) {
     const listHtml = '<ul class="text-start mb-0 ps-3">' +
-      missing.map(m => '<li>' + m + '</li>').join('') +
-      '</ul>';
-
+      missing.map(m => '<li>' + m + '</li>').join('') + '</ul>';
     Swal.fire({
-      icon: 'warning',
-      title: 'Missing Required Fields',
+      icon: 'warning', title: 'Missing Required Fields',
       html: '<p class="text-muted mb-2">Please review the following:</p>' + listHtml,
-      confirmButtonText: 'OK',
-      confirmButtonColor: '#696cff'
+      confirmButtonText: 'OK', confirmButtonColor: '#696cff'
     });
   }
 
   function showConfirmModal() {
+    const cargoConfirm = [];
+    $('.booking-cargo-item').each(function () {
+      const t = $(this).find('.cargo-type').val().trim();
+      const q = $(this).find('.cargo-quantity').val().trim();
+      if (t && q) cargoConfirm.push(t + ' (' + q + ')');
+    });
+
+    let customerDisplay;
+    if (IS_CUSTOMER_INDIVIDUAL) {
+      customerDisplay = SESSION_CUSTOMER_ID ? 'Customer #' + SESSION_CUSTOMER_ID : '-';
+    } else {
+      customerDisplay = $('#bookingCustomer option:selected').text().trim() || '-';
+    }
+
     Swal.fire({
-      icon: 'question',
-      title: 'Confirm Booking',
+      icon: 'question', title: 'Confirm Booking',
       html:
         '<p class="mb-2">Please review the details before submitting:</p>' +
         '<div class="text-start bg-light rounded p-3">' +
-          '<div><strong>Customer:</strong> ' + ($('#bookingCustomer option:selected').text().trim() || '-') + '</div>' +
-          '<div><strong>Trip ID:</strong> Generated on save</div>' +
-          '<div><strong>Truck:</strong> ' + ($('#bookingTruck option:selected').text().trim() || '-') + '</div>' +
-          '<div><strong>Driver:</strong> ' + ($('#bookingDriver option:selected').text().trim() || '-') + '</div>' +
-          '<div><strong>Assistants:</strong> ' + ($('.booking-assistant').map(function () { return $(this).find('option:selected').text().trim(); }).get().filter(Boolean).join(', ') || '-') + '</div>' +
-          '<div><strong>Cargo:</strong> ' + ($('#cargoType').val() || '-') + ' (' + ($('#cargoQuantity').val() || '-') + ')</div>' +
-          '<div><strong>Pickup:</strong> ' + ($('#pickupCoordinateText').text() || '-') + '</div>' +
+          '<div><strong>Customer:</strong> '    + customerDisplay + '</div>' +
+          (!IS_CUSTOMER_INDIVIDUAL
+            ? '<div><strong>Truck:</strong> '  + ($('#bookingTruck option:selected').text().trim()  || '-') + '</div>' +
+              '<div><strong>Driver:</strong> ' + ($('#bookingDriver option:selected').text().trim() || '-') + '</div>'
+            : '') +
+          '<div><strong>Cargo:</strong> ' + (cargoConfirm.join(', ') || '-') + '</div>' +
+          '<div><strong>Pickup:</strong> '      + ($('#pickupCoordinateText').text()      || '-') + '</div>' +
           '<div><strong>Destination:</strong> ' + ($('#destinationCoordinateText').text() || '-') + '</div>' +
         '</div>',
       showCancelButton: true,
       confirmButtonText: '<i class="ri-check-line"></i> Yes, Save',
       cancelButtonText: 'Cancel',
-      confirmButtonColor: '#696cff',
-      cancelButtonColor: '#6c757d',
+      confirmButtonColor: '#696cff', cancelButtonColor: '#6c757d',
       reverseButtons: true
     }).then((result) => {
-      if (result.isConfirmed) {
-        saveBooking();
-      }
+      if (result.isConfirmed) saveLocationsAndBooking();
     });
   }
 
-  function saveBooking() {
+  // ─── Save: locations first, then booking ────────────────────────────────────
+  function saveLocationsAndBooking() {
+    const savePickup = saveOneLocation({
+      province:    $('#pickupProvince').val(),
+      city:        $('#pickupCity').val(),
+      barangay:    $('#pickupBarangay').val(),
+      street:      $('#pickupStreet').val(),
+      description: $('#pickupDescription').val(),
+      lat:         $('#pickupLatitude').val(),
+      lng:         $('#pickupLongitude').val(),
+    });
+
+    const saveDestination = saveOneLocation({
+      province:    $('#destinationProvince').val(),
+      city:        $('#destinationCity').val(),
+      barangay:    $('#destinationBarangay').val(),
+      street:      $('#destinationStreet').val(),
+      description: $('#destinationDescription').val(),
+      lat:         $('#destinationLatitude').val(),
+      lng:         $('#destinationLongitude').val(),
+    });
+
+    Promise.all([savePickup, saveDestination])
+      .then(function (ids) {
+        const pID = ids[0];
+        const dID = ids[1];
+        if (!pID || !dID) {
+          Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to save location. Please try again.', confirmButtonColor: '#696cff' });
+          return;
+        }
+        saveBooking(pID, dID);
+      })
+      .catch(function () {
+        Swal.fire({ icon: 'error', title: 'Network Error', text: 'Something went wrong while saving locations.', confirmButtonColor: '#696cff' });
+      });
+  }
+
+  function saveOneLocation(data) {
+    return new Promise(function (resolve, reject) {
+      const fd = new FormData();
+      Object.entries(data).forEach(function ([k, v]) { fd.append(k, v || ''); });
+
+      $.ajax({
+        url: 'ajax/location_save_record.ajax.php',
+        method: 'POST',
+        data: fd,
+        cache: false, contentType: false, processData: false,
+        dataType: 'json',
+        success: function (res) {
+          if (res.status === 'success' && res.locationID) resolve(res.locationID);
+          else reject(new Error('location save failed'));
+        },
+        error: reject
+      });
+    });
+  }
+
+  function saveBooking(pickupLocationID, destinationLocationID) {
     const formData = new FormData();
 
-    formData.append('customerID', $('#bookingCustomer').val());
-    formData.append('truckID', $('#bookingTruck').val());
-    formData.append('driverID', $('#bookingDriver').val());
-    formData.append('assistantIDs', JSON.stringify(getAssistantIDs()));
-    formData.append('pickupDateTime', $('#bookingPickupDateTime').val().replace('T', ' '));
-    formData.append('price', $('#bookingPrice').val());
-    formData.append('cargoType', $('#cargoType').val());
-    formData.append('cargoQuantity', $('#cargoQuantity').val());
-    formData.append('cargoCondition', $('#cargoCondition').val());
-    formData.append('cargoDescription', $('#cargoDescription').val());
-    formData.append('cargoSpecialHandling', $('#cargoSpecialHandling').val());
+    // Customer: use session ID for individual role, select value otherwise
+    formData.append('customerID', IS_CUSTOMER_INDIVIDUAL ? SESSION_CUSTOMER_ID : $('#bookingCustomer').val());
 
+    // Crew: empty strings for individual role
+    formData.append('truckID',      IS_CUSTOMER_INDIVIDUAL ? null : $('#bookingTruck').val());
+    formData.append('driverID',     IS_CUSTOMER_INDIVIDUAL ? null : $('#bookingDriver').val());
+    formData.append('assistantIDs', IS_CUSTOMER_INDIVIDUAL ? JSON.stringify([null, null]) : JSON.stringify(getAssistantIDs()));
+    formData.append('crewSalary',   IS_CUSTOMER_INDIVIDUAL ? '0' : $('#bookingCrewSalary').val());
+    formData.append('crewAllowance', IS_CUSTOMER_INDIVIDUAL ? '0' : $('#bookingCrewAllowance').val());
+
+    formData.append('pickupDateTime', $('#bookingPickupDateTime').val().replace('T', ' '));
+
+    // Price: 0 for individual role
+    formData.append('price',          IS_CUSTOMER_INDIVIDUAL ? '0' : $('#bookingPrice').val());
+    formData.append('fuelPrice',      IS_CUSTOMER_INDIVIDUAL ? '0' : $('#bookingFuelPrice').val());
+
+    const cargoItems = [];
+    $('.booking-cargo-item').each(function () {
+      const type = $(this).find('.cargo-type').val().trim();
+      const qty  = $(this).find('.cargo-quantity').val().trim();
+      if (type && qty) cargoItems.push({ cargoType: type, quantity: qty });
+    });
+    formData.append('cargoItems',           JSON.stringify(cargoItems));
+    formData.append('cargoCondition',       $('#cargoCondition').val());
+    formData.append('cargoDescription',     $('#cargoDescription').val());
+    formData.append('cargoSpecialHandling', $('#cargoSpecialHandling').val());
+    formData.append('pickupLocationID',      pickupLocationID);
+    formData.append('destinationLocationID', destinationLocationID);
     formData.append('pickupProvince', $('#pickupProvince').val());
     formData.append('pickupCity', $('#pickupCity').val());
     formData.append('pickupBarangay', $('#pickupBarangay').val());
@@ -651,7 +1392,6 @@ $(document).ready(function () {
     formData.append('pickupDescription', $('#pickupDescription').val());
     formData.append('pickupLatitude', $('#pickupLatitude').val());
     formData.append('pickupLongitude', $('#pickupLongitude').val());
-
     formData.append('destinationProvince', $('#destinationProvince').val());
     formData.append('destinationCity', $('#destinationCity').val());
     formData.append('destinationBarangay', $('#destinationBarangay').val());
@@ -660,42 +1400,33 @@ $(document).ready(function () {
     formData.append('destinationLatitude', $('#destinationLatitude').val());
     formData.append('destinationLongitude', $('#destinationLongitude').val());
 
+
+    console.log("Pickup ID:", pickupLocationID);
+    console.log("Destination ID:", destinationLocationID);
+
     $.ajax({
       url: 'ajax/booking_save_record.ajax.php',
       method: 'POST',
       data: formData,
-      cache: false,
-      contentType: false,
-      processData: false,
+      cache: false, contentType: false, processData: false,
       dataType: 'text',
       success: function (response) {
         const res = (response || '').trim();
-
         if (res === 'success') {
           Swal.fire({
-            icon: 'success',
-            title: 'Saved!',
-            text: 'Booking saved successfully.',
-            confirmButtonColor: '#696cff'
-          }).then(() => {
-            window.location = 'booking-reg';
-          });
+            icon: 'success', title: 'Saved!', text: 'Booking saved successfully.', confirmButtonColor: '#696cff'
+          }).then(() => { window.location = 'booking-reg'; });
         } else {
-          Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'Failed to save booking. Please check that booking and location tables exist.',
-            confirmButtonColor: '#696cff'
-          });
+          const messages = {
+            'past-date': 'Pickup date must be today or an upcoming date.',
+            'truck-conflict': 'The selected truck has a conflicting active booking. Please choose another truck or pickup date.',
+            'truck-inactive': 'The selected truck is inactive. Please choose another truck.'
+          };
+          Swal.fire({ icon: 'error', title: 'Unable to Save Booking', text: messages[res] || 'Failed to save booking.', confirmButtonColor: '#696cff' });
         }
       },
       error: function () {
-        Swal.fire({
-          icon: 'error',
-          title: 'Network Error',
-          text: 'Something went wrong while saving.',
-          confirmButtonColor: '#696cff'
-        });
+        Swal.fire({ icon: 'error', title: 'Network Error', text: 'Something went wrong while saving.', confirmButtonColor: '#696cff' });
       }
     });
   }

@@ -20,11 +20,64 @@ class ControllerBooking {
     return (new ModelBooking)->mdlTruckDefaultCrew($truckID);
   }
 
-  static public function ctrTripOverviewList() {
-    return (new ModelBooking)->mdlTripOverviewList();
+  static public function ctrTruckAvailability($truckID, $pickupDateTime, $excludeTripID = 0) {
+    return (new ModelBooking)->mdlTruckAvailability($truckID, $pickupDateTime, $excludeTripID);
+  }
+
+  static public function ctrTruckBookedDates($truckID) {
+    return (new ModelBooking)->mdlTruckBookedDates($truckID);
+  }
+
+  static public function ctrTruckCalendarAvailability($truckID) {
+    return (new ModelBooking)->mdlTruckCalendarAvailability($truckID);
+  }
+
+  static public function ctrTripOverviewList($employeeID = 0, $employeeRole = "") {
+    return (new ModelBooking)->mdlTripOverviewList($employeeID, $employeeRole);
+  }
+
+  static public function ctrDriverTripList($driverID, $showAll = false) {
+    return (new ModelBooking)->mdlDriverTripList($driverID, $showAll);
+  }
+
+  static public function ctrUpdateTripDeliveryStatus($tripID, $status, $driverID, $showAll = false) {
+    return (new ModelBooking)->mdlUpdateTripDeliveryStatus($tripID, $status, $driverID, $showAll);
+  }
+
+  static public function ctrUpdateTripInfo($tripID, $data) {
+    return (new ModelBooking)->mdlUpdateTripInfo($tripID, $data);
   }
 
   static public function ctrSaveBooking($data) {
     return (new ModelBooking)->mdlSaveBooking($data);
+  }
+
+  static public function ctrCustomerBookingList($customerID) {
+    return (new ModelBooking)->mdlCustomerBookingList($customerID);
+  }
+  static public function ctrGetBooking($bookingID) {
+    return (new ModelBooking)->mdlGetBooking($bookingID);
+  }
+  
+  static public function ctrReceiptBooking(int $bookingID): ?array {
+    return ModelBooking::mdlReceiptBooking($bookingID);
+  }
+
+  static public function ctrReceiptCargoItems(int $bookingID): array {
+      return ModelBooking::mdlReceiptCargoItems($bookingID);
+  }
+
+  static public function ctrReceiptTripCrew(int $tripID): array {
+      return ModelBooking::mdlReceiptTripCrew($tripID);
+  }
+
+  static public function ctrRescheduleBooking($data) {
+    if (
+        empty($data["bookingID"]) ||
+        empty($data["pickupDateTime"])
+    ) {
+        return "error";
+    }
+    return ModelBooking::mdlRescheduleBooking($data);
   }
 }

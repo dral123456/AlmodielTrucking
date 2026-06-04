@@ -9,6 +9,7 @@ class ControllerCustomer{
 	  $answer = (new ModelCustomer)->mdlSaveCustomer($data);
 		return $answer;
 	}
+
   static public function ctrCustomerLogin(){
 		if (isset($_POST["loginUser"])) {
       $encryptpass = $_POST["password"];
@@ -23,6 +24,10 @@ class ControllerCustomer{
         
         $_SESSION["customerType"] = $answer["customerType"];
         $_SESSION["role"] = "customer" . "-" . $_SESSION["customerType"];
+        $_SESSION["fname"] = $answer["customerFName"];
+        $_SESSION["MI"] = $answer["customerMI"];
+        $_SESSION["lname"] = $answer["customerLName"];
+        $_SESSION["fullname"] = $answer["customerFName"] . " " . $answer["customerMI"] . " " . $answer["customerLName"];
         
         // $empid = $_SESSION["empid"];
         //$answer = (new ModelUserRights)->mdlAddLogin($empid);
@@ -51,17 +56,7 @@ class ControllerCustomer{
     return hash_equals($storedPassword, $plainPassword);
   }
 
-	// static public function ctrEditClinicStaff($data){
-	//   $answer = (new ModelClinicStaff)->mdlEditClinicStaff($data);
-	// }
-
-    // static public function ctrClinicStaffList() {
-    //     $answer = (new ModelClinicStaff) -> mdlClinicStaffList();
-    //     return $answer;
-    // }
-
-    // static public function ctrSearchClinicStaff($empid) {
-    //     $answer = (new ModelClinicStaff) -> mdlSearchClinicStaff($empid);
-    //     return $answer;
-    // }
+  static public function ctrGetCustomer($customerId) {
+    return (new ModelCustomer)->mdlGetCustomer($customerId);
+  }
 }

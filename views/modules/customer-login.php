@@ -10,7 +10,7 @@
     <h3 class="text-body-emphasis fw-bolder mb-0 ms-1">Urbix</h3>
   </a>
   <ul class="list-inline mb-0">
-    <li class="list-inline-item pe-4 border-end"><a href="index.html" class="link-body-emphasis">Home</a></li>
+    <li class="list-inline-item pe-4 border-end"><a href="landingpage" class="link-body-emphasis">Home</a></li>
     <li class="list-inline-item pe-4 border-end"><a href="#!" class="link-body-emphasis">Support</a></li>
     <li class="list-inline-item"><a href="#!" class="link-body-emphasis">Documentation</a></li>
   </ul>

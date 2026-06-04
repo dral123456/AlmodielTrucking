@@ -1,5 +1,6 @@
 <?php
 class ControllerEmployee {
+
   static public function ctrEmployeeList() {
     return (new ModelEmployee)->mdlEmployeeList();
   }
@@ -8,22 +9,22 @@ class ControllerEmployee {
     return (new ModelEmployee)->mdlSaveEmployee($data);
   }
 
-  static public function ctrStaffLogin() {
-    if (isset($_POST["loginStaff"])) {
+  static public function ctrAssistantLogin() {
+    if (isset($_POST["loginAssistant"])) {
       $encryptpass = $_POST["password"];
       $table = 'employee';
       $item = 'empPhoneNumber';
       $value = $_POST["phoneNumber"];
       $answer = (new ModelEmployee)->mdlGetEmployeeCredentials($table, $item, $value);
 
-      if (!empty($answer) && $answer["empPhoneNumber"] == $_POST["phoneNumber"] && self::verifyPassword($encryptpass, $answer["empPassword"])) {
+      if (!empty($answer) && $answer["empPhoneNumber"] == $_POST["phoneNumber"] && self::verifyPassword($encryptpass, $answer["empPassword"]) && strtolower($answer["empType"]) === "assistant") {
         $_SESSION["loggedIn"] = "ok";
         $_SESSION["id"] = $answer["id"];
         $_SESSION["empType"] = $answer["empType"];
         $_SESSION["role"] = self::sessionRoleForEmployee($answer["empType"]);
 
         echo '<script>
-          window.location = "sample";
+          window.location = "assistantDashboard";
         </script>';
       } else {
         echo '<br><div style="text-align:center;" class="alert alert-danger">User or password incorrect</div>';
@@ -39,14 +40,14 @@ class ControllerEmployee {
       $value = $_POST["phoneNumber"];
       $answer = (new ModelEmployee)->mdlGetEmployeeCredentials($table, $item, $value);
 
-      if (!empty($answer) && $answer["empPhoneNumber"] == $_POST["phoneNumber"] && self::verifyPassword($encryptpass, $answer["empPassword"])) {
+      if (!empty($answer) && $answer["empPhoneNumber"] == $_POST["phoneNumber"] && self::verifyPassword($encryptpass, $answer["empPassword"]) && strtolower($answer["empType"]) === "driver") {
         $_SESSION["loggedIn"] = "ok";
         $_SESSION["id"] = $answer["id"];
         $_SESSION["empType"] = $answer["empType"];
         $_SESSION["role"] = self::sessionRoleForEmployee($answer["empType"]);
 
         echo '<script>
-          window.location = "sample";
+          window.location = "driverDashboard";
         </script>';
       } else {
         echo '<br><div style="text-align:center;" class="alert alert-danger">User or password incorrect</div>';
@@ -62,21 +63,12 @@ class ControllerEmployee {
       $value = $_POST["phoneNumber"];
       $empType = 'admin';
       $answer = (new ModelEmployee)->mdlGetEmployeeCredentials($table, $item, $value, $empType);
-      $legacyAnswer = (new ModelEmployee)->mdlGetAdminUserRightsCredentials($value);
 
-      if (!empty($answer) && $answer["empPhoneNumber"] == $_POST["phoneNumber"] && self::verifyPassword($encryptpass, $answer["empPassword"])) {
+
+      if (!empty($answer) && $answer["empPhoneNumber"] == $_POST["phoneNumber"] && self::verifyPassword($encryptpass, $answer["empPassword"]) && strtolower($answer["empType"]) === "admin") {
         $_SESSION["loggedIn"] = "ok";
         $_SESSION["id"] = $answer["id"];
         $_SESSION["empType"] = $answer["empType"];
-        $_SESSION["role"] = "admin";
-
-        echo '<script>
-          window.location = "sample";
-        </script>';
-      } elseif (!empty($legacyAnswer) && $legacyAnswer["username"] == $_POST["phoneNumber"] && self::verifyPassword($encryptpass, $legacyAnswer["upassword"])) {
-        $_SESSION["loggedIn"] = "ok";
-        $_SESSION["id"] = $legacyAnswer["id"];
-        $_SESSION["empType"] = "admin";
         $_SESSION["role"] = "admin";
 
         echo '<script>
@@ -110,5 +102,9 @@ class ControllerEmployee {
     }
 
     return "employee";
+  }
+
+  static public function ctrGetEmployee($employeeId) {
+    return (new ModelEmployee)->mdlGetEmployee($employeeId);
   }
 }

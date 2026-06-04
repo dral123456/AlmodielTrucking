@@ -51,6 +51,7 @@ $(document).ready(function () {
   $(document).on('click', '#btnResetCustomer', function () {
     $('#individualForm input, #companyForm input').val('');
     $('#custPassword, #custPasswordConfirm').val('');
+    $('#companyForm').removeData('warehouseDescription');
     $('#customerCoordinateText').text('Not pinned');
     $('.is-invalid').removeClass('is-invalid');
     $('#customerType').val(companyOnlyMode ? 'company' : 'individual');
@@ -78,6 +79,133 @@ $(document).ready(function () {
       event.preventDefault();
       searchWarehouseAddress();
     }
+  });
+
+    // ===== WAREHOUSE LOCATION SUGGESTIONS =====
+
+  let warehouseSuggestTimer = null;
+
+  $(document).on('input', '#warehouseMapSearch', function () {
+
+    clearTimeout(warehouseSuggestTimer);
+
+    const query = $(this).val().trim();
+
+    if (query.length < 2) {
+      $('#warehouseLocationSuggestions').hide().empty();
+      return;
+    }
+
+    warehouseSuggestTimer = setTimeout(function () {
+      fetchWarehouseSuggestions(query);
+    }, 300);
+
+  });
+
+  function fetchWarehouseSuggestions(query) {
+
+    $.ajax({
+      url: '/almodieltrucking/ajax/location_search.ajax.php',
+      method: 'GET',
+      data: { q: query },
+      dataType: 'json',
+
+      success: function (results) {
+
+        const $box = $('#warehouseLocationSuggestions');
+
+        $box.empty();
+
+        if (!results || results.length === 0) {
+          $box.hide();
+          return;
+        }
+
+        results.forEach(function (loc) {
+
+          const $item = $('<div class="warehouse-suggestion-item"></div>')
+            .text(loc.label);
+
+          $item.on('click', function () {
+
+            // Fill search field
+            $('#warehouseMapSearch').val(loc.label);
+
+            // Hide suggestions
+            $box.hide().empty();
+
+            // Place marker on map
+            if (loc.lat && loc.lng) {
+
+              initWarehouseMap();
+
+              const latlng = {
+                lat: parseFloat(loc.lat),
+                lng: parseFloat(loc.lng)
+              };
+
+              setWarehousePin(latlng);
+
+              warehouseMap.setView(latlng, 16);
+            }
+
+            // Fill fields
+            $('#provinceCorp')
+              .val(loc.province || '')
+              .removeClass('is-invalid');
+
+            $('#cityCorp')
+              .val(loc.city || '')
+              .removeClass('is-invalid');
+
+            $('#barangayCorp')
+              .val(loc.barangay || '')
+              .removeClass('is-invalid');
+
+            $('#streetCorp')
+              .val(loc.street || '');
+
+            $('#houseCorp')
+              .val(loc.houseNumber || '');
+
+            $('#companyForm').data('warehouseDescription', loc.description || loc.label || '');
+
+            $('#warehouseLatitude')
+              .val(loc.lat || '');
+
+            $('#warehouseLongitude')
+              .val(loc.lng || '');
+
+            // Update coordinate text
+            if (loc.lat && loc.lng) {
+              $('#customerCoordinateText').text(
+                parseFloat(loc.lat).toFixed(8) +
+                ', ' +
+                parseFloat(loc.lng).toFixed(8)
+              );
+            }
+
+          });
+
+          $box.append($item);
+
+        });
+
+        $box.show();
+
+      }
+
+    });
+
+  }
+
+  // Hide suggestions when clicking outside
+  $(document).on('click', function (e) {
+
+    if (!$(e.target).closest('.warehouse-map-search').length) {
+      $('#warehouseLocationSuggestions').hide().empty();
+    }
+
   });
 
   // Register
@@ -271,6 +399,7 @@ $(document).ready(function () {
         $('#barangayCorp').val(address.suburb || address.neighbourhood || address.quarter || address.barangay || '');
         $('#streetCorp').val(address.road || address.pedestrian || address.footway || '');
         $('#houseCorp').val(address.house_number || '');
+        $('#companyForm').data('warehouseDescription', data.display_name || '');
         $('#customerMapStatus').text('Warehouse address filled from the map pin.');
       })
       .catch(function () {
@@ -353,6 +482,24 @@ $(document).ready(function () {
 
 
   // ===== Save =====
+  function getWarehouseDescription() {
+    const storedDescription = String($('#companyForm').data('warehouseDescription') || '').trim();
+    if (storedDescription) {
+      return storedDescription;
+    }
+
+    return [
+      $('#houseCorp').val(),
+      $('#streetCorp').val(),
+      $('#barangayCorp').val(),
+      $('#cityCorp').val(),
+      $('#provinceCorp').val(),
+      'Philippines'
+    ].map(function (value) {
+      return String(value || '').trim();
+    }).filter(Boolean).join(', ');
+  }
+
   function saveCustomer() {
     const isCompany = getCustomerType() === 'company';
     const formData = new FormData();
@@ -369,6 +516,7 @@ $(document).ready(function () {
       formData.append('barangay',      $('#barangayCorp').val());
       formData.append('street',        $('#streetCorp').val());
       formData.append('houseNumber',   $('#houseCorp').val());
+      formData.append('description',   getWarehouseDescription());
       formData.append('warehouseLatitude',  $('#warehouseLatitude').val());
       formData.append('warehouseLongitude', $('#warehouseLongitude').val());
 

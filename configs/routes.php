@@ -1,31 +1,59 @@
 <?php
-$staffRoutes = [
+$adminRoutes = [
     'sample',
     'employee-reg',
     'customer-reg',
     'truck-reg',
     'booking-reg',
     'trips',
+    'incident-reports',
     'reports',
+    'sales',
     'manage-company',
     'manage-employee',
+    'manage-tariff',
     'manage-truck',
+    'truck-details',
     'logout',
+    'signup',
+    'trip-details',
+    'user-profile',
+    'landingpage'
+];
+
+$driverRoutes = [
+    'trips',
+    'logout',
+    'driverDashboard',
+    'trip-details',
+    'user-profile',
+    'landingpage',
+];
+
+$assistantRoutes = [
+    'sample',
+    'trips',
+    'logout',
+    'assistantDashboard',
+    'trip-details',
+    'user-profile',
+    'landingpage',
 ];
 
 $customerRoutes = [
     'sample',
-    'customer-individual/profile',
-    'customer-individual/bookings',
     'booking-reg',
     'logout',
+    'bookings',
+    'booking-details',
+    'user-profile',
+    'landingpage',
 ];
 
 return [
-    'admin' => $staffRoutes,
-    'employee' => $staffRoutes,
-    'assistant' => $staffRoutes,
-    'driver' => $staffRoutes,
+    'admin' => $adminRoutes,
+    'assistant' => $assistantRoutes,
+    'driver' => $driverRoutes,
     'customer' => $customerRoutes,
     'customer-individual' => $customerRoutes,
     'customer-company' => $customerRoutes,

@@ -2,7 +2,28 @@
 require_once "controllers/booking.controller.php";
 require_once "models/booking.model.php";
 
-$trips = ControllerBooking::ctrTripOverviewList();
+$role = $_SESSION["role"] ?? "";
+$employeeID = isset($_SESSION["id"]) ? (int) $_SESSION["id"] : 0;
+$trips = ControllerBooking::ctrTripOverviewList($employeeID, $role);
+$trucks = ControllerBooking::ctrTruckList();
+$drivers = ControllerBooking::ctrEmployeeListByType("driver");
+$assistants = ControllerBooking::ctrEmployeeListByType("assistant");
+$canModifyTrips = $role === "admin";
+$canUpdateTripStatus = $role === "driver";
+$canSubmitIncident = $role === "driver";
+$tripStats = array(
+  "total" => count($trips),
+  "pending" => 0,
+  "stopover" => 0,
+  "in-transit" => 0,
+  "completed" => 0
+);
+
+foreach ($trips as $trip) {
+  if (isset($tripStats[$trip["status"]])) {
+    $tripStats[$trip["status"]]++;
+  }
+}
 ?>
 
 <div class="trip-page">
@@ -10,7 +31,9 @@ $trips = ControllerBooking::ctrTripOverviewList();
     <div class="card-header border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
       <div>
         <h5 class="mb-0">Trips</h5>
-        <p class="text-muted small mb-0">View generated trips, connected bookings, delivery status, and route points.</p>
+        <p class="text-muted small mb-0">
+          <?php echo $role === "driver" ? "View only trips assigned to you and update delivery progress." : "Monitor generated trips, route points, booking groups, and delivery status."; ?>
+        </p>
       </div>
       <span class="badge bg-primary-subtle text-primary fs-6">
         <i class="ri-route-line me-1"></i> Trip Monitoring
@@ -18,76 +41,400 @@ $trips = ControllerBooking::ctrTripOverviewList();
     </div>
 
     <div class="card-body p-4">
-      <div class="trip-filter-grid mb-4">
-        <div>
-          <label class="form-label">Sort by Date & Time</label>
-          <select class="form-select" id="tripSort">
-            <option value="date_desc">Newest first</option>
-            <option value="date_asc">Oldest first</option>
-            <option value="time_asc">Earliest time first</option>
-            <option value="time_desc">Latest time first</option>
-          </select>
-        </div>
-        <div>
-          <label class="form-label">Status</label>
-          <select class="form-select" id="tripStatusFilter">
-            <option value="all">All trips</option>
-            <option value="pending">Pending</option>
-            <option value="in-transit">On Transit</option>
-            <option value="completed">Delivered</option>
-          </select>
-        </div>
-        <div>
-          <label class="form-label">Trip Date Range</label>
-          <div class="form-icon">
-            <i class="ri-calendar-line text-muted"></i>
-            <input type="text" class="form-control form-control-icon" id="tripDateRangeFilter" placeholder="Select date range" autocomplete="off" readonly>
+      <?php if ($canSubmitIncident): ?>
+        <ul class="nav nav-tabs driver-trips-tabs mb-4" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button type="button" class="nav-link active" id="driverTripsTab" data-bs-toggle="tab" data-bs-target="#driverTripsPane" role="tab" aria-controls="driverTripsPane" aria-selected="true">
+              <i class="ri-route-line me-1"></i> My Trips
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button type="button" class="nav-link" id="driverIncidentTab" data-bs-toggle="tab" data-bs-target="#driverIncidentPane" role="tab" aria-controls="driverIncidentPane" aria-selected="false">
+              <i class="ri-alarm-warning-line me-1"></i> Incident Report
+            </button>
+          </li>
+        </ul>
+        <div class="tab-content driver-trips-tab-content">
+          <div class="tab-pane fade show active" id="driverTripsPane" role="tabpanel" aria-labelledby="driverTripsTab">
+      <?php endif; ?>
+
+      <div class="trip-stat-grid mb-4">
+        <button type="button" class="trip-stat-card active" data-status-shortcut="all">
+          <span class="trip-stat-icon bg-primary-subtle text-primary"><i class="ri-route-line"></i></span>
+          <span><small>Total Trips</small><strong><?php echo (int) $tripStats["total"]; ?></strong></span>
+        </button>
+        <button type="button" class="trip-stat-card" data-status-shortcut="pending">
+          <span class="trip-stat-icon bg-warning-subtle text-warning"><i class="ri-time-line"></i></span>
+          <span><small>Pending</small><strong><?php echo (int) $tripStats["pending"]; ?></strong></span>
+        </button>
+        <button type="button" class="trip-stat-card" data-status-shortcut="stopover">
+          <span class="trip-stat-icon bg-info-subtle text-info"><i class="ri-map-pin-time-line"></i></span>
+          <span><small>Stopover</small><strong><?php echo (int) $tripStats["stopover"]; ?></strong></span>
+        </button>
+        <button type="button" class="trip-stat-card" data-status-shortcut="in-transit">
+          <span class="trip-stat-icon bg-primary-subtle text-primary"><i class="ri-truck-line"></i></span>
+          <span><small>On Transit</small><strong><?php echo (int) $tripStats["in-transit"]; ?></strong></span>
+        </button>
+        <button type="button" class="trip-stat-card" data-status-shortcut="completed">
+          <span class="trip-stat-icon bg-success-subtle text-success"><i class="ri-check-double-line"></i></span>
+          <span><small>Delivered</small><strong><?php echo (int) $tripStats["completed"]; ?></strong></span>
+        </button>
+      </div>
+
+      <div class="trip-filter-panel mb-4">
+        <div class="trip-filter-grid">
+          <div>
+            <label class="form-label">Sort by Date & Time</label>
+            <select class="form-select" id="tripSort">
+              <option value="date_desc">Newest first</option>
+              <option value="date_asc">Oldest first</option>
+              <option value="time_asc">Earliest time first</option>
+              <option value="time_desc">Latest time first</option>
+            </select>
           </div>
-          <div class="form-text" id="tripDateHint">Dates with bookings are marked in the calendar.</div>
-        </div>
-        <div class="trip-filter-action">
-          <button type="button" class="btn btn-light w-100" id="tripClearFilters">
-            <i class="ri-refresh-line me-1"></i> Clear Filters
-          </button>
+          <div>
+            <label class="form-label">Status</label>
+            <select class="form-select" id="tripStatusFilter">
+              <option value="all">All trips</option>
+              <option value="pending">Pending</option>
+              <option value="stopover">Stopover</option>
+              <option value="in-transit">On Transit</option>
+              <option value="completed">Delivered</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Trip Number</label>
+            <div class="form-icon">
+              <i class="ri-hashtag text-muted"></i>
+              <input type="text" class="form-control form-control-icon" id="tripNumberFilter" placeholder="Search trip #">
+            </div>
+          </div>
+          <div>
+            <label class="form-label">Trip Date Range</label>
+            <div class="form-icon">
+              <i class="ri-calendar-line text-muted"></i>
+              <input type="text" class="form-control form-control-icon" id="tripDateRangeFilter" placeholder="Select date range" autocomplete="off" readonly>
+            </div>
+            <div class="form-text" id="tripDateHint">Dates with bookings are marked in the calendar.</div>
+          </div>
+          <div class="trip-filter-action">
+            <button type="button" class="btn btn-light w-100" id="tripClearFilters">
+              <i class="ri-refresh-line me-1"></i> Clear Filters
+            </button>
+          </div>
         </div>
       </div>
 
       <div class="trip-workspace">
         <section class="trip-list-panel">
-          <div id="tripList" class="trip-list"></div>
-        </section>
-        <section class="trip-map-panel">
-          <div class="trip-map-shell">
-            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
-              <div>
-                <h6 class="text-uppercase text-muted mb-1">
-                  <i class="ri-road-map-line me-1"></i> Leaflet Map
-                </h6>
-                <p class="text-muted small mb-0" id="tripMapStatus">Select a trip to view pickup and destination pins.</p>
-              </div>
-              <span class="badge bg-secondary-subtle text-secondary" id="tripMapBadge">No trip selected</span>
+          <div class="trip-panel-heading">
+            <div>
+              <h6 class="mb-0">Trip List</h6>
+              <p class="text-muted small mb-0" id="tripListSummary">Select a row to view route and booking details.</p>
             </div>
-            <div id="tripMap"></div>
+          </div>
+          <div class="table-responsive mt-3">
+            <table class="table align-middle trip-table mb-0">
+              <thead>
+                <tr>
+                <th style="width: 22%">Trip</th>
+                <th style="width: 18%">Date & Time</th>
+                <th style="width: 16%">Customer</th>
+                <th style="width: 26%">Crew</th>
+                <th style="width: 8%" class="text-center">Bookings</th>
+                <th style="width: 10%">Status</th>
+                </tr>
+              </thead>
+              <tbody id="tripTableBody"></tbody>
+            </table>
           </div>
         </section>
+        <!-- <section class="trip-detail-panel">
+          <div id="tripDetails" class="trip-detail-shell">
+            <div class="text-muted text-center p-4">Select a trip to view details.</div>
+          </div>
+        </section> -->
       </div>
+
+      <?php if ($canSubmitIncident): ?>
+          </div>
+          <div class="tab-pane fade" id="driverIncidentPane" role="tabpanel" aria-labelledby="driverIncidentTab">
+            <form id="driverIncidentForm" class="incident-driver-form">
+              <div class="incident-form-header">
+                <div>
+                  <h5 class="mb-1">Incident Report</h5>
+                  <p class="text-muted small mb-0">Submit a quick report for any trip issue. Required fields are marked with <span class="text-danger">*</span>.</p>
+                </div>
+              </div>
+
+              <div class="incident-form-section">
+                <h6>Trip</h6>
+                <div class="incident-form-grid">
+                  <div class="incident-field">
+                    <label class="form-label">Trip <span class="text-danger">*</span></label>
+                    <select class="form-select" id="incidentTripID" name="tripID" required>
+                      <option value="">Select assigned trip</option>
+                      <?php foreach ($trips as $trip): ?>
+                        <option value="<?php echo (int) $trip["tripID"]; ?>">Trip #<?php echo (int) $trip["tripID"]; ?> - <?php echo htmlspecialchars(date("M d, Y h:i A", strtotime($trip["firstPickupDateTime"]))); ?></option>
+                      <?php endforeach; ?>
+                    </select>
+                  </div>
+                  <div class="incident-field">
+                    <label class="form-label">Booking</label>
+                    <select class="form-select" id="incidentBookingID" name="bookingID">
+                      <option value="">Select trip first</option>
+                    </select>
+                    <div class="form-text">Optional if the incident affects the whole trip.</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="incident-form-section">
+                <h6>Details</h6>
+                <div class="incident-form-grid incident-form-grid-compact">
+                  <div class="incident-field">
+                    <label class="form-label">Type <span class="text-danger">*</span></label>
+                    <select class="form-select" id="incidentType" name="incidentType" required>
+                      <option value="accident">Accident</option>
+                      <option value="vehicle_breakdown">Vehicle breakdown</option>
+                      <option value="cargo_damage">Cargo damage</option>
+                      <option value="delay">Delay</option>
+                      <option value="route_issue">Route issue</option>
+                      <option value="customer_issue">Customer issue</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                  <div class="incident-field">
+                    <label class="form-label">Severity <span class="text-danger">*</span></label>
+                    <select class="form-select" id="incidentSeverity" name="severity" required>
+                      <option value="low">Low</option>
+                      <option value="medium" selected>Medium</option>
+                      <option value="high">High</option>
+                      <option value="critical">Critical</option>
+                    </select>
+                  </div>
+                  <div class="incident-field">
+                    <label class="form-label">Date & Time <span class="text-danger">*</span></label>
+                    <input type="datetime-local" class="form-control" id="incidentDateTime" name="incidentDateTime" value="<?php echo htmlspecialchars(date("Y-m-d\TH:i")); ?>" required>
+                  </div>
+                </div>
+              </div>
+
+              <div class="incident-form-section">
+                <h6>Notes</h6>
+                <div class="incident-form-grid">
+                  <div class="incident-field incident-field-wide">
+                    <label class="form-label">Location / Address</label>
+                    <input type="text" class="form-control" id="incidentLocationText" name="locationText" placeholder="Example: Lacson Street near Barangay Bata, Bacolod">
+                  </div>
+                  <div class="incident-field">
+                    <label class="form-label">What happened? <span class="text-danger">*</span></label>
+                    <textarea class="form-control" id="incidentDescription" name="description" rows="5" placeholder="Describe the incident clearly..." required></textarea>
+                  </div>
+                  <div class="incident-field">
+                    <label class="form-label">Action taken</label>
+                    <textarea class="form-control" id="incidentActionTaken" name="actionTaken" rows="5" placeholder="Example: Called admin, moved truck to safe side..."></textarea>
+                  </div>
+                </div>
+              </div>
+
+              <div class="incident-form-actions">
+                <button type="reset" class="btn btn-light">Clear</button>
+                <button type="submit" class="btn btn-primary" id="incidentSubmitBtn">Submit Report</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      <?php endif; ?>
     </div>
   </div>
 </div>
 
 <script>
   window.tripOverviewData = <?php echo json_encode($trips, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
+  window.tripTruckOptions = <?php echo json_encode($trucks, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
+  window.tripDriverOptions = <?php echo json_encode($drivers, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
+  window.tripAssistantOptions = <?php echo json_encode($assistants, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
+  window.tripCanModifyInfo = <?php echo $canModifyTrips ? "true" : "false"; ?>;
+  window.tripCanUpdateStatus = <?php echo $canUpdateTripStatus ? "true" : "false"; ?>;
+  window.tripCanSubmitIncident = <?php echo $canSubmitIncident ? "true" : "false"; ?>;
 </script>
 
 <style>
   .trip-page {
-    max-width: 1440px;
+    max-width: 1480px;
     margin: 0 auto;
+    width: 100%;
+  }
+
+  .driver-trips-tabs {
+    border-bottom-color: var(--bs-border-color);
+  }
+
+  .driver-trips-tabs .nav-link {
+    border-radius: 0.625rem 0.625rem 0 0;
+    color: var(--bs-secondary-color);
+    font-weight: 600;
+  }
+
+  .driver-trips-tabs .nav-link.active {
+    color: var(--bs-primary);
+  }
+
+  .incident-driver-form {
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.75rem;
+    background: var(--bs-body-bg);
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 1.5rem;
+  }
+
+  .incident-form-header,
+  .incident-form-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .incident-form-header {
+    border-bottom: 1px solid var(--bs-border-color);
+    padding-bottom: 1.125rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .incident-form-section {
+    padding: 0;
+  }
+
+  .incident-form-section + .incident-form-section {
+    border-top: 1px solid var(--bs-border-color);
+    margin-top: 1.25rem;
+    padding-top: 1.25rem;
+  }
+
+  .incident-form-section h6 {
+    color: var(--bs-secondary-color);
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.875rem;
+    text-transform: uppercase;
+  }
+
+  .incident-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+  }
+
+  .incident-form-grid-compact {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .incident-field-wide {
+    grid-column: 1 / -1;
+  }
+
+  .incident-driver-form .form-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin-bottom: 0.35rem;
+  }
+
+  .incident-driver-form .form-control,
+  .incident-driver-form .form-select {
+    min-height: 44px;
+    border-radius: 0.5rem;
+  }
+
+  .incident-driver-form textarea.form-control {
+    min-height: 132px;
+    resize: vertical;
+  }
+
+  .incident-form-actions {
+    border-top: 1px solid var(--bs-border-color);
+    margin-top: 1.25rem;
+    padding-top: 1.25rem;
+    justify-content: flex-end;
+  }
+
+  .incident-form-actions .btn {
+    min-height: 42px;
+    min-width: 116px;
+    border-radius: 0.5rem;
+    font-weight: 600;
+  }
+
+  .trip-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+
+  .trip-stat-card {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 0;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.5rem;
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+    padding: 0.875rem;
+    text-align: left;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .trip-stat-card.active,
+  .trip-stat-card:hover {
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 3px rgba(105, 108, 255, 0.10);
+  }
+
+  .trip-stat-icon {
+    width: 40px;
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 40px;
+    border-radius: 0.5rem;
+    font-size: 1.2rem;
+  }
+
+  .trip-stat-card small {
+    display: block;
+    color: var(--bs-secondary-color);
+    line-height: 1.2;
+  }
+
+  .trip-stat-card strong {
+    display: block;
+    font-size: 1.25rem;
+    line-height: 1.15;
+  }
+
+  .trip-filter-panel,
+  .trip-list-panel,
+  .trip-detail-shell {
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.5rem;
+    background: var(--bs-body-bg);
+  }
+
+  .trip-filter-panel,
+  .trip-list-panel,
+  .trip-detail-shell {
+    padding: 1rem;
   }
 
   .trip-filter-grid {
     display: grid;
-    grid-template-columns: minmax(190px, 1fr) minmax(170px, 0.8fr) minmax(280px, 1.35fr) minmax(150px, 180px);
+    grid-template-columns: minmax(170px, 0.8fr) minmax(150px, 0.7fr) minmax(170px, 0.75fr) minmax(260px, 1.2fr) minmax(150px, 180px);
     align-items: start;
     gap: 1rem;
   }
@@ -99,52 +446,70 @@ $trips = ControllerBooking::ctrTripOverviewList();
 
   .trip-workspace {
     display: grid;
-    grid-template-columns: 420px minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
     align-items: start;
-    gap: 1.25rem;
+    gap: 1rem;
   }
 
   .trip-list-panel,
-  .trip-map-panel {
+  .trip-detail-panel {
     min-width: 0;
   }
 
-  .trip-list {
-    display: grid;
-    gap: 0.75rem;
-    max-height: 560px;
-    overflow: auto;
-    padding-right: 0.25rem;
-  }
-
-  .trip-item {
-    border: 1px solid var(--bs-border-color);
-    border-radius: 0.5rem;
-    background: var(--bs-body-bg);
-    padding: 1rem;
-    text-align: left;
-    width: 100%;
-    min-width: 0;
-  }
-
-  .trip-item.active {
-    border-color: var(--bs-primary);
-    box-shadow: 0 0 0 3px rgba(105, 108, 255, 0.12);
-  }
-
-  .trip-meta {
+  .trip-panel-heading {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     flex-wrap: wrap;
-    gap: 0.5rem;
+    gap: 0.75rem;
+  }
+
+  .trip-table th {
     color: var(--bs-secondary-color);
     font-size: 0.8125rem;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .trip-row {
+    cursor: pointer;
+  }
+
+  .trip-row:hover {
+    background: var(--bs-tertiary-bg);
+  }
+
+  .trip-row.active {
+    background: var(--bs-primary-bg-subtle);
+  }
+
+  .trip-row-main {
+    font-weight: 700;
+    white-space: normal;
+    word-break: break-word;
+  }
+
+  .trip-row-sub {
+    color: var(--bs-secondary-color);
+    font-size: 0.8125rem;
+    max-width: unset;      
+    overflow: visible;     
+    text-overflow: unset;  
+    white-space: normal;
+    word-break: break-word;
   }
 
   .trip-booking-row {
-    border-top: 1px solid var(--bs-border-color);
-    padding-top: 0.75rem;
-    margin-top: 0.75rem;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.5rem;
+    padding: 0.875rem;
+    background: var(--bs-body-bg);
+  }
+
+  .trip-booking-locations {
+    display: grid;
+    gap: 0.25rem;
+    margin-top: 0.375rem;
   }
 
   .air-datepicker-cell.-trip-has-booking- {
@@ -177,23 +542,280 @@ $trips = ControllerBooking::ctrTripOverviewList();
     background: #fff;
   }
 
+  .trip-detail-shell {
+    padding: 1rem;
+  }
+
+  .trip-detail-grid {
+    display: grid;
+    grid-template-columns: minmax(320px, 0.8fr) minmax(0, 1.2fr);
+    gap: 1rem;
+    align-items: start;
+  }
+
+  .trip-booking-list {
+    display: grid;
+    gap: 0.75rem;
+  }
+
   .trip-map-shell {
-    position: sticky;
-    top: 90px;
+    min-width: 0;
   }
 
   #tripMap {
     width: 100%;
-    height: 560px;
-    min-height: 480px;
+    height: min(64vh, 660px);
+    min-height: 520px;
     border: 1px solid var(--bs-border-color);
     border-radius: 0.5rem;
     overflow: hidden;
+    background: #dbeafe;
+  }
+
+  .trip-edit-modal {
+    width: calc(100vw - 1rem) !important;
+    max-width: calc(100vw - 1rem) !important;
+    height: calc(100vh - 1rem) !important;
+    max-height: calc(100vh - 1rem) !important;
+    padding: 1.25rem !important;
+    display: flex !important;
+    flex-direction: column;
+  }
+
+  .trip-edit-modal .swal2-title {
+    margin: 0 0 0.75rem;
+    font-size: clamp(1.3rem, 1.8vw, 1.65rem);
+    flex: 0 0 auto;
+  }
+
+  .trip-edit-modal .swal2-html-container {
+    flex: 1 1 auto !important;
+    min-height: 0;
+    margin: 0;
+    width: 100%;
+    height: calc(100vh - 150px) !important;
+    max-height: calc(100vh - 150px) !important;
+    overflow: hidden;
+    padding: 0;
+  }
+
+  .trip-edit-modal .swal2-actions {
+    flex: 0 0 auto;
+    margin: 0.875rem 0 0;
+  }
+
+  .trip-edit-modal .swal2-confirm,
+  .trip-edit-modal .swal2-cancel {
+    min-width: 132px;
+    min-height: 46px;
+    border-radius: 0.65rem;
+  }
+
+  .trip-edit-shell {
+    color: var(--bs-body-color);
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 0.75rem;
+    height: 100% !important;
+    min-height: 0;
+  }
+
+  .trip-edit-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: center;
+    color: var(--bs-secondary-color);
+    font-size: 0.8125rem;
+  }
+
+  .trip-edit-summary span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 999px;
+    background: var(--bs-tertiary-bg);
+    padding: 0.32rem 0.625rem;
+  }
+
+  .trip-edit-grid {
+    display: grid;
+    grid-template-columns: minmax(500px, 0.9fr) minmax(680px, 1.1fr);
+    gap: 1rem;
+    align-items: stretch;
+    height: 100% !important;
+    min-height: 0;
+  }
+
+  .trip-edit-main {
+    height: 100% !important;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .trip-edit-form {
+    display: grid;
+    align-content: start;
+    gap: 0.75rem;
+    min-height: 0;
+    overflow: auto;
+    padding-right: 0;
+  }
+
+  .trip-edit-card,
+  .trip-edit-map-card {
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.65rem;
+    background: var(--bs-body-bg);
+    padding: 0.875rem;
+  }
+
+  .trip-edit-primary-card {
+    border-color: rgba(105, 108, 255, 0.45);
+    box-shadow: 0 0 0 3px rgba(105, 108, 255, 0.08);
+  }
+
+  .trip-edit-card-title,
+  .trip-edit-map-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.625rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .trip-edit-card-title {
+    justify-content: flex-start;
+  }
+
+  .trip-edit-card-title span {
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 28px;
+    border-radius: 50%;
+    background: var(--bs-primary-bg-subtle);
+    color: var(--bs-primary);
+    font-weight: 700;
+  }
+
+  .trip-edit-card-title small,
+  .trip-edit-map-heading small {
+    display: block;
+    color: var(--bs-secondary-color);
+    font-size: 0.78rem;
+  }
+
+  .trip-edit-map-card {
+    min-height: 0;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .trip-edit-map-heading {
+    align-items: flex-start;
+  }
+
+  .trip-edit-map-heading .badge {
+    white-space: nowrap;
+    margin-top: 0.125rem;
+  }
+
+  #editTripDestinationMap {
+    width: 100%;
+    flex: 1 1 auto;
+    height: 100% !important;
+    min-height: 520px;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.75rem;
+    overflow: hidden;
+    background: #dbeafe;
+  }
+
+  .trip-edit-map-help {
+    margin-top: 0.625rem;
+    color: var(--bs-secondary-color);
+    font-size: 0.875rem;
+  }
+
+  .trip-edit-details {
+    padding: 0;
+  }
+
+  .trip-edit-details summary {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.875rem;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .trip-edit-details summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .trip-edit-details summary > span {
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 28px;
+    border-radius: 50%;
+    background: var(--bs-primary-bg-subtle);
+    color: var(--bs-primary);
+    font-weight: 700;
+  }
+
+  .trip-edit-details summary > div {
+    flex: 1 1 auto;
+  }
+
+  .trip-edit-details summary small {
+    display: block;
+    color: var(--bs-secondary-color);
+    font-size: 0.8125rem;
+  }
+
+  .trip-edit-details summary i {
+    transition: transform 0.15s ease;
+  }
+
+  .trip-edit-details[open] summary i {
+    transform: rotate(180deg);
+  }
+
+  .trip-edit-details .row {
+    padding: 0 0.875rem 0.875rem;
+  }
+
+  .trip-edit-modal .form-label {
+    margin-bottom: 0.3rem;
+    font-weight: 600;
+  }
+
+  .trip-edit-modal .form-control,
+  .trip-edit-modal .form-select {
+    min-height: 42px;
+  }
+
+  .trip-edit-modal textarea.form-control {
+    min-height: 70px;
+  }
+
+  .trip-table {
+    table-layout: fixed;
+    width: 100%;
   }
 
   @media (max-width: 1399.98px) {
-    .trip-workspace {
-      grid-template-columns: 400px minmax(0, 1fr);
+    .trip-stat-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
   }
 
@@ -202,37 +824,83 @@ $trips = ControllerBooking::ctrTripOverviewList();
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .trip-workspace {
+    .trip-filter-action {
+      padding-top: 0;
+      align-self: end;
+    }
+
+    .trip-detail-grid {
       grid-template-columns: 1fr;
     }
 
-    .trip-list {
-      max-height: none;
-      overflow: visible;
-    }
-
-    .trip-map-shell {
-      position: static;
+    .incident-form-grid,
+    .incident-form-grid-compact {
+      grid-template-columns: 1fr;
     }
 
     #tripMap {
       height: 460px;
       min-height: 460px;
     }
+
+    .trip-edit-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .trip-edit-main {
+      height: auto;
+      overflow: auto;
+    }
+
+    #editTripDestinationMap {
+      height: 560px;
+      min-height: 560px;
+    }
   }
 
-  @media (max-width: 575.98px) {
+  @media (max-width: 767.98px) {
+    .trip-stat-grid,
     .trip-filter-grid {
       grid-template-columns: 1fr;
     }
 
+    .trip-filter-action {
+      align-self: stretch;
+    }
+
     #tripMap {
+      height: 360px;
+      min-height: 360px;
+    }
+
+    #editTripDestinationMap {
       height: 340px;
+      flex: 0 0 340px;
       min-height: 340px;
     }
 
-    .trip-item {
+    .trip-edit-summary {
+      justify-content: flex-start;
+    }
+  }
+
+  @media (max-width: 575.98px) {
+    .trip-list-panel,
+    .trip-detail-shell,
+    .trip-filter-panel {
       padding: 0.875rem;
+    }
+
+    .incident-driver-form {
+      padding: 1rem;
+    }
+
+    .incident-form-actions {
+      justify-content: stretch;
+    }
+
+    .incident-form-actions .btn {
+      flex: 1 1 100%;
     }
   }
 </style>
