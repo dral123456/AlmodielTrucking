@@ -83,9 +83,18 @@ $address = !empty($addressParts) ? implode(", ", $addressParts) : "—";
 
 <!-- Background Header -->
 <div class="main-profile-bg position-relative mb-4">
-    <img src="views/assets/images/p-bg.jpg"
+
+    <img src="views/assets/images/background.avif"
          class="w-100 rounded-3"
-         style="height: 180px; object-fit: cover;">
+         style="height: 180px; object-fit: cover; object-position: center 60%;">
+
+    <!-- Center Text -->
+    <div class="position-absolute top-50 start-50 translate-middle text-center">
+        <h1 class="fw-bold m-0" style="color: #0d6efd; font-size: 42px;">
+            Almodiel Trucking
+        </h1>
+    </div>
+
 </div>
 
 <!-- PROFILE HEADER CARD -->
