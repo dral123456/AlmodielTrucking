@@ -2,9 +2,28 @@
 require_once "controllers/sales.controller.php";
 require_once "models/sales.model.php";
 
+$dateFrom = isset($_GET["dateFrom"]) ? preg_replace("/[^0-9\-]/", "", $_GET["dateFrom"]) : "";
+$dateTo = isset($_GET["dateTo"]) ? preg_replace("/[^0-9\-]/", "", $_GET["dateTo"]) : "";
+
+if ($dateFrom !== "" && $dateTo === "") {
+  $dateTo = $dateFrom;
+}
+
+if ($dateFrom === "" && $dateTo !== "") {
+  $dateFrom = $dateTo;
+}
+
+if ($dateFrom !== "" && $dateTo !== "" && $dateFrom > $dateTo) {
+  $dateTemp = $dateFrom;
+  $dateFrom = $dateTo;
+  $dateTo = $dateTemp;
+}
+
+$selectedDateRange = $dateFrom !== "" ? $dateFrom . ($dateTo !== "" && $dateTo !== $dateFrom ? " to " . $dateTo : "") : "";
+
 $filters = array(
-  "dateFrom" => isset($_GET["dateFrom"]) ? preg_replace("/[^0-9\-]/", "", $_GET["dateFrom"]) : "",
-  "dateTo" => isset($_GET["dateTo"]) ? preg_replace("/[^0-9\-]/", "", $_GET["dateTo"]) : "",
+  "dateFrom" => $dateFrom,
+  "dateTo" => $dateTo,
   "customerType" => isset($_GET["customerType"]) && in_array($_GET["customerType"], array("individual", "company"), true) ? $_GET["customerType"] : ""
 );
 
@@ -14,6 +33,7 @@ $salesRows = $salesData["salesRows"];
 $expenseRows = $salesData["expenseRows"];
 $monthlySeries = $salesData["monthlySeries"];
 $hasExpenseTable = $salesData["hasExpenseTable"];
+$trendDescription = $selectedDateRange !== "" ? "Filtered trend for " . $selectedDateRange . "." : "Gross, expenses, and net by month.";
 
 function salesMoney($value) {
   return "PHP " . number_format((float) $value, 2);
@@ -31,6 +51,20 @@ function salesDate($value) {
 
   $timestamp = strtotime($value);
   return $timestamp ? date("M d, Y h:i A", $timestamp) : $value;
+}
+
+function salesStatusBadge($status) {
+  $status = strtolower(trim((string) $status));
+
+  if ($status === "paid") {
+    return "bg-success-subtle text-success";
+  }
+
+  if ($status === "partial") {
+    return "bg-info-subtle text-info";
+  }
+
+  return "bg-warning-subtle text-warning";
 }
 ?>
 
@@ -51,12 +85,10 @@ function salesDate($value) {
         <input type="hidden" name="route" value="sales">
         <div class="sales-filter-grid">
           <div>
-            <label class="form-label">Date From</label>
-            <input type="date" class="form-control" name="dateFrom" value="<?php echo htmlspecialchars($filters["dateFrom"]); ?>">
-          </div>
-          <div>
-            <label class="form-label">Date To</label>
-            <input type="date" class="form-control" name="dateTo" value="<?php echo htmlspecialchars($filters["dateTo"]); ?>">
+            <label class="form-label">Sales Date Range</label>
+            <input type="text" class="form-control" id="salesDateRangeFilter" value="<?php echo htmlspecialchars($selectedDateRange); ?>" placeholder="Select date range" autocomplete="off" readonly>
+            <input type="hidden" id="salesDateFrom" name="dateFrom" value="<?php echo htmlspecialchars($filters["dateFrom"]); ?>">
+            <input type="hidden" id="salesDateTo" name="dateTo" value="<?php echo htmlspecialchars($filters["dateTo"]); ?>">
           </div>
           <div>
             <label class="form-label">Customer Type</label>
@@ -67,8 +99,11 @@ function salesDate($value) {
             </select>
           </div>
           <div class="sales-filter-actions">
-            <button type="submit" class="btn btn-primary">
+            <button type="button" class="btn btn-primary" id="salesApplyFilter">
               <i class="ri-filter-3-line me-1"></i> Apply
+            </button>
+            <button type="button" class="btn btn-success" id="salesMarkRangePaid">
+              <i class="ri-bank-card-line me-1"></i> Mark Range Paid
             </button>
             <a href="sales" class="btn btn-light">
               <i class="ri-refresh-line me-1"></i> Clear
@@ -117,7 +152,7 @@ function salesDate($value) {
           <div class="sales-panel-heading">
             <div>
               <h6 class="mb-0">Sales Trend</h6>
-              <p class="text-muted small mb-0">Gross, expenses, and net by month.</p>
+              <p class="text-muted small mb-0"><?php echo htmlspecialchars($trendDescription); ?></p>
             </div>
           </div>
           <div class="sales-chart-wrap">
@@ -181,13 +216,15 @@ function salesDate($value) {
                 <th>Delivery Date</th>
                 <th>Status</th>
                 <th class="text-end">Gross Amount</th>
+                <th class="text-end">Actions</th>
               </tr>
             </thead>
             <tbody>
               <?php if (empty($salesRows)): ?>
-                <tr><td colspan="6" class="text-center text-muted py-4">No completed sales found for the selected filters.</td></tr>
+                <tr><td colspan="7" class="text-center text-muted py-4">No completed sales found for the selected filters.</td></tr>
               <?php endif; ?>
               <?php foreach ($salesRows as $row): ?>
+                <?php $paymentStatus = strtolower((string) ($row["status"] ?? "")); ?>
                 <tr>
                   <td>#<?php echo (int) $row["bookingID"]; ?></td>
                   <td>
@@ -196,8 +233,17 @@ function salesDate($value) {
                   </td>
                   <td>Trip #<?php echo (int) $row["tripID"]; ?></td>
                   <td><?php echo htmlspecialchars(salesDate($row["pickupDateTime"])); ?></td>
-                  <td><span class="badge bg-success-subtle text-success"><?php echo salesText(ucfirst($row["status"])); ?></span></td>
+                  <td><span class="badge <?php echo salesStatusBadge($paymentStatus); ?>"><?php echo salesText(ucfirst($paymentStatus)); ?></span></td>
                   <td class="text-end fw-semibold"><?php echo salesMoney($row["price"]); ?></td>
+                  <td class="text-end">
+                    <?php if ($paymentStatus === "paid"): ?>
+                      <span class="badge bg-success-subtle text-success">Paid</span>
+                    <?php else: ?>
+                      <button type="button" class="btn btn-sm btn-success sales-mark-paid" data-booking-id="<?php echo (int) $row["bookingID"]; ?>">
+                        <i class="ri-check-line me-1"></i> Mark Paid
+                      </button>
+                    <?php endif; ?>
+                  </td>
                 </tr>
               <?php endforeach; ?>
             </tbody>
@@ -251,11 +297,125 @@ function salesDate($value) {
 <script>
   window.salesChartData = <?php echo json_encode($monthlySeries, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
 </script>
+<script>
+  window.salesInlineFilterReady = true;
+  document.addEventListener("DOMContentLoaded", function () {
+    function formatSalesDate(date) {
+      if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+        return "";
+      }
+
+      return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-" + String(date.getDate()).padStart(2, "0");
+    }
+
+    function parseSalesDateText(value) {
+      var text = String(value || "").trim();
+      var isoMatch = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      var shortMatch = text.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+
+      if (isoMatch) {
+        return new Date(Number(isoMatch[1]), Number(isoMatch[2]) - 1, Number(isoMatch[3]));
+      }
+
+      if (shortMatch) {
+        return new Date(Number(shortMatch[3]), Number(shortMatch[1]) - 1, Number(shortMatch[2]));
+      }
+
+      var parsed = new Date(text);
+      return Number.isNaN(parsed.getTime()) ? null : parsed;
+    }
+
+    function readSalesDateRange() {
+      var rangeInput = document.getElementById("salesDateRangeFilter");
+      var fromInput = document.getElementById("salesDateFrom");
+      var toInput = document.getElementById("salesDateTo");
+      var rangeText = rangeInput ? String(rangeInput.value || "") : "";
+      var isoDates = rangeText.match(/\d{4}-\d{2}-\d{2}/g) || [];
+      var dates = isoDates.length ? isoDates : rangeText.split(/\s+(?:to|until)\s+/i).map(function (part) {
+        return formatSalesDate(parseSalesDateText(part));
+      }).filter(Boolean);
+
+      if (!dates.length && fromInput && fromInput.value) {
+        dates.push(fromInput.value);
+      }
+
+      if (dates.length < 2 && toInput && toInput.value) {
+        dates.push(toInput.value);
+      }
+
+      dates = dates.slice(0, 2).sort();
+
+      return {
+        from: dates[0] || "",
+        to: dates[1] || dates[0] || ""
+      };
+    }
+
+    function buildSalesFilterUrl() {
+      var form = document.querySelector(".sales-filter-panel");
+      var customerType = form ? form.querySelector("[name='customerType']") : null;
+      var fromInput = document.getElementById("salesDateFrom");
+      var toInput = document.getElementById("salesDateTo");
+      var range = readSalesDateRange();
+      var url = new URL(window.location.href);
+
+      if (fromInput) {
+        fromInput.value = range.from;
+      }
+
+      if (toInput) {
+        toInput.value = range.to;
+      }
+
+      url.search = "";
+      url.searchParams.set("route", "sales");
+
+      if (range.from) {
+        url.searchParams.set("dateFrom", range.from);
+      }
+
+      if (range.to) {
+        url.searchParams.set("dateTo", range.to);
+      }
+
+      if (customerType && customerType.value) {
+        url.searchParams.set("customerType", customerType.value);
+      }
+
+      return url;
+    }
+
+    document.addEventListener("click", function (event) {
+      var applyButton = event.target.closest("#salesApplyFilter");
+
+      if (!applyButton) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      var url = buildSalesFilterUrl();
+
+      if (typeof window.applySalesAjaxFilter === "function") {
+        window.applySalesAjaxFilter(url);
+      } else {
+        window.location.href = url.toString();
+      }
+    }, true);
+  });
+</script>
 
 <style>
   .sales-page {
     max-width: 1480px;
     margin: 0 auto;
+  }
+
+  .sales-page.is-loading {
+    opacity: 0.72;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
   }
 
   .sales-filter-panel,
@@ -273,7 +433,7 @@ function salesDate($value) {
 
   .sales-filter-grid {
     display: grid;
-    grid-template-columns: minmax(170px, 0.75fr) minmax(170px, 0.75fr) minmax(190px, 0.9fr) minmax(210px, auto);
+    grid-template-columns: minmax(180px, 0.75fr) minmax(190px, 0.9fr) minmax(210px, auto);
     align-items: end;
     gap: 1rem;
   }

@@ -298,6 +298,7 @@ class ModelBooking {
         b.bookingID,
         b.tripID,
         b.customerID,
+        b.storeName,
         b.pickupDateTime,
         b.price,
         b.status,
@@ -368,7 +369,8 @@ class ModelBooking {
         $trips[$tripID]["lastPickupDateTime"] = $row["pickupDateTime"];
       }
 
-      $customerName = trim($row["customerFName"] . " " . $row["customerLName"]);
+      $storeName = trim((string) ($row["storeName"] ?? ""));
+      $customerName = $storeName !== "" ? $storeName : trim($row["customerFName"] . " " . $row["customerLName"]);
       if ($customerName === "") {
         $customerName = $row["contactPerson"];
       }
@@ -444,6 +446,7 @@ class ModelBooking {
         b.bookingID,
         b.tripID,
         b.customerID,
+        b.storeName,
         b.pickupDateTime,
         b.price,
         b.status,
@@ -495,7 +498,8 @@ class ModelBooking {
         );
       }
 
-      $customerName = trim($row["customerFName"] . " " . $row["customerLName"]);
+      $storeName = trim((string) ($row["storeName"] ?? ""));
+      $customerName = $storeName !== "" ? $storeName : trim($row["customerFName"] . " " . $row["customerLName"]);
       if ($customerName === "") {
         $customerName = $row["contactPerson"];
       }
@@ -880,9 +884,16 @@ class ModelBooking {
         return $availability["status"] === "inactive" ? "truck-inactive" : "truck-conflict";
       }
 
+      self::ensureBookingStoreNameColumn($pdo);
+      $storeName = trim((string) ($data["storeName"] ?? ""));
+      $hasStoreName = self::columnExists($pdo, "booking", "storeName");
+      $storeNameColumn = $hasStoreName ? "storeName," : "";
+      $storeNameValue = $hasStoreName ? ":storeName," : "";
+
       $stmt = $pdo->prepare("
         INSERT INTO booking (
           customerID,
+          {$storeNameColumn}
           pickupLocationID,
           destinationLocationID,
           tripID,
@@ -893,6 +904,7 @@ class ModelBooking {
           status
         ) VALUES (
           :customerID,
+          {$storeNameValue}
           :pickupLocationID,
           :destinationLocationID,
           :tripID,
@@ -905,6 +917,9 @@ class ModelBooking {
       ");
 
       $stmt->bindParam(":customerID", $data["customerID"], PDO::PARAM_INT);
+      if ($hasStoreName) {
+        $stmt->bindValue(":storeName", $storeName, PDO::PARAM_STR);
+      }
       $stmt->bindParam(":pickupLocationID", $pickupLocationID, PDO::PARAM_INT);
       $stmt->bindParam(":destinationLocationID", $destinationLocationID, PDO::PARAM_INT);
       $stmt->bindParam(":tripID", $tripID, PDO::PARAM_INT);
@@ -915,6 +930,7 @@ class ModelBooking {
 
       $bookingID = $pdo->lastInsertId();
       self::insertCargo($pdo, $bookingID, $data["cargo"]);
+      self::insertDeliveryCharge($pdo, $bookingID, $tripID, "hauling", $data["haulingAmount"] ?? 0, "Booking hauling charge", $data["createdBy"] ?? null);
 
       if (isset($data["truckID"], $data["crew"]) && !self::tripHasEmployees($pdo, $tripID)) {
         self::insertTripEmployees($pdo, $tripID, $data["truckID"], $data["crew"]);
@@ -1281,6 +1297,41 @@ class ModelBooking {
     }
   }
 
+  static private function insertDeliveryCharge($pdo, $bookingID, $tripID, $chargeType, $amount, $notes, $createdBy) {
+    $amount = (float) ($amount ?? 0);
+    if ($amount <= 0) {
+      return;
+    }
+
+    self::ensureDeliveryChargeTable($pdo);
+
+    $stmt = $pdo->prepare("
+      INSERT INTO deliverycharge (
+        bookingID,
+        tripID,
+        chargeType,
+        amount,
+        notes,
+        createdBy
+      ) VALUES (
+        :bookingID,
+        :tripID,
+        :chargeType,
+        :amount,
+        :notes,
+        :createdBy
+      )
+    ");
+
+    $stmt->bindValue(":bookingID", (int) $bookingID, PDO::PARAM_INT);
+    $stmt->bindValue(":tripID", (int) $tripID, PDO::PARAM_INT);
+    $stmt->bindValue(":chargeType", $chargeType === "others" ? "others" : "hauling", PDO::PARAM_STR);
+    $stmt->bindValue(":amount", $amount, PDO::PARAM_STR);
+    $stmt->bindValue(":notes", trim((string) $notes), PDO::PARAM_STR);
+    self::bindNullableInt($stmt, ":createdBy", $createdBy);
+    $stmt->execute();
+  }
+
   static private function insertTripEmployees($pdo, $tripID, $truckID, $crew) {
     if (!self::tableExists($pdo, "tripemployee")) {
       throw new PDOException("Missing tripemployee table");
@@ -1483,6 +1534,41 @@ class ModelBooking {
     return (bool) $stmt->fetchColumn();
   }
 
+  static private function ensureBookingStoreNameColumn($pdo) {
+    if (self::columnExists($pdo, "booking", "storeName")) {
+      return;
+    }
+
+    $pdo->exec("ALTER TABLE booking ADD COLUMN storeName VARCHAR(150) NULL AFTER customerID");
+  }
+
+  static private function ensureDeliveryChargeTable($pdo) {
+    $pdo->exec("
+      CREATE TABLE IF NOT EXISTS deliverycharge (
+        deliveryChargeID int NOT NULL AUTO_INCREMENT,
+        bookingID int NOT NULL,
+        tripID int NOT NULL,
+        chargeType enum('hauling','others') NOT NULL DEFAULT 'hauling',
+        amount double NOT NULL DEFAULT 0,
+        notes text NULL,
+        createdBy int NULL,
+        dateCreated datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (deliveryChargeID),
+        KEY idx_deliverycharge_bookingID (bookingID),
+        KEY idx_deliverycharge_tripID (tripID)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+    ");
+  }
+
+  static private function bindNullableInt($stmt, $key, $value) {
+    if ($value === null || $value === "") {
+      $stmt->bindValue($key, null, PDO::PARAM_NULL);
+      return;
+    }
+
+    $stmt->bindValue($key, (int) $value, PDO::PARAM_INT);
+  }
+
   static private function columnExists($pdo, $tableName, $columnName) {
     $stmt = $pdo->prepare("
       SELECT COUNT(*)
@@ -1507,6 +1593,7 @@ class ModelBooking {
         b.bookingID,
         b.tripID,
         b.customerID,
+        b.storeName,
         b.pickupDateTime,
         b.price,
         b.status,
@@ -1558,7 +1645,8 @@ class ModelBooking {
 
     foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
 
-      $customerName = trim(
+      $storeName = trim((string) ($row["storeName"] ?? ""));
+      $customerName = $storeName !== "" ? $storeName : trim(
         $row["customerFName"] . " " . $row["customerLName"]
       );
 
@@ -1613,6 +1701,7 @@ class ModelBooking {
         b.bookingID,
         b.tripID,
         b.customerID,
+        b.storeName,
         b.pickupDateTime,
         b.price,
         b.status,
@@ -1671,6 +1760,7 @@ class ModelBooking {
           SELECT
               b.bookingID,
               b.tripID,
+              b.storeName,
               b.pickupDateTime,
               b.price,
               b.status,

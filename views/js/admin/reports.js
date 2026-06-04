@@ -283,6 +283,114 @@
     return clone.outerHTML;
   }
 
+  function numberValue(value) {
+    var number = Number(value);
+    return Number.isFinite(number) ? number : 0;
+  }
+
+  function money(value) {
+    return numberValue(value).toLocaleString("en-PH", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  }
+
+  function statementDate() {
+    return new Date().toLocaleDateString("en-US", {
+      month: "long",
+      day: "2-digit",
+      year: "numeric"
+    }).toUpperCase();
+  }
+
+  function buildBillingStatement(table, dateRange) {
+    var rows = visibleRows(table);
+    var first = rows[0];
+    var subTotalExtra = 0;
+    var grossAmount = 0;
+    var customer = first ? first.getAttribute("data-billing-customer") || "Customer" : "Customer";
+    var contact = first ? first.getAttribute("data-billing-contact") || "The Manager" : "The Manager";
+    var customerAddress = first ? first.getAttribute("data-billing-customer-address") || "" : "";
+    var statementNo = "B.S. #" + new Date().toISOString().slice(0, 10).replace(/-/g, "");
+
+    var bodyRows = rows.map(function (row) {
+      var extra = numberValue(row.getAttribute("data-billing-extra"));
+      var total = numberValue(row.getAttribute("data-billing-total"));
+      subTotalExtra += extra;
+      grossAmount += total;
+
+      return (
+        "<tr>" +
+          "<td>" + escapeHtml(row.getAttribute("data-billing-date") || "") + "</td>" +
+          "<td class=\"destination-cell\">" + escapeHtml(row.getAttribute("data-billing-destination") || "") + "</td>" +
+          "<td>" + escapeHtml(row.getAttribute("data-billing-plate") || "") + "</td>" +
+          "<td>" + escapeHtml(row.getAttribute("data-billing-truck-size") || "") + "</td>" +
+          "<td class=\"money-cell\">" + (extra > 0 ? money(extra) : "") + "</td>" +
+          "<td class=\"money-cell\">" + money(total) + "</td>" +
+        "</tr>"
+      );
+    }).join("");
+
+    return (
+      "<section class=\"billing-statement\">" +
+        "<header class=\"company-header\">" +
+          "<h1>ALMODIEL TRUCKING SERVICES</h1>" +
+          "<p>Prk. Guanzon, Brgy. Mansilingan, Bacolod City</p>" +
+          "<p>Email Address: almodieltruckingservices@gmail.com &nbsp; Contact No.: 0927-279-1029</p>" +
+          "<p>Non-VAT Reg. TIN: 103-677-158-000</p>" +
+        "</header>" +
+        "<div class=\"statement-title\">BILLING STATEMENT</div>" +
+        "<div class=\"statement-meta\">" +
+          "<strong>" + statementDate() + "</strong>" +
+          "<strong class=\"statement-no\">" + statementNo + "</strong>" +
+        "</div>" +
+        "<div class=\"bill-to\">" +
+          "<p>The Manager,</p>" +
+          "<p><strong>" + escapeHtml(customer) + "</strong></p>" +
+          (contact && contact !== customer && contact !== "The Manager" ? "<p>Attention: " + escapeHtml(contact) + "</p>" : "") +
+          (customerAddress ? "<p>" + escapeHtml(customerAddress) + "</p>" : "") +
+          (dateRange ? "<p class=\"date-range\">Covered period: " + escapeHtml(dateRange) + "</p>" : "") +
+        "</div>" +
+        "<table class=\"billing-table\">" +
+          "<thead>" +
+            "<tr>" +
+              "<th>DATE</th>" +
+              "<th>DESTINATION</th>" +
+              "<th>PLATE<br>NO.</th>" +
+              "<th>TRUCK<br>SIZE</th>" +
+              "<th>HAULING/<br>OTHERS</th>" +
+              "<th>AMOUNT</th>" +
+            "</tr>" +
+          "</thead>" +
+          "<tbody>" + bodyRows + "</tbody>" +
+          "<tfoot>" +
+            "<tr>" +
+              "<td colspan=\"4\" class=\"total-label\">SUB TOTAL</td>" +
+              "<td class=\"money-cell\">" + money(subTotalExtra) + "</td>" +
+              "<td class=\"money-cell\">" + money(grossAmount) + "</td>" +
+            "</tr>" +
+            "<tr class=\"gross-row\">" +
+              "<td colspan=\"5\" class=\"total-label\">GROSS AMOUNT</td>" +
+              "<td class=\"money-cell\">" + money(grossAmount) + "</td>" +
+            "</tr>" +
+          "</tfoot>" +
+        "</table>" +
+        "<div class=\"signature-row\">" +
+          "<div class=\"signature-block\">" +
+            "<p>Noted by:</p>" +
+            "<div class=\"signature-line\"></div>" +
+            "<strong>SALVADOR M. ALMODIEL JR.</strong>" +
+            "<span>Almodiel Trucking Services</span>" +
+          "</div>" +
+          "<div class=\"signature-block\">" +
+            "<p>Acknowledged by:</p>" +
+            "<div class=\"signature-line\"></div>" +
+          "</div>" +
+        "</div>" +
+      "</section>"
+    );
+  }
+
   function exportPdf() {
     var pane = getActivePane();
     var table = pane ? pane.querySelector("table") : null;
@@ -298,6 +406,7 @@
       selectedRange.from ? "From " + selectedRange.from : "",
       selectedRange.to ? "To " + selectedRange.to : ""
     ].filter(Boolean).join(" ");
+    var isBilling = categorySelect.value === "billing";
 
     var printWindow = window.open("", "_blank", "width=1100,height=800");
     if (!printWindow) {
@@ -317,11 +426,33 @@
       ".text-end{text-align:right;}" +
       ".badge{font-weight:400;}" +
       ".small{font-size:11px;color:#6b7280;}" +
-      "@media print{@page{size:landscape;margin:14mm;}body{margin:0;}}" +
+      ".billing-statement{max-width:940px;margin:0 auto;color:#111;font-size:12px;}" +
+      ".company-header{text-align:center;margin-bottom:28px;line-height:1.35;}" +
+      ".company-header h1{font-size:24px;letter-spacing:.5px;margin:0 0 4px;font-weight:800;}" +
+      ".company-header p{margin:0;color:#222;font-weight:600;}" +
+      ".statement-title{text-align:center;font-weight:800;font-size:18px;margin:26px 0 18px;letter-spacing:.4px;}" +
+      ".statement-meta{display:flex;justify-content:space-between;max-width:660px;margin:0 auto 28px;font-size:14px;}" +
+      ".statement-no{text-decoration:underline;}" +
+      ".bill-to{margin:0 0 22px 90px;line-height:1.5;font-size:13px;}" +
+      ".bill-to p{margin:0;color:#111;}" +
+      ".bill-to .date-range{margin-top:8px;color:#555;font-size:12px;}" +
+      ".billing-table{font-size:11px;border:2px solid #333;}" +
+      ".billing-table th,.billing-table td{border:1px solid #333;padding:6px 7px;color:#111;}" +
+      ".billing-table th{text-align:center;background:#efefef;font-weight:800;}" +
+      ".billing-table td{text-align:center;}" +
+      ".billing-table .destination-cell{text-align:center;line-height:1.25;}" +
+      ".billing-table .money-cell{text-align:right;white-space:nowrap;}" +
+      ".billing-table tfoot td{font-weight:800;background:#f5df3d;}" +
+      ".billing-table .total-label{text-align:right;}" +
+      ".billing-table .gross-row td{background:#f0c600;font-size:12px;}" +
+      ".signature-row{display:flex;justify-content:space-between;margin:86px 80px 0;}" +
+      ".signature-block{width:280px;text-align:center;color:#111;}" +
+      ".signature-block p{text-align:left;margin:0 0 44px;color:#111;}" +
+      ".signature-line{border-top:1px solid #333;margin-bottom:8px;}" +
+      ".signature-block strong,.signature-block span{display:block;}" +
+      "@media print{@page{size:" + (isBilling ? "portrait" : "landscape") + ";margin:" + (isBilling ? "12mm" : "14mm") + ";}body{margin:0;}}" +
       "</style></head><body>" +
-      "<h1>" + title + "</h1>" +
-      "<p>" + (dateRange || "All dates") + "</p>" +
-      buildPrintableTable(table) +
+      (isBilling ? buildBillingStatement(table, dateRange) : ("<h1>" + title + "</h1><p>" + (dateRange || "All dates") + "</p>" + buildPrintableTable(table))) +
       "</body></html>"
     );
 

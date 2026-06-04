@@ -31,13 +31,16 @@ class ModelReport {
             ? "SELECT COALESCE(SUM(" . self::quoteIdentifier($salaryMeta["amountColumn"]) . "), 0) FROM " . self::quoteIdentifier($salaryMeta["table"]) . ($salaryMeta["statusColumn"] ? " WHERE " . self::quoteIdentifier($salaryMeta["statusColumn"]) . " <> 'cancelled'" : "")
             : null;
 
+        $manualExpenseTotal = $expenseMeta ? (float) self::scalar($pdo, "SELECT COALESCE(SUM(" . self::quoteIdentifier($expenseMeta["amountColumn"]) . "), 0) FROM " . self::quoteIdentifier($expenseMeta["table"])) : 0;
+        $completedCrewSalaryExpenseTotal = self::completedCrewSalaryExpenseTotal($pdo);
+
         return array(
             "billingTotal" => (float) $billingTotal,
             "bookingCount" => (int) $bookingCount,
             "pendingCount" => (int) $pendingCount,
             "inTransitCount" => (int) $inTransitCount,
             "completedCount" => (int) $completedCount,
-            "expenseTotal" => $expenseMeta ? (float) self::scalar($pdo, "SELECT COALESCE(SUM(" . self::quoteIdentifier($expenseMeta["amountColumn"]) . "), 0) FROM " . self::quoteIdentifier($expenseMeta["table"])) : 0,
+            "expenseTotal" => $manualExpenseTotal + $completedCrewSalaryExpenseTotal,
             "salaryTotal" => $salaryMeta ? (float) self::scalar($pdo, $salaryTotalSql) : 0,
             "staffCount" => (int) self::scalar($pdo, "SELECT COUNT(*) FROM employee"),
             "activeStaffCount" => (int) self::scalar($pdo, "SELECT COUNT(*) FROM employee WHERE empStatus = 'active'"),
@@ -57,8 +60,13 @@ class ModelReport {
                 b.pickupDateTime,
                 b.price,
                 b.status,
-                COALESCE(NULLIF(TRIM(CONCAT(c.customerFName, ' ', c.customerLName)), ''), c.contactPerson, 'Customer') AS customerName,
+                COALESCE(NULLIF(TRIM(b.storeName), ''), NULLIF(TRIM(CONCAT(c.customerFName, ' ', c.customerLName)), ''), c.contactPerson, 'Customer') AS customerName,
+                c.contactPerson,
                 c.customerType,
+                customerLocation.province AS customerProvince,
+                customerLocation.city AS customerCity,
+                customerLocation.barangay AS customerBarangay,
+                customerLocation.street AS customerStreet,
                 destination.province AS destinationProvince,
                 destination.city AS destinationCity,
                 destination.barangay AS destinationBarangay,
@@ -70,6 +78,7 @@ class ModelReport {
                 b.price + COALESCE(extra.extraAmount, 0) AS grossAmount
             FROM booking b
             LEFT JOIN customer c ON c.id = b.customerID
+            LEFT JOIN location customerLocation ON customerLocation.locationID = c.locationID
             LEFT JOIN location destination ON destination.locationID = b.destinationLocationID
             LEFT JOIN (
                 SELECT tripID, MIN(truckID) AS truckID
@@ -168,7 +177,14 @@ class ModelReport {
         ");
 
         $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $rows = array_merge($rows, self::completedCrewSalaryExpenseRows($pdo));
+
+        usort($rows, function ($a, $b) {
+            return strtotime($b["recordDate"] ?? "") <=> strtotime($a["recordDate"] ?? "");
+        });
+
+        return array_slice($rows, 0, 50);
     }
 
     static public function mdlExpenseTruckRows() {
@@ -374,6 +390,69 @@ class ModelReport {
     static private function successfulStatusSql($alias = null) {
         $prefix = $alias ? self::quoteIdentifier($alias) . "." : "";
         return $prefix . "`status` IN ('completed', 'delivered', 'success', 'successful')";
+    }
+
+    static private function completedCrewSalaryExpenseTotal($pdo) {
+        if (!self::tableExists($pdo, "staffsalary")) {
+            return 0;
+        }
+
+        $stmt = $pdo->prepare("
+            SELECT COALESCE(SUM(s.netPay), 0)
+            FROM staffsalary s
+            INNER JOIN booking b ON b.bookingID = s.creditedBookingID
+            WHERE " . self::successfulStatusSql("b") . "
+              AND s.status <> 'cancelled'
+        ");
+        $stmt->execute();
+
+        return (float) $stmt->fetchColumn();
+    }
+
+    static private function completedCrewSalaryExpenseRows($pdo) {
+        if (!self::tableExists($pdo, "staffsalary")) {
+            return array();
+        }
+
+        $stmt = $pdo->prepare("
+            SELECT
+                s.salaryID,
+                s.empID,
+                s.tripID,
+                s.creditedBookingID,
+                s.payPeriodStart,
+                s.netPay,
+                s.status,
+                s.tripRole,
+                CONCAT(e.empFName, ' ', e.empLName) AS employeeName
+            FROM staffsalary s
+            INNER JOIN booking b ON b.bookingID = s.creditedBookingID
+            LEFT JOIN employee e ON e.id = s.empID
+            WHERE " . self::successfulStatusSql("b") . "
+              AND s.status <> 'cancelled'
+            ORDER BY s.payPeriodStart DESC, s.salaryID DESC
+            LIMIT 50
+        ");
+        $stmt->execute();
+
+        return array_map(function ($row) {
+            $employeeName = trim((string) ($row["employeeName"] ?? "")) ?: "Crew member";
+            $role = trim((string) ($row["tripRole"] ?? ""));
+            $description = "Crew salary for " . $employeeName;
+            if ($role !== "") {
+                $description .= " (" . ucfirst($role) . ")";
+            }
+            $description .= " - Trip #" . (int) $row["tripID"] . ", Booking #" . (int) $row["creditedBookingID"];
+
+            return array(
+                "recordID" => "SAL-" . (int) $row["salaryID"],
+                "recordDate" => $row["payPeriodStart"],
+                "category" => "employee_salary",
+                "description" => $description,
+                "amount" => (float) $row["netPay"],
+                "status" => $row["status"]
+            );
+        }, $stmt->fetchAll(PDO::FETCH_ASSOC));
     }
 
     static private function scalar($pdo, $sql) {
