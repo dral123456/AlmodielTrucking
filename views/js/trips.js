@@ -2,6 +2,7 @@ $(document).ready(function () {
   const trips = Array.isArray(window.tripOverviewData) ? window.tripOverviewData : [];
   const canModifyTripInfo = window.tripCanModifyInfo === true;
   const canUpdateTripStatus = window.tripCanUpdateStatus === true;
+  const canSubmitIncident = window.tripCanSubmitIncident === true;
   let filteredTrips = [];
   let selectedTripID = null;
   let map = null;
@@ -86,6 +87,34 @@ $(document).ready(function () {
       updateTripDeliveryStatus(tripID, status, button);
     });
 
+    $(document).on('change', '#incidentTripID', function () {
+      populateIncidentBookingOptions($(this).val());
+      prefillIncidentLocation($(this).val(), $('#incidentBookingID').val());
+    });
+
+    $(document).on('change', '#incidentBookingID', function () {
+      prefillIncidentLocation($('#incidentTripID').val(), $(this).val());
+    });
+
+    $(document).on('submit', '#driverIncidentForm', function (event) {
+      event.preventDefault();
+      submitIncidentReport();
+    });
+
+    $(document).on('reset', '#driverIncidentForm', function () {
+      setTimeout(function () {
+        populateIncidentBookingOptions($('#incidentTripID').val());
+      }, 0);
+    });
+
+    $(document).on('shown.bs.tab', '#driverTripsTab', function () {
+      setTimeout(function () {
+        if (map) {
+          map.invalidateSize();
+        }
+      }, 150);
+    });
+
     $(document).on('click', '#toggleSidebar', function () {
       setTimeout(function () {
         if (map) {
@@ -99,6 +128,12 @@ $(document).ready(function () {
         map.invalidateSize();
       }
     });
+
+    if (canSubmitIncident && trips.length) {
+      $('#incidentTripID').val(trips[0].tripID);
+      populateIncidentBookingOptions(trips[0].tripID);
+      prefillIncidentLocation(trips[0].tripID, $('#incidentBookingID').val());
+    }
   }
 
   function initDateRangePicker() {
@@ -945,6 +980,103 @@ $(document).ready(function () {
       },
       error: function () {
         showTripSaveError('Something went wrong while saving trip information.');
+      }
+    });
+  }
+
+  function populateIncidentBookingOptions(tripID) {
+    if (!canSubmitIncident || !document.getElementById('incidentBookingID')) {
+      return;
+    }
+
+    const trip = getTripByID(tripID);
+    const bookings = trip && Array.isArray(trip.bookings) ? trip.bookings : [];
+    let html = '<option value="">Whole trip / no specific booking</option>';
+
+    bookings.forEach(function (booking) {
+      const label = [
+        'Booking #' + booking.bookingID,
+        booking.customerName || 'Customer',
+        booking.destination && booking.destination.address ? booking.destination.address : ''
+      ].filter(Boolean).join(' - ');
+
+      html += '<option value="' + escapeAttr(booking.bookingID) + '">' + escapeHtml(label) + '</option>';
+    });
+
+    $('#incidentBookingID').html(html);
+  }
+
+  function prefillIncidentLocation(tripID, bookingID) {
+    if (!canSubmitIncident) {
+      return;
+    }
+
+    const trip = getTripByID(tripID);
+    if (!trip) {
+      return;
+    }
+
+    const booking = bookingID ? getTripBookingByID(trip, bookingID) : (trip.bookings || [])[0];
+    const destination = booking && booking.destination ? booking.destination.address : '';
+    const pickup = booking && booking.pickup ? booking.pickup.address : '';
+
+    $('#incidentLocationText').val(destination || pickup || '');
+  }
+
+  function submitIncidentReport() {
+    if (!canSubmitIncident) {
+      return;
+    }
+
+    const data = {
+      tripID: $('#incidentTripID').val(),
+      bookingID: $('#incidentBookingID').val(),
+      incidentType: $('#incidentType').val(),
+      severity: $('#incidentSeverity').val(),
+      incidentDateTime: $('#incidentDateTime').val(),
+      locationText: $('#incidentLocationText').val(),
+      description: $('#incidentDescription').val(),
+      actionTaken: $('#incidentActionTaken').val()
+    };
+
+    if (!data.tripID || !data.incidentDateTime || !String(data.description || '').trim()) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Missing Details',
+        text: 'Please choose a trip, incident date/time, and describe what happened.',
+        confirmButtonColor: '#696cff'
+      });
+      return;
+    }
+
+    $('#incidentSubmitBtn').prop('disabled', true);
+
+    $.ajax({
+      url: 'ajax/incident_save_record.ajax.php',
+      method: 'POST',
+      dataType: 'json',
+      data: data,
+      success: function (response) {
+        if (response && response.status === 'success') {
+          Swal.fire({
+            icon: 'success',
+            title: 'Incident Submitted',
+            text: response.message || 'Incident report submitted.',
+            confirmButtonColor: '#696cff'
+          });
+          $('#driverIncidentForm')[0].reset();
+          $('#incidentTripID').val(data.tripID);
+          populateIncidentBookingOptions(data.tripID);
+          $('#incidentSubmitBtn').prop('disabled', false);
+          return;
+        }
+
+        showTripSaveError(response && response.message ? response.message : 'Unable to submit incident report.');
+        $('#incidentSubmitBtn').prop('disabled', false);
+      },
+      error: function () {
+        showTripSaveError('Unable to submit incident report.');
+        $('#incidentSubmitBtn').prop('disabled', false);
       }
     });
   }

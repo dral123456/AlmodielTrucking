@@ -56,6 +56,7 @@ class BookingRegistration {
       empty($customerID) ||
       empty($truckID) ||
       empty($driverID) ||
+      empty($pickupDateTime) ||
       empty($pickupLocationID) ||
       empty($destinationLocationID)
     ) {
@@ -81,7 +82,9 @@ class BookingRegistration {
 
       "crew" => array(
         "driverID" => $_POST["driverID"],
-        "assistantIDs" => json_decode($_POST["assistantIDs"] ?? "[]", true)
+        "assistantIDs" => json_decode($_POST["assistantIDs"] ?? "[]", true),
+        "salary" => $_POST["crewSalary"] ?? 0,
+        "allowance" => $_POST["crewAllowance"] ?? 0
       ),
 
       "cargo" => array(

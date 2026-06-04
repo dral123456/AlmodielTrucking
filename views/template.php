@@ -252,11 +252,13 @@
       "trips" => ["trips.js"],
       "trip-details" => ["trip-details.js"],
       "sales" => ["sales.js"],
+      "incident-reports" => ["admin/incident-reports.js"],
       "manage-tariff" => ["manage.js", "manage-tariff.js"],
       "reports" => ["admin/reports.js"],
       "manage-company" => ["admin/manage.js"],
       "manage-employee" => ["admin/manage.js"],
       "manage-truck" => ["admin/manage.js"],
+      "truck-details" => ["admin/truck-details.js"],
       "bookings" => ["customer-individual/bookings.js"],
       "booking-details" => ["customer-individual/booking-details.js"]
     ];

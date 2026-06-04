@@ -270,19 +270,31 @@ horizontalToggle?.addEventListener("click", () => {
 });
 
 // Function to handle sidebar menu active links
-let currentUrl = window.location.pathname; // Get the current URL
 const menuLinks = document.querySelectorAll(
   "#sidebar .pe-main-menu .pe-nav-link"
 ); // Select all menu links
-if (currentUrl === "/") currentUrl = "/index.html";
+const getMenuRoute = (urlValue) => {
+  if (!urlValue || urlValue.startsWith("#")) return null;
+
+  const url = new URL(urlValue, window.location.href);
+  const queryRoute = url.searchParams.get("route");
+  if (queryRoute) return queryRoute.replace(/^\/+|\/+$/g, "");
+
+  const pathSegments = url.pathname.split("/").filter(Boolean);
+  return pathSegments.pop() || "index.html";
+};
+const currentMenuRoute = getMenuRoute(window.location.href);
+const isCurrentMenuLink = (linkHref) => {
+  return getMenuRoute(linkHref) === currentMenuRoute;
+};
 const currentLayout = htmlElement.getAttribute("data-layout");
 const currentSidebar = htmlElement.getAttribute("data-sidebar");
 
 menuLinks.forEach((link) => {
   const linkHref = link.getAttribute("href"); // Get the href attribute of the link
 
-  // Check if the current URL contains the link's href
-  if (currentUrl.includes(linkHref)) {
+  // Match the complete route so routes such as reports and incident-reports do not overlap.
+  if (isCurrentMenuLink(linkHref)) {
     link.classList.add("active"); // Add active class to the link
 
     // Function to open all parent dropdowns
@@ -316,7 +328,7 @@ const horizontalMenuLinks = document.querySelectorAll(
 
 horizontalMenuLinks.forEach((link) => {
   const linkHref = link.getAttribute("href"); // Get the href attribute of the link
-  if (currentUrl.includes(linkHref)) {
+  if (isCurrentMenuLink(linkHref)) {
     link.classList.add("active");
     const parentDropdown = link.closest(".pe-has-sub");
     if (parentDropdown) {

@@ -72,7 +72,12 @@ $sidebarItems = [
     'label' => 'Reports',
     'route' => 'reports',
   ],
-  
+  [
+    'type'  => 'link',
+    'icon'  => 'ri-alarm-warning-line',
+    'label' => 'Incident Reports',
+    'route' => 'incident-reports',
+  ],
 ];
 
 // Pre-compute which titles have visible content
