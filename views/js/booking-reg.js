@@ -126,8 +126,9 @@ $(document).ready(function () {
       setTruckAvailabilityMessage('Select a pickup date and truck to check availability.', 'muted');
       setBookingCalendarStatus('Select a truck to view its date availability.', 'muted');
     }
-    $('#bookingCargoList .booking-cargo-item').slice(1).remove();
+    $('#bookingCargoList .booking-cargo-item-row').slice(1).remove();
     $('#bookingCargoList .cargo-type, #bookingCargoList .cargo-quantity, #cargoCondition, #cargoDescription, #cargoSpecialHandling').val('');
+    syncCargoRemoveButtons();
     $('#pickupProvince, #pickupCity, #pickupBarangay, #pickupStreet, #pickupDescription, #pickupLatitude, #pickupLongitude').val('');
     $('#destinationProvince, #destinationCity, #destinationBarangay, #destinationStreet, #destinationDescription, #destinationLatitude, #destinationLongitude').val('');
     if (!IS_CUSTOMER_INDIVIDUAL) setPickupLocked(false);
@@ -160,9 +161,7 @@ $(document).ready(function () {
   });
 
   $("#bookingAddCargo").on("click", function () {
-    console.log("clicked");
-    
-    $(".booking-cargo-item").append(`
+    $("#bookingCargoList .booking-cargo-item").append(`
       <div class="row g-2 align-items-end mt-2 booking-cargo-item-row">
         <div class="col-12 col-md-7">
           <input type="text" class="form-control cargo-type" maxlength="100" placeholder="e.g. Construction materials">
@@ -171,16 +170,27 @@ $(document).ready(function () {
           <input type="number" class="form-control cargo-quantity" min="1" step="1" placeholder="Quantity">
         </div>
         <div class="col-12 col-md-1 d-grid">
-          <button class="btn btn-outline-danger booking-remove-cargo" type="button" aria-label="Remove cargo" disabled>
+          <button class="btn btn-outline-danger booking-remove-cargo" type="button" aria-label="Remove cargo">
             <i class="ri-close-line"></i>
           </button>
         </div>
       </div>`
     );
+    syncCargoRemoveButtons();
   });
   $(document).on("click", ".booking-remove-cargo:not([disabled])", function () {
     $(this).closest(".booking-cargo-item-row").remove();
+    syncCargoRemoveButtons();
   });
+
+  function cargoRows() {
+    return $('#bookingCargoList .booking-cargo-item-row');
+  }
+
+  function syncCargoRemoveButtons() {
+    const $rows = cargoRows();
+    $rows.find('.booking-remove-cargo').prop('disabled', $rows.length <= 1);
+  }
 
   // ─── Location search with local-first suggestions ──────────────────────────
   function initLocationSearch(type) {
@@ -822,7 +832,7 @@ $(document).ready(function () {
     if (step === 1) {
       let hasCompleteCargo = false;
 
-      $('.booking-cargo-item').each(function () {
+      cargoRows().each(function () {
         const $type     = $(this).find('.cargo-type');
         const $quantity = $(this).find('.cargo-quantity');
         const type      = String($type.val() || '').trim();
@@ -841,7 +851,7 @@ $(document).ready(function () {
         missing.push('At least 1 cargo item with type and quantity');
       }
 
-      if ($('.booking-cargo-item .cargo-quantity.is-invalid').length) {
+      if (cargoRows().find('.cargo-quantity.is-invalid').length) {
         missing.push('Each cargo quantity must be a whole number greater than 0');
       }
     }
@@ -1246,7 +1256,7 @@ $(document).ready(function () {
     }
 
     const cargoSummary = [];
-    $('.booking-cargo-item').each(function () {
+    cargoRows().each(function () {
       const t = $(this).find('.cargo-type').val().trim();
       const q = $(this).find('.cargo-quantity').val().trim();
       if (t && q) cargoSummary.push(t + ' x ' + q);
@@ -1277,7 +1287,7 @@ $(document).ready(function () {
 
   function showConfirmModal() {
     const cargoConfirm = [];
-    $('.booking-cargo-item').each(function () {
+    cargoRows().each(function () {
       const t = $(this).find('.cargo-type').val().trim();
       const q = $(this).find('.cargo-quantity').val().trim();
       if (t && q) cargoConfirm.push(t + ' (' + q + ')');
@@ -1397,7 +1407,7 @@ $(document).ready(function () {
     formData.append('fuelPrice',      IS_CUSTOMER_INDIVIDUAL ? '0' : $('#bookingFuelPrice').val());
 
     const cargoItems = [];
-    $('.booking-cargo-item').each(function () {
+    cargoRows().each(function () {
       const type = $(this).find('.cargo-type').val().trim();
       const qty  = $(this).find('.cargo-quantity').val().trim();
       if (type && qty) cargoItems.push({ cargoType: type, quantity: qty });

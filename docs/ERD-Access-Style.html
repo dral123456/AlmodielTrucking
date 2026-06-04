@@ -1,0 +1,569 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Almodiel Trucking Services - MS Access Style ERD</title>
+  <style>
+    :root {
+      --bg: #f2f4f8;
+      --canvas: #ffffff;
+      --table-border: #8f99aa;
+      --table-header: #d9e8fb;
+      --table-header-text: #17375e;
+      --row-border: #e2e6ee;
+      --text: #111827;
+      --muted: #5d6678;
+      --solid-line: #1f5fbf;
+      --logical-line: #6b7280;
+      --pk: #f7c948;
+      --fk: #dbeafe;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", Tahoma, sans-serif;
+    }
+
+    .page {
+      padding: 24px;
+    }
+
+    .header {
+      max-width: 1800px;
+      margin: 0 auto 16px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 28px;
+      letter-spacing: -0.03em;
+    }
+
+    .subtitle {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .legend {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend-line {
+      width: 34px;
+      height: 0;
+      border-top: 3px solid var(--solid-line);
+    }
+
+    .legend-line.logical {
+      border-top-color: var(--logical-line);
+      border-top-style: dashed;
+    }
+
+    .diagram-shell {
+      max-width: 1800px;
+      margin: 0 auto;
+      overflow: auto;
+      border: 1px solid #d6dce8;
+      border-radius: 10px;
+      background: #e8ecf4;
+      box-shadow: 0 18px 50px rgba(15, 23, 42, 0.12);
+    }
+
+    .diagram {
+      position: relative;
+      width: 1800px;
+      height: 1320px;
+      background:
+        linear-gradient(rgba(17, 24, 39, 0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(17, 24, 39, 0.04) 1px, transparent 1px),
+        var(--canvas);
+      background-size: 24px 24px;
+    }
+
+    svg.relationships {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    .rel {
+      fill: none;
+      stroke: var(--solid-line);
+      stroke-width: 2.2;
+    }
+
+    .rel.logical {
+      stroke: var(--logical-line);
+      stroke-width: 2;
+      stroke-dasharray: 7 5;
+    }
+
+    .rel-label {
+      font-size: 12px;
+      font-weight: 700;
+      fill: #111827;
+      paint-order: stroke;
+      stroke: #fff;
+      stroke-width: 4px;
+      stroke-linejoin: round;
+    }
+
+    .table-box {
+      position: absolute;
+      z-index: 2;
+      width: 242px;
+      border: 1px solid var(--table-border);
+      background: #fff;
+      box-shadow: 0 6px 18px rgba(15, 23, 42, 0.14);
+      font-size: 12px;
+    }
+
+    .table-title {
+      padding: 7px 10px;
+      background: var(--table-header);
+      border-bottom: 1px solid var(--table-border);
+      color: var(--table-header-text);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+
+    .field {
+      display: grid;
+      grid-template-columns: 34px 1fr;
+      min-height: 24px;
+      border-bottom: 1px solid var(--row-border);
+    }
+
+    .field:last-child {
+      border-bottom: 0;
+    }
+
+    .flag {
+      padding: 4px 6px;
+      color: #253041;
+      font-weight: 700;
+      text-align: center;
+      border-right: 1px solid var(--row-border);
+      background: #f8fafc;
+    }
+
+    .flag.pk {
+      background: var(--pk);
+    }
+
+    .flag.fk {
+      background: var(--fk);
+    }
+
+    .name {
+      padding: 4px 8px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .note {
+      max-width: 1800px;
+      margin: 14px auto 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .booking { left: 640px; top: 430px; width: 270px; }
+    .customer { left: 330px; top: 250px; }
+    .location { left: 40px; top: 310px; }
+    .employee { left: 1230px; top: 300px; }
+    .truck { left: 1230px; top: 710px; }
+    .cargo { left: 330px; top: 600px; }
+    .deliverycharge { left: 330px; top: 820px; }
+    .sales { left: 960px; top: 160px; }
+    .tariff { left: 40px; top: 80px; }
+    .expenses { left: 960px; top: 520px; }
+    .staffsalary { left: 960px; top: 850px; }
+    .incidentreport { left: 640px; top: 80px; }
+    .truckemployee { left: 1510px; top: 710px; }
+    .tripemployee { left: 1230px; top: 1040px; }
+    .truckfuellog { left: 1510px; top: 390px; }
+    .trucktripusage { left: 640px; top: 1010px; }
+
+    @media print {
+      body {
+        background: #fff;
+      }
+
+      .page {
+        padding: 0;
+      }
+
+      .diagram-shell {
+        border: 0;
+        box-shadow: none;
+        overflow: visible;
+      }
+
+      .diagram {
+        transform: scale(0.62);
+        transform-origin: top left;
+      }
+
+      .note {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="header">
+      <div>
+        <h1>Almodiel Trucking Services ERD</h1>
+        <div class="subtitle">MS Access-style relationship view based on the current database dump and app-level relationships.</div>
+      </div>
+      <div class="legend">
+        <span class="legend-item"><span class="legend-line"></span> Enforced FK</span>
+        <span class="legend-item"><span class="legend-line logical"></span> Logical app relationship</span>
+        <span class="legend-item"><strong>PK</strong> Primary key</span>
+        <span class="legend-item"><strong>FK</strong> Foreign key / lookup field</span>
+      </div>
+    </header>
+
+    <section class="diagram-shell" aria-label="MS Access style entity relationship diagram">
+      <div class="diagram">
+        <svg class="relationships" viewBox="0 0 1800 1320" aria-hidden="true">
+          <path class="rel" d="M282 398 H330" />
+          <text class="rel-label" x="287" y="392">1</text><text class="rel-label" x="314" y="392">many</text>
+
+          <path class="rel logical" d="M572 332 H610 V498 H640" />
+          <text class="rel-label" x="577" y="326">1</text><text class="rel-label" x="623" y="492">many</text>
+
+          <path class="rel logical" d="M282 500 H610 V545 H640" />
+          <text class="rel-label" x="287" y="494">1</text><text class="rel-label" x="623" y="539">many</text>
+
+          <path class="rel logical" d="M282 548 H610 V569 H640" />
+          <text class="rel-label" x="287" y="542">1</text><text class="rel-label" x="623" y="563">many</text>
+
+          <path class="rel logical" d="M1230 430 H1070 V590 H910" />
+          <text class="rel-label" x="1210" y="424">1</text><text class="rel-label" x="918" y="584">many</text>
+
+          <path class="rel logical" d="M640 640 H572 V670" />
+          <text class="rel-label" x="623" y="634">1</text><text class="rel-label" x="579" y="664">many</text>
+
+          <path class="rel logical" d="M640 668 H572 V888 H572" />
+          <text class="rel-label" x="623" y="662">1</text><text class="rel-label" x="579" y="882">many</text>
+
+          <path class="rel" d="M910 548 H960 V226" />
+          <text class="rel-label" x="918" y="542">1</text><text class="rel-label" x="942" y="232">many</text>
+
+          <path class="rel" d="M572 340 H960 V250" />
+          <text class="rel-label" x="577" y="334">1</text><text class="rel-label" x="942" y="256">many</text>
+
+          <path class="rel" d="M572 300 H960 V134 H40" />
+          <text class="rel-label" x="577" y="294">1</text><text class="rel-label" x="285" y="128">many</text>
+
+          <path class="rel" d="M1230 452 H1180 V612 H1202 V616 H1202" />
+          <text class="rel-label" x="1210" y="446">1</text><text class="rel-label" x="1176" y="608">many</text>
+
+          <path class="rel logical" d="M1230 500 H1160 V680 H1202 V688 H1202" />
+          <text class="rel-label" x="1210" y="494">1</text><text class="rel-label" x="1170" y="674">many</text>
+
+          <path class="rel logical" d="M910 596 H960" />
+          <text class="rel-label" x="918" y="590">1</text><text class="rel-label" x="942" y="590">many</text>
+
+          <path class="rel" d="M1230 812 H1200 V652 H1202" />
+          <text class="rel-label" x="1210" y="806">1</text><text class="rel-label" x="1185" y="658">many</text>
+
+          <path class="rel" d="M1230 864 H1200 V996 H1202" />
+          <text class="rel-label" x="1210" y="858">1</text><text class="rel-label" x="1185" y="990">many</text>
+
+          <path class="rel" d="M910 620 H940 V934 H960" />
+          <text class="rel-label" x="918" y="614">1</text><text class="rel-label" x="942" y="928">many</text>
+
+          <path class="rel" d="M1230 472 H1160 V912 H1202 V918 H1202" />
+          <text class="rel-label" x="1210" y="466">1</text><text class="rel-label" x="1170" y="906">many</text>
+
+          <path class="rel" d="M910 652 H930 V1068 H960" />
+          <text class="rel-label" x="918" y="646">1</text><text class="rel-label" x="942" y="1062">many</text>
+
+          <path class="rel logical" d="M1230 780 H1510 V782" />
+          <text class="rel-label" x="1210" y="774">1</text><text class="rel-label" x="1480" y="776">many</text>
+
+          <path class="rel" d="M1472 790 H1510" />
+          <text class="rel-label" x="1478" y="784">1</text><text class="rel-label" x="1492" y="784">many</text>
+
+          <path class="rel" d="M1472 848 H1510 V466" />
+          <text class="rel-label" x="1478" y="842">1</text><text class="rel-label" x="1492" y="472">many</text>
+
+          <path class="rel logical" d="M1472 902 H1510 V478" />
+          <text class="rel-label" x="1478" y="896">1</text><text class="rel-label" x="1492" y="484">many</text>
+
+          <path class="rel logical" d="M910 686 H1100 V1088 H1230" />
+          <text class="rel-label" x="918" y="680">1</text><text class="rel-label" x="1208" y="1082">many</text>
+
+          <path class="rel logical" d="M1472 848 H1490 V1098 H1472" />
+          <text class="rel-label" x="1478" y="842">1</text><text class="rel-label" x="1478" y="1092">many</text>
+
+          <path class="rel logical" d="M1472 780 H1498 V1122 H1472" />
+          <text class="rel-label" x="1478" y="774">1</text><text class="rel-label" x="1478" y="1116">many</text>
+
+          <path class="rel logical" d="M910 704 H920 V1078 H640" />
+          <text class="rel-label" x="918" y="698">1</text><text class="rel-label" x="648" y="1072">many</text>
+
+          <path class="rel logical" d="M1230 864 H1160 V1088 H912" />
+          <text class="rel-label" x="1210" y="858">1</text><text class="rel-label" x="918" y="1082">many</text>
+
+          <path class="rel logical" d="M910 505 V292 H640" />
+          <text class="rel-label" x="918" y="499">1</text><text class="rel-label" x="648" y="286">many</text>
+
+          <path class="rel logical" d="M1230 460 H1160 V210 H882" />
+          <text class="rel-label" x="1210" y="454">1</text><text class="rel-label" x="890" y="204">many</text>
+        </svg>
+
+        <article class="table-box tariff">
+          <div class="table-title">tariff</div>
+          <div class="field"><span class="flag pk">PK</span><span class="name">tariffID</span></div>
+          <div class="field"><span class="flag fk">FK</span><span class="name">customerID</span></div>
+          <div class="field"><span class="flag"></span><span class="name">branch</span></div>
+          <div class="field"><span class="flag"></span><span class="name">origin</span></div>
+          <div class="field"><span class="flag"></span><span class="name">destination</span></div>
+          <div class="field"><span class="flag"></span><span class="name">distanceKm</span></div>
+          <div class="field"><span class="flag"></span><span class="name">truckType</span></div>
+          <div class="field"><span class="flag"></span><span class="name">baseRate</span></div>
+          <div class="field"><span class="flag"></span><span class="name">fuelSubsidy</span></div>
+          <div class="field"><span class="flag"></span><span class="name">status</span></div>
+        </article>
+
+        <article class="table-box location">
+          <div class="table-title">location</div>
+          <div class="field"><span class="flag pk">PK</span><span class="name">locationID</span></div>
+          <div class="field"><span class="flag"></span><span class="name">province</span></div>
+          <div class="field"><span class="flag"></span><span class="name">city</span></div>
+          <div class="field"><span class="flag"></span><span class="name">barangay</span></div>
+          <div class="field"><span class="flag"></span><span class="name">street</span></div>
+          <div class="field"><span class="flag"></span><span class="name">description</span></div>
+          <div class="field"><span class="flag"></span><span class="name">latitude</span></div>
+          <div class="field"><span class="flag"></span><span class="name">longitude</span></div>
+        </article>
+
+        <article class="table-box customer">
+          <div class="table-title">customer</div>
+          <div class="field"><span class="flag pk">PK</span><span class="name">id</span></div>
+          <div class="field"><span class="flag"></span><span class="name">customerType</span></div>
+          <div class="field"><span class="flag"></span><span class="name">customerFName</span></div>
+          <div class="field"><span class="flag"></span><span class="name">customerLName</span></div>
+          <div class="field"><span class="flag"></span><span class="name">contactPerson</span></div>
+          <div class="field"><span class="flag"></span><span class="name">email</span></div>
+          <div class="field"><span class="flag"></span><span class="name">phoneNumber</span></div>
+          <div class="field"><span class="flag"></span><span class="name">warehouseLatitude</span></div>
+          <div class="field"><span class="flag"></span><span class="name">warehouseLongitude</span></div>
+          <div class="field"><span class="flag fk">FK</span><span class="name">locationID</span></div>
+        </article>
+
+        <article class="table-box incidentreport">
+          <div class="table-title">incidentreport</div>
+          <div class="field"><span class="flag pk">PK</span><span class="name">incidentID</span></div>
+          <div class="field"><span class="flag fk">FK</span><span class="name">tripID</span></div>
+          <div class="field"><span class="flag fk">FK</span><span class="name">bookingID</span></div>
+          <div class="field"><span class="flag fk">FK</span><span class="name">driverID</span></div>
+          <div class="field"><span class="flag"></span><span class="name">incidentType</span></div>
+          <div class="field"><span class="flag"></span><span class="name">severity</span></div>
+          <div class="field"><span class="flag"></span><span class="name">incidentDateTime</span></div>
+          <div class="field"><span class="flag"></span><span class="name">locationText</span></div>
+          <div class="field"><span class="flag"></span><span class="name">description</span></div>
+          <div class="field"><span class="flag"></span><span class="name">actionTaken</span></div>
+          <div class="field"><span class="flag"></span><span class="name">status</span></div>
+          <div class="field"><span class="flag fk">FK</span><span class="name">reviewedBy</span></div>
+        </article>
+
+        <article class="table-box booking">
+          <div class="table-title">booking</div>
+          <div class="field"><span class="flag pk">PK</span><span class="name">bookingID</span></div>
+          <div class="field"><span class="flag fk">FK</span><span class="name">customerID</span></div>
+          <div class="field"><span class="flag"></span><span class="name">storeName</span></div>
+          <div class="field"><span class="flag fk">FK</span><span class="name">pickupLocationID</span></div>
+          <div class="field"><span class="flag fk">FK</span><span class="name">destinationLocationID</span></div>
+          <div class="field"><span class="flag fk">FK</span><span class="name">tripID</span></div>
+          <div class="field"><span class="flag"></span><span class="name">pickupDateTime</span></div>
+          <div class="field"><span class="flag"></span><span class="name">price</span></div>
+          <div class="field"><span class="flag fk">FK</span><span class="name">createdBy</span></div>
+          <div class="field"><span class="flag"></span><span class="name">dateCreated</span></div>
+          <div class="field"><span class="flag"></span><span class="name">status</span></div>
+        </article>
+
+        <article class="table-box cargo">
+          <div class="table-title">cargo</div>
+          <div class="field"><span class="flag pk">PK</span><span class="name">cargoID</span></div>
+          <div class="field"><span class="flag fk">FK</span><span class="name">bookingID</span></div>
+          <div class="field"><span class="flag"></span><span class="name">cargoType</span></div>
+          <div class="field"><span class="flag"></span><span class="name">quantity</span></div>
+          <div class="field"><span class="flag"></span><span class="name">condition</span></div>
+          <div class="field"><span class="flag"></span><span class="name">description</span></div>
+          <div class="field"><span class="flag"></span><span class="name">specialHandling</span></div>
+        </article>
+
+        <article class="table-box deliverycharge">
+          <div class="table-title">deliverycharge</div>
+          <div class="field"><span class="flag pk">PK</span><span class="name">deliveryChargeID</span></div>
+          <div class="field"><span class="flag fk">FK</span><span class="name">bookingID</span></div>
+          <div class="field"><span class="flag fk">FK</span><span class="name">tripID</span></div>
+          <div class="field"><span class="flag"></span><span class="name">chargeType</span></div>
+          <div class="field"><span class="flag"></span><span class="name">amount</span></div>
+          <div class="field"><span class="flag"></span><span class="name">notes</span></div>
+          <div class="field"><span class="flag fk">FK</span><span class="name">createdBy</span></div>
+          <div class="field"><span class="flag"></span><span class="name">dateCreated</span></div>
+        </article>
+
+        <article class="table-box sales">
+          <div class="table-title">sales</div>
+          <div class="field"><span class="flag pk">PK</span><span class="name">salesID</span></div>
+          <div class="field"><span class="flag fk">FK</span><span class="name">bookingID</span></div>
+          <div class="field"><span class="flag fk">FK</span><span class="name">tripID</span></div>
+          <div class="field"><span class="flag fk">FK</span><span class="name">customerID</span></div>
+          <div class="field"><span class="flag"></span><span class="name">grossAmount</span></div>
+          <div class="field"><span class="flag"></span><span class="name">expenseAmount</span></div>
+          <div class="field"><span class="flag"></span><span class="name">netAmount</span></div>
+          <div class="field"><span class="flag"></span><span class="name">paidAmount</span></div>
+          <div class="field"><span class="flag"></span><span class="name">balanceAmount</span></div>
+          <div class="field"><span class="flag"></span><span class="name">paymentStatus</span></div>
+        </article>
+
+        <article class="table-box expenses">
+          <div class="table-title">expenses</div>
+          <div class="field"><span class="flag pk">PK</span><span class="name">expenseID</span></div>
+          <div class="field"><span class="flag"></span><span class="name">expenseDate</span></div>
+          <div class="field"><span class="flag"></span><span class="name">category</span></div>
+          <div class="field"><span class="flag"></span><span class="name">amount</span></div>
+          <div class="field"><span class="flag"></span><span class="name">description</span></div>
+          <div class="field"><span class="flag fk">FK</span><span class="name">truckID</span></div>
+          <div class="field"><span class="flag fk">FK</span><span class="name">empID</span></div>
+          <div class="field"><span class="flag fk">FK</span><span class="name">tripID</span></div>
+          <div class="field"><span class="flag fk">FK</span><span class="name">bookingID</span></div>
+          <div class="field"><span class="flag"></span><span class="name">status</span></div>
+          <div class="field"><span class="flag fk">FK</span><span class="name">createdBy</span></div>
+        </article>
+
+        <article class="table-box staffsalary">
+          <div class="table-title">staffsalary</div>
+          <div class="field"><span class="flag pk">PK</span><span class="name">salaryID</span></div>
+          <div class="field"><span class="flag fk">FK</span><span class="name">empID</span></div>
+          <div class="field"><span class="flag fk">FK</span><span class="name">tripID</span></div>
+          <div class="field"><span class="flag fk">FK</span><span class="name">creditedBookingID</span></div>
+          <div class="field"><span class="flag"></span><span class="name">creditedDistanceKm</span></div>
+          <div class="field"><span class="flag"></span><span class="name">tripRole</span></div>
+          <div class="field"><span class="flag"></span><span class="name">payPeriodStart</span></div>
+          <div class="field"><span class="flag"></span><span class="name">payPeriodEnd</span></div>
+          <div class="field"><span class="flag"></span><span class="name">grossPay</span></div>
+          <div class="field"><span class="flag"></span><span class="name">netPay</span></div>
+          <div class="field"><span class="flag fk">FK</span><span class="name">createdBy</span></div>
+        </article>
+
+        <article class="table-box employee">
+          <div class="table-title">employee</div>
+          <div class="field"><span class="flag pk">PK</span><span class="name">id</span></div>
+          <div class="field"><span class="flag"></span><span class="name">empFName</span></div>
+          <div class="field"><span class="flag"></span><span class="name">empLName</span></div>
+          <div class="field"><span class="flag"></span><span class="name">empMI</span></div>
+          <div class="field"><span class="flag"></span><span class="name">empBirthDate</span></div>
+          <div class="field"><span class="flag"></span><span class="name">empPhoneNumber</span></div>
+          <div class="field"><span class="flag"></span><span class="name">empEmail</span></div>
+          <div class="field"><span class="flag"></span><span class="name">empType</span></div>
+          <div class="field"><span class="flag"></span><span class="name">empStatus</span></div>
+          <div class="field"><span class="flag"></span><span class="name">empPassword</span></div>
+        </article>
+
+        <article class="table-box truck">
+          <div class="table-title">truck</div>
+          <div class="field"><span class="flag pk">PK</span><span class="name">id</span></div>
+          <div class="field"><span class="flag"></span><span class="name">plateNumber</span></div>
+          <div class="field"><span class="flag"></span><span class="name">type</span></div>
+          <div class="field"><span class="flag"></span><span class="name">capacity</span></div>
+          <div class="field"><span class="flag"></span><span class="name">fuel</span></div>
+          <div class="field"><span class="flag"></span><span class="name">mileage</span></div>
+          <div class="field"><span class="flag"></span><span class="name">brand</span></div>
+          <div class="field"><span class="flag"></span><span class="name">corDocument</span></div>
+          <div class="field"><span class="flag"></span><span class="name">otherDocument</span></div>
+          <div class="field"><span class="flag"></span><span class="name">status</span></div>
+        </article>
+
+        <article class="table-box truckfuellog">
+          <div class="table-title">truckfuellog</div>
+          <div class="field"><span class="flag pk">PK</span><span class="name">truckFuelLogID</span></div>
+          <div class="field"><span class="flag fk">FK</span><span class="name">truckID</span></div>
+          <div class="field"><span class="flag"></span><span class="name">logDate</span></div>
+          <div class="field"><span class="flag"></span><span class="name">litersAdded</span></div>
+          <div class="field"><span class="flag"></span><span class="name">fuelAfter</span></div>
+          <div class="field"><span class="flag"></span><span class="name">odometer</span></div>
+          <div class="field"><span class="flag"></span><span class="name">amount</span></div>
+          <div class="field"><span class="flag"></span><span class="name">station</span></div>
+          <div class="field"><span class="flag"></span><span class="name">referenceNo</span></div>
+          <div class="field"><span class="flag fk">FK</span><span class="name">createdBy</span></div>
+        </article>
+
+        <article class="table-box truckemployee">
+          <div class="table-title">truckemployee</div>
+          <div class="field"><span class="flag pk">PK</span><span class="name">truckEmployeeID</span></div>
+          <div class="field"><span class="flag fk">FK</span><span class="name">truckID</span></div>
+          <div class="field"><span class="flag fk">FK</span><span class="name">empID</span></div>
+          <div class="field"><span class="flag"></span><span class="name">role</span></div>
+          <div class="field"><span class="flag"></span><span class="name">dateCreated</span></div>
+        </article>
+
+        <article class="table-box tripemployee">
+          <div class="table-title">tripemployee</div>
+          <div class="field"><span class="flag pk">PK</span><span class="name">tripEmployeeID</span></div>
+          <div class="field"><span class="flag fk">FK</span><span class="name">tripID</span></div>
+          <div class="field"><span class="flag fk">FK</span><span class="name">truckID</span></div>
+          <div class="field"><span class="flag fk">FK</span><span class="name">empID</span></div>
+          <div class="field"><span class="flag"></span><span class="name">role</span></div>
+          <div class="field"><span class="flag"></span><span class="name">dateCreated</span></div>
+        </article>
+
+        <article class="table-box trucktripusage">
+          <div class="table-title">trucktripusage</div>
+          <div class="field"><span class="flag pk">PK</span><span class="name">truckTripUsageID</span></div>
+          <div class="field"><span class="flag fk">FK</span><span class="name">tripID</span></div>
+          <div class="field"><span class="flag fk">FK</span><span class="name">truckID</span></div>
+          <div class="field"><span class="flag"></span><span class="name">oneWayDistanceKm</span></div>
+          <div class="field"><span class="flag"></span><span class="name">roundTripDistanceKm</span></div>
+          <div class="field"><span class="flag"></span><span class="name">efficiencyKmPerLiter</span></div>
+          <div class="field"><span class="flag"></span><span class="name">fuelUsed</span></div>
+          <div class="field"><span class="flag"></span><span class="name">fuelBefore</span></div>
+          <div class="field"><span class="flag"></span><span class="name">fuelAfter</span></div>
+          <div class="field"><span class="flag"></span><span class="name">mileageBefore</span></div>
+          <div class="field"><span class="flag"></span><span class="name">mileageAfter</span></div>
+        </article>
+
+      </div>
+    </section>
+
+    <p class="note">
+      Relationship note: solid lines are actual database foreign key constraints from the SQL dump. Dashed lines are relationships used by the system but not enforced by MySQL. The biggest design detail is that trips are grouped by <strong>booking.tripID</strong>; there is no separate <strong>trip</strong> parent table yet.
+    </p>
+  </main>
+</body>
+</html>
