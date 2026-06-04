@@ -61,7 +61,12 @@ class ModelReport {
                 b.price,
                 b.status,
                 COALESCE(NULLIF(TRIM(b.storeName), ''), NULLIF(TRIM(CONCAT(c.customerFName, ' ', c.customerLName)), ''), c.contactPerson, 'Customer') AS customerName,
+                c.contactPerson,
                 c.customerType,
+                customerLocation.province AS customerProvince,
+                customerLocation.city AS customerCity,
+                customerLocation.barangay AS customerBarangay,
+                customerLocation.street AS customerStreet,
                 destination.province AS destinationProvince,
                 destination.city AS destinationCity,
                 destination.barangay AS destinationBarangay,
@@ -73,6 +78,7 @@ class ModelReport {
                 b.price + COALESCE(extra.extraAmount, 0) AS grossAmount
             FROM booking b
             LEFT JOIN customer c ON c.id = b.customerID
+            LEFT JOIN location customerLocation ON customerLocation.locationID = c.locationID
             LEFT JOIN location destination ON destination.locationID = b.destinationLocationID
             LEFT JOIN (
                 SELECT tripID, MIN(truckID) AS truckID

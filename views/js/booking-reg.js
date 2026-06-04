@@ -113,7 +113,7 @@ $(document).ready(function () {
 
   $(document).on('click', '#bookingBtnReset', function () {
     if (!IS_CUSTOMER_INDIVIDUAL) {
-      $('#bookingCustomer, #bookingStoreName, #bookingPrice, #bookingFuelPrice, #bookingTruck, #bookingDriver').val('');
+      $('#bookingCustomer, #bookingStoreName, #bookingPrice, #bookingFuelPrice, #bookingHauling, #bookingTruck, #bookingDriver').val('');
       $('#bookingCrewSalary, #bookingCrewAllowance').val('');
       $('#bookingPrice').data('tariffAutofilled', false).data('settingTariffPrice', false);
       $('#bookingAssistantList .booking-assistant-item').slice(2).remove();
@@ -867,6 +867,7 @@ $(document).ready(function () {
       if (!IS_CUSTOMER_INDIVIDUAL) {
         check('bookingPrice', selectedCustomerIsCompany() ? 'Company tariff price' : 'Price');
         checkPriceValue(missing);
+        checkMoneyInput('bookingHauling', 'Hauling', missing);
       }
     }
 
@@ -1241,6 +1242,7 @@ $(document).ready(function () {
       );
 
       $('#reviewPrice').text($('#bookingPrice').val() || '-');
+      $('#reviewHauling').text($('#bookingHauling').val() || '-');
     }
 
     const cargoSummary = [];
@@ -1298,7 +1300,9 @@ $(document).ready(function () {
           '<div><strong>Store / Customer Name:</strong> ' + (storeName || '-') + '</div>' +
           (!IS_CUSTOMER_INDIVIDUAL
             ? '<div><strong>Truck:</strong> '  + ($('#bookingTruck option:selected').text().trim()  || '-') + '</div>' +
-              '<div><strong>Driver:</strong> ' + ($('#bookingDriver option:selected').text().trim() || '-') + '</div>'
+              '<div><strong>Driver:</strong> ' + ($('#bookingDriver option:selected').text().trim() || '-') + '</div>' +
+              '<div><strong>Price:</strong> ' + ($('#bookingPrice').val() || '-') + '</div>' +
+              '<div><strong>Hauling:</strong> ' + ($('#bookingHauling').val() || '-') + '</div>'
             : '') +
           '<div><strong>Cargo:</strong> ' + (cargoConfirm.join(', ') || '-') + '</div>' +
           '<div><strong>Pickup:</strong> '      + ($('#pickupCoordinateText').text()      || '-') + '</div>' +
@@ -1389,6 +1393,7 @@ $(document).ready(function () {
 
     // Price: 0 for individual role
     formData.append('price',          IS_CUSTOMER_INDIVIDUAL ? '0' : $('#bookingPrice').val());
+    formData.append('haulingAmount',  IS_CUSTOMER_INDIVIDUAL ? '0' : $('#bookingHauling').val());
     formData.append('fuelPrice',      IS_CUSTOMER_INDIVIDUAL ? '0' : $('#bookingFuelPrice').val());
 
     const cargoItems = [];

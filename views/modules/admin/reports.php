@@ -57,6 +57,15 @@ function reportAddress($row) {
     ))) ?: "-";
 }
 
+function reportCustomerAddress($row) {
+    return implode(", ", array_filter(array(
+        $row["customerStreet"] ?? "",
+        $row["customerBarangay"] ?? "",
+        $row["customerCity"] ?? "",
+        $row["customerProvince"] ?? ""
+    ))) ?: "";
+}
+
 function reportStaffName($employee) {
     return trim($employee["empFName"] . " " . $employee["empMI"] . " " . $employee["empLName"] . " " . $employee["empSuffix"]);
 }
@@ -176,7 +185,21 @@ function reportStaffName($employee) {
                 <tbody>
                   <?php foreach ($billingRows as $row): ?>
                   <?php $customerType = strtolower((string) ($row["customerType"] ?? "uncategorized")); ?>
-                  <tr class="report-data-row" data-report-date="<?php echo htmlspecialchars(reportDateValue($row["pickupDateTime"] ?? "")); ?>" data-report-specific="<?php echo htmlspecialchars($customerType); ?>">
+                  <tr
+                    class="report-data-row"
+                    data-report-date="<?php echo htmlspecialchars(reportDateValue($row["pickupDateTime"] ?? "")); ?>"
+                    data-report-specific="<?php echo htmlspecialchars($customerType); ?>"
+                    data-billing-date="<?php echo htmlspecialchars(reportDateOnly($row["pickupDateTime"] ?? "")); ?>"
+                    data-billing-destination="<?php echo htmlspecialchars(reportAddress($row)); ?>"
+                    data-billing-plate="<?php echo htmlspecialchars($row["plateNumber"] ?? ""); ?>"
+                    data-billing-truck-size="<?php echo htmlspecialchars($row["truckSize"] ?? ""); ?>"
+                    data-billing-customer="<?php echo htmlspecialchars($row["customerName"] ?? "Customer"); ?>"
+                    data-billing-contact="<?php echo htmlspecialchars($row["contactPerson"] ?? "The Manager"); ?>"
+                    data-billing-customer-address="<?php echo htmlspecialchars(reportCustomerAddress($row)); ?>"
+                    data-billing-amount="<?php echo htmlspecialchars(number_format((float) ($row["price"] ?? 0), 2, ".", "")); ?>"
+                    data-billing-extra="<?php echo htmlspecialchars(number_format((float) ($row["extraAmount"] ?? 0), 2, ".", "")); ?>"
+                    data-billing-total="<?php echo htmlspecialchars(number_format((float) ($row["grossAmount"] ?? $row["price"] ?? 0), 2, ".", "")); ?>"
+                  >
                     <td>
                       <?php echo htmlspecialchars(reportDate($row["pickupDateTime"])); ?>
                       <div class="small text-muted">Booking #<?php echo (int) $row["bookingID"]; ?> | Trip #<?php echo (int) $row["tripID"]; ?></div>

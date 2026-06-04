@@ -44,6 +44,7 @@ class BookingRegistration {
     $driverID        = $_POST["driverID"] ?? null;
     $pickupDateTime  = $_POST["pickupDateTime"] ?? null;
     $price           = $_POST["price"] ?? null;
+    $haulingAmount   = $_POST["haulingAmount"] ?? 0;
     $cargoCondition  = $_POST["cargoCondition"] ?? null;
     $cargoDescription = $_POST["cargoDescription"] ?? null;
     $cargoSpecialHandling = $_POST["cargoSpecialHandling"] ?? null;
@@ -78,6 +79,7 @@ class BookingRegistration {
       "truckID" => $_POST["truckID"],
       "pickupDateTime" => $_POST["pickupDateTime"],
       "price" => $_POST["price"],
+      "haulingAmount" => $haulingAmount,
       "pickupLocationID"     => $_POST["pickupLocationID"] ?? null,      // ← ADD
       "destinationLocationID"=> $_POST["destinationLocationID"] ?? null, // ← ADD
       "createdBy" => isset($_SESSION["id"]) ? $_SESSION["id"] : 0,
