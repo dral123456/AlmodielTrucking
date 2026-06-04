@@ -30,6 +30,15 @@ function reportDate($value) {
     return $timestamp ? date("M d, Y h:i A", $timestamp) : $value;
 }
 
+function reportDateOnly($value) {
+    if (!$value) {
+        return "-";
+    }
+
+    $timestamp = strtotime($value);
+    return $timestamp ? date("M d, Y", $timestamp) : $value;
+}
+
 function reportDateValue($value) {
     if (!$value) {
         return "";
@@ -46,6 +55,15 @@ function reportAddress($row) {
         $row["destinationCity"] ?? "",
         $row["destinationProvince"] ?? ""
     ))) ?: "-";
+}
+
+function reportCustomerAddress($row) {
+    return implode(", ", array_filter(array(
+        $row["customerStreet"] ?? "",
+        $row["customerBarangay"] ?? "",
+        $row["customerCity"] ?? "",
+        $row["customerProvince"] ?? ""
+    ))) ?: "";
 }
 
 function reportStaffName($employee) {
@@ -164,9 +182,24 @@ function reportStaffName($employee) {
                   <th class="text-end">Row Total</th>
                 </tr>
               </thead>
-              <tbody>
-                <?php foreach ($billingRows as $row): ?>
-                  <tr class="report-data-row" data-report-date="<?php echo htmlspecialchars(reportDateValue($row["pickupDateTime"])); ?>" data-report-specific="<?php echo htmlspecialchars(strtolower($row["customerType"])); ?>">
+                <tbody>
+                  <?php foreach ($billingRows as $row): ?>
+                  <?php $customerType = strtolower((string) ($row["customerType"] ?? "uncategorized")); ?>
+                  <tr
+                    class="report-data-row"
+                    data-report-date="<?php echo htmlspecialchars(reportDateValue($row["pickupDateTime"] ?? "")); ?>"
+                    data-report-specific="<?php echo htmlspecialchars($customerType); ?>"
+                    data-billing-date="<?php echo htmlspecialchars(reportDateOnly($row["pickupDateTime"] ?? "")); ?>"
+                    data-billing-destination="<?php echo htmlspecialchars(reportAddress($row)); ?>"
+                    data-billing-plate="<?php echo htmlspecialchars($row["plateNumber"] ?? ""); ?>"
+                    data-billing-truck-size="<?php echo htmlspecialchars($row["truckSize"] ?? ""); ?>"
+                    data-billing-customer="<?php echo htmlspecialchars($row["customerName"] ?? "Customer"); ?>"
+                    data-billing-contact="<?php echo htmlspecialchars($row["contactPerson"] ?? "The Manager"); ?>"
+                    data-billing-customer-address="<?php echo htmlspecialchars(reportCustomerAddress($row)); ?>"
+                    data-billing-amount="<?php echo htmlspecialchars(number_format((float) ($row["price"] ?? 0), 2, ".", "")); ?>"
+                    data-billing-extra="<?php echo htmlspecialchars(number_format((float) ($row["extraAmount"] ?? 0), 2, ".", "")); ?>"
+                    data-billing-total="<?php echo htmlspecialchars(number_format((float) ($row["grossAmount"] ?? $row["price"] ?? 0), 2, ".", "")); ?>"
+                  >
                     <td>
                       <?php echo htmlspecialchars(reportDate($row["pickupDateTime"])); ?>
                       <div class="small text-muted">Booking #<?php echo (int) $row["bookingID"]; ?> | Trip #<?php echo (int) $row["tripID"]; ?></div>
@@ -176,7 +209,7 @@ function reportStaffName($employee) {
                     <td><?php echo reportText($row["truckSize"] ?? ""); ?></td>
                     <td>
                       <strong><?php echo reportText($row["customerName"], "Customer"); ?></strong>
-                      <div class="small text-muted"><?php echo reportText(ucfirst($row["customerType"])); ?></div>
+                      <div class="small text-muted"><?php echo reportText(ucfirst($customerType)); ?></div>
                     </td>
                     <td><span class="badge bg-secondary-subtle text-secondary"><?php echo reportText($row["status"]); ?></span></td>
                     <td class="text-end fw-semibold"><?php echo reportMoney($row["price"]); ?></td>
@@ -204,7 +237,7 @@ function reportStaffName($employee) {
           <div class="report-section-heading">
             <div>
               <h6 class="mb-0">Expenses Report</h6>
-              <p class="text-muted small mb-0">Maintenance, fuel, supplies, and other business costs.</p>
+              <p class="text-muted small mb-0">Maintenance, fuel, supplies, completed crew salary, and other business costs.</p>
             </div>
             <button type="button" class="btn btn-primary" id="reportAddExpense">
               <i class="ri-add-line me-1"></i> Add Expense

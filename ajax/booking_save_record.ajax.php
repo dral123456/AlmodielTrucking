@@ -39,10 +39,12 @@ class BookingRegistration {
     }
     // 🔥 SAFE POST ACCESS (prevents undefined key warnings)
     $customerID      = $_POST["customerID"] ?? null;
+    $storeName       = trim((string) ($_POST["storeName"] ?? ""));
     $truckID         = $_POST["truckID"] ?? null;
     $driverID        = $_POST["driverID"] ?? null;
     $pickupDateTime  = $_POST["pickupDateTime"] ?? null;
     $price           = $_POST["price"] ?? null;
+    $haulingAmount   = $_POST["haulingAmount"] ?? 0;
     $cargoCondition  = $_POST["cargoCondition"] ?? null;
     $cargoDescription = $_POST["cargoDescription"] ?? null;
     $cargoSpecialHandling = $_POST["cargoSpecialHandling"] ?? null;
@@ -73,9 +75,11 @@ class BookingRegistration {
     // }
     $data = array(
       "customerID" => $_POST["customerID"],
+      "storeName" => $storeName,
       "truckID" => $_POST["truckID"],
       "pickupDateTime" => $_POST["pickupDateTime"],
       "price" => $_POST["price"],
+      "haulingAmount" => $haulingAmount,
       "pickupLocationID"     => $_POST["pickupLocationID"] ?? null,      // ← ADD
       "destinationLocationID"=> $_POST["destinationLocationID"] ?? null, // ← ADD
       "createdBy" => isset($_SESSION["id"]) ? $_SESSION["id"] : 0,

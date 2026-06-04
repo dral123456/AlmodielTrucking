@@ -110,6 +110,12 @@ foreach ($trucks as $truck) {
                 </div>
               <?php endif; ?>
 
+              <div class="col-12 col-lg-6 mb-3">
+                <label class="form-label">Store / Customer Name</label>
+                <input type="text" class="form-control" id="bookingStoreName" maxlength="150" placeholder="Example: ZEST-O Silay Branch">
+                <div class="form-text">Optional name to show on this booking, such as a store, branch, or consignee.</div>
+              </div>
+
               <div class="col-12 <?php echo $isCustomerIndividual ? 'col-lg-6' : 'col-lg-6'; ?> mb-3">
                 <label class="form-label">Pickup Date & Time <span class="text-danger">*</span></label>
                 <input type="text" class="form-control" id="bookingPickupDateTime" autocomplete="off" placeholder="Select pickup date and time" data-min-date="<?php echo htmlspecialchars($minimumPickupDateTime); ?>">
@@ -342,10 +348,19 @@ foreach ($trucks as $truck) {
                       </div>
                       <div class="form-text" id="bookingTariffHint">Select company, truck, and destination to use tariff pricing.</div>
                     </div>
+                    <div class="col-12 col-md-6 mb-3">
+                      <label class="form-label">Hauling</label>
+                      <div class="form-icon">
+                        <i class="ri-truck-line text-muted"></i>
+                        <input type="number" class="form-control form-control-icon" id="bookingHauling" min="0" step="0.01" placeholder="0.00">
+                      </div>
+                      <div class="form-text">Optional additional hauling charge shown in billing reports.</div>
+                    </div>
                   </div>
                 <?php else: ?>
                   <input type="hidden" id="bookingFuelPrice" value="0">
                   <input type="hidden" id="bookingPrice" value="0">
+                  <input type="hidden" id="bookingHauling" value="0">
                 <?php endif; ?>
 
               </div>
@@ -430,6 +445,12 @@ foreach ($trucks as $truck) {
               </div>
               <div class="col-12 col-lg-6">
                 <div class="booking-review-box">
+                  <span>Store / Customer Name</span>
+                  <strong id="reviewStoreName">-</strong>
+                </div>
+              </div>
+              <div class="col-12 col-lg-6">
+                <div class="booking-review-box">
                   <span>Trip / Pickup Schedule</span>
                   <strong id="reviewTripSchedule">-</strong>
                 </div>
@@ -453,6 +474,12 @@ foreach ($trucks as $truck) {
                   <div class="booking-review-box">
                     <span>Price</span>
                     <strong id="reviewPrice">-</strong>
+                  </div>
+                </div>
+                <div class="col-12 col-lg-6">
+                  <div class="booking-review-box">
+                    <span>Hauling</span>
+                    <strong id="reviewHauling">-</strong>
                   </div>
                 </div>
               <?php endif; ?>

@@ -22,7 +22,7 @@
 
     
   </script>
-  <title>Almodiel Trucking Service </title>
+  <title>Almodiel Trucking Services</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <meta content="Admin & Dashboards Template" name="description" />
   <meta content="Pixeleyez" name="author" />
@@ -186,7 +186,8 @@
       $modulePaths = include "configs/module-paths.php";
 
       $allowedRoutes = $routeMap[$role] ?? [];
-      $route = isset($_GET["route"]) ? basename($_GET["route"]) : 'sample';              
+      $defaultRoute = $role === 'driver' ? 'trips' : 'sample';
+      $route = isset($_GET["route"]) ? basename($_GET["route"]) : $defaultRoute;
       if($route === 'landingpage') {
         echo '<link rel="stylesheet" href="views/css/landingpage.css">';
 

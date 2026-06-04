@@ -47,7 +47,7 @@ class ControllerEmployee {
         $_SESSION["role"] = self::sessionRoleForEmployee($answer["empType"]);
 
         echo '<script>
-          window.location = "driverDashboard";
+          window.location = "trips";
         </script>';
       } else {
         echo '<br><div style="text-align:center;" class="alert alert-danger">User or password incorrect</div>';

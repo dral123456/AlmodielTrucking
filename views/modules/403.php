@@ -6,7 +6,7 @@
     <div class="px-3 px-md-8 py-5 position-absolute top-0 d-flex justify-content-between align-items-center w-100 z-1">
         <a href="sample" class="d-flex align-items-end logo-main">
             <img height="35" class="logo-dark" alt="Dark Logo" src="../assets/images/logo-md.png">
-            <h3 class="text-body-emphasis fw-bolder mb-0 ms-1">Urbix</h3>
+            <h3 class="text-body-emphasis fw-bolder mb-0 ms-1 fs-6 lh-sm">Almodiel Trucking Services</h3>
           </a>
         <a href="index.html" class="link-primary"><i class="ri-arrow-left-line me-2"></i>Back</a>
     </div>

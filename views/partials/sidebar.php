@@ -6,7 +6,7 @@ $allowed     = $allRoutes[$role] ?? [];
 $dashboardRoute = match ($role) {
     'admin' => 'sample',
     'assistant' => 'assistantDashboard',
-    'driver' => 'driverDashboard',
+    'driver' => 'trips',
     'customer', 'customer-individual', 'customer-company' => 'customer-individual/profile',
     default => null,
 };
@@ -86,6 +86,27 @@ $sidebarItems = [
   ],
 ];
 
+if ($role === 'driver') {
+  $sidebarItems = [
+    [
+      'type'  => 'title',
+      'label' => 'Driver',
+    ],
+    [
+      'type'  => 'link',
+      'icon'  => 'ri-route-line',
+      'label' => 'My Trips',
+      'route' => 'trips',
+    ],
+    [
+      'type'  => 'link',
+      'icon'  => 'ri-money-dollar-circle-line',
+      'label' => 'My Salary',
+      'route' => 'driver-salary',
+    ],
+  ];
+}
+
 // Pre-compute which titles have visible content
 $processedItems = [];
 $pendingTitle   = null;
@@ -122,7 +143,7 @@ foreach ($sidebarItems as $item) {
         <a href="<?= htmlspecialchars($dashboardRoute) ?>" class="d-flex align-items-end logo-main">
             <img height="35" width="34" class="logo-dark" alt="Dark Logo" src="views/assets/images/logo-md.png">
             <img height="35" width="34" class="logo-light" alt="Light Logo" src="views/assets/images/logo-md-light.png">
-            <h3 class="text-body-emphasis fw-bolder mb-0 ms-1">Urbix</h3>
+            <h3 class="text-body-emphasis fw-bolder mb-0 ms-1 fs-6 lh-sm">Almodiel Trucking Services</h3>
         </a>
         <button type="button" id="sidebarDefaultArrow" class="btn btn-sm p-0 fs-16 text-body-emphasis ms-auto float-end d-none icon-hover-btn d-none"><i class="ri-arrow-right-line fs-5"></i></button>
         <!--end::Brand Image-->

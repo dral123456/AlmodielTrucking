@@ -38,7 +38,7 @@ if(isset($_SESSION['role'])) {
             <div class="d-inline-flex align-items-center gap-2">
                 <a href="sample" class="align-items-end logo-main d-none me-5">
                     <img height="35" width="34" class="logo-dark" alt="Dark Logo" src="views/assets/images/logo-md.png">
-                    <h3 class="text-body-emphasis fw-bolder mb-0 ms-1">Urbix</h3>
+                    <h3 class="text-body-emphasis fw-bolder mb-0 ms-1 fs-6 lh-sm">Almodiel Trucking Services</h3>
                 </a>
                 <button type="button" class="vertical-toggle btn header-btn" id="toggleSidebar" aria-label="Toggle Sidebar">
                     <i class="bi bi-arrow-bar-left header-icon"></i>
