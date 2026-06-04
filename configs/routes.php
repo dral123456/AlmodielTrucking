@@ -37,8 +37,6 @@ $assistantRoutes = [
 
 $customerRoutes = [
     'sample',
-    'customer-individual/profile',
-    'customer-individual/bookings',
     'booking-reg',
     'logout',
     'bookings',

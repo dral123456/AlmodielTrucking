@@ -59,5 +59,13 @@ class ControllerBooking {
       return ModelBooking::mdlReceiptTripCrew($tripID);
   }
 
-
+  static public function ctrRescheduleBooking($data) {
+    if (
+        empty($data["bookingID"]) ||
+        empty($data["pickupDateTime"])
+    ) {
+        return "error";
+    }
+    return ModelBooking::mdlRescheduleBooking($data);
+  }
 }

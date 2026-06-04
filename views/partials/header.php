@@ -1,8 +1,8 @@
 <?php
 if(isset($_SESSION['role'])) {
     $role = $_SESSION['role'];
-    if($role === 'customer') {
-        require_once 'controllers/customer.booking.php';
+    if($role === 'customer-individual' || $role === 'customer-company') {
+        require_once 'controllers/customer.controller.php';
 
         $customer = ControllerCustomer::ctrGetCustomer($_SESSION['id']);
 

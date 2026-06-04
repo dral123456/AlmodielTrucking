@@ -1387,5 +1387,42 @@ class ModelBooking {
       return $stmt->fetchAll(PDO::FETCH_ASSOC);
   }
 
+  static public function mdlRescheduleBooking($data) {
+
+    $pdo = (new Connection)->connect();
+
+    try {
+
+        $stmt = $pdo->prepare("
+            UPDATE booking
+            SET pickupDateTime = :pickupDateTime
+            WHERE bookingID = :bookingID
+        ");
+
+        $stmt->bindParam(
+            ":pickupDateTime",
+            $data["pickupDateTime"],
+            PDO::PARAM_STR
+        );
+
+        $stmt->bindParam(
+            ":bookingID",
+            $data["bookingID"],
+            PDO::PARAM_INT
+        );
+
+        if ($stmt->execute()) {
+            return "success";
+        }
+
+        return "error";
+
+    } catch (PDOException $e) {
+
+        error_log($e->getMessage());
+
+        return "error";
+    }
+  }
   
 }

@@ -3,11 +3,13 @@ require_once "controllers/booking.controller.php";
 require_once "models/booking.model.php";
 
 $booking = ControllerBooking::ctrGetBooking($_POST['bookingID']);
+$customer = ControllerCustomer::ctrGetCustomer($booking['customerID']);
 
 function detailDate($value) {
   if (!$value) return "-";
   $timestamp = strtotime($value);
-  return $timestamp ? date("M d, Y h:i A", $timestamp) : $value;
+  if (!$timestamp) return $value;
+  return date("M d, Y", $timestamp) . '|' . date("h:i A", $timestamp);
 }
 
 function detailText($value, $fallback = "-") {
@@ -23,8 +25,6 @@ function detailStatusClass($status) {
 }
 ?>
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <style>
 /* ── Page wrapper ─────────────────────────────────── */
@@ -157,6 +157,7 @@ function detailStatusClass($status) {
   min-height: 0;
 }
 
+
 /* ── Responsive ──────────────────────────────────── */
 @media (max-width: 767.98px) {
   .booking-detail-layout {
@@ -238,9 +239,61 @@ function detailStatusClass($status) {
 
               <div class="detail-item">
                 <div class="detail-label">Pickup Date & Time</div>
-                <div class="detail-value">
-                  <i class="ri-calendar-line me-1 text-muted"></i>
-                  <?php echo detailText(detailDate($booking['pickupDateTime'])); ?>
+                  <div class="detail-value">
+                    <?php
+                      $parts = explode('|', detailDate($booking['pickupDateTime']));
+                      $date  = $parts[0] ?? '-';
+                      $time  = $parts[1] ?? '';
+                    ?>
+                    <div><i class="ri-calendar-line me-1 text-muted"></i><?php echo htmlspecialchars($date); ?></div>
+                    <?php if ($time): ?>
+                      <div><i class="ri-time-line me-1 text-muted"></i><?php echo htmlspecialchars($time); ?></div>
+                    <?php endif; ?>
+                    <div class="mt-1">
+                      <a href="javascript:void(0)" class="text-danger small" id="rescheduleBtn" 
+                        data-id="<?php echo (int) $booking['bookingID']; ?>">
+                        <i class="ri-calendar-schedule-line me-1"></i>Reschedule
+                      </a>
+                      <div class="modal fade" id="rescheduleModal" tabindex="-1" aria-labelledby="rescheduleModalLabel" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered">
+                          <div class="modal-content">
+
+                            <div class="modal-header">
+                              <h5 class="modal-title" id="rescheduleModalLabel">
+                                <i class="ri-calendar-schedule-line me-2 text-danger"></i>Reschedule Booking
+                              </h5>
+                              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+
+                            <div class="modal-body">
+                              <p class="text-muted small mb-3">
+                                Booking <strong id="rescheduleBookingID"></strong>
+                              </p>
+
+                              <div class="mb-3">
+                                <label for="rescheduleDate" class="form-label">New Pickup Date</label>
+                                <input type="date" class="form-control" id="rescheduleDate" placeholder="Select a date">
+                              </div>
+
+                              <div class="mb-3">
+                                <label for="rescheduleTime" class="form-label">New Pickup Time</label>
+                                <input type="time" class="form-control" id="rescheduleTime" placeholder="Select a time">
+                              </div>
+
+                              
+                            </div>
+
+                            <div class="modal-footer">
+                              <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                              <button type="button" class="btn btn-danger" id="confirmReschedule">
+                                <i class="ri-calendar-check-line me-1"></i>Confirm Reschedule
+                              </button>
+                            </div>
+
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                 </div>
               </div>
 
@@ -263,21 +316,30 @@ function detailStatusClass($status) {
 
             <div class="booking-detail-grid">
               <div class="detail-item">
-                <div class="detail-label">Customer Type</div>
-                <div class="detail-value"><?php echo detailText($booking['customerType']); ?></div>
-              </div>
-
-              <div class="detail-item">
                 <div class="detail-label">Customer Name</div>
                 <div class="detail-value">
                   <?php echo detailText($booking['customerFName'] . ' ' . $booking['customerLName']); ?>
                 </div>
               </div>
 
-              <div class="detail-item">
-                <div class="detail-label">Contact Person</div>
-                <div class="detail-value"><?php echo detailText($booking['contactPerson']); ?></div>
-              </div>
+              <?php if (!empty($customer['contactPerson'])): ?>
+                <div class="detail-item">
+                  <div class="detail-label">Contact Person</div>
+                  <div class="detail-value"><?php echo detailText($customer['contactPerson']); ?></div>
+                </div>
+              <?php endif; ?>
+              <?php if (!empty($customer['phoneNumber'])): ?>
+                <div class="detail-item">
+                  <div class="detail-label">Phone Number</div>
+                  <div class="detail-value"><?php echo detailText($customer['phoneNumber']); ?></div> 
+                </div>
+              <?php endif; ?>
+              <?php if (!empty($customer['email'])): ?>
+                <div class="detail-item">
+                  <div class="detail-label">Email</div>
+                  <div class="detail-value"><?php echo detailText($customer['email']); ?></div>
+                </div>
+              <?php endif; ?>
             </div>
           </div>
 

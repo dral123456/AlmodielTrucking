@@ -58,4 +58,82 @@ $(document).ready(function () {
 		var bookingID = $(this).data('id');
 		window.open("pdf/receipt.php?bookingID=" + bookingID, "_blank");
 	});
+  // let reschedulePickerDate = null;
+  // let reschedulePickerTime = null;
+
+  // $('#rescheduleModal').on('shown.bs.modal', function () {
+  //   if (!reschedulePickerDate) {
+  //     reschedulePickerDate = new AirDatepicker('#rescheduleDate', {
+  //       dateFormat: 'MM / dd / yyyy',
+  //       minDate: new Date(),
+  //       autoClose: true,
+  //       container: '#rescheduleModal .modal-body',
+  //       position: 'bottom left',
+  //       locale:localeEn,
+  //     });
+  //   }
+
+  //   if (!reschedulePickerTime) {
+  //     reschedulePickerTime = new AirDatepicker('#rescheduleTime', {
+  //       timepicker: true,
+  //       onlyTimepicker: true,
+  //       timeFormat: 'hh:mm aa',
+  //       autoClose: true,
+  //       container: '#rescheduleModal .modal-body',
+  //       position: 'bottom left',
+  //     });
+  //   }
+  // });
+
+  $('#rescheduleBtn').on('click', function () {
+    const bookingID = $(this).data('id');
+    $('#rescheduleBookingID').text('#' + bookingID);
+    $('#rescheduleDate').val('');
+    $('#rescheduleTime').val('');
+  
+    new bootstrap.Modal(document.getElementById('rescheduleModal')).show();
+  });
+
+  $('#confirmReschedule').on('click', function () {
+    const date      = $('#rescheduleDate').val().trim();
+    const time      = $('#rescheduleTime').val().trim();
+    const bookingID = $('#rescheduleBtn').data('id');
+  
+    if (!date || !time) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Missing Fields',
+        text: 'Please select both a new date and time.',
+      });
+      return;
+    }
+  
+    $.ajax({
+      url: 'ajax/booking_reschedule.ajax.php',
+      method: 'POST',
+      data: {
+        action: 'reschedule',
+        bookingID: bookingID,
+        newDate: date,
+        newTime: time,
+      },
+      success: function (response) {
+        bootstrap.Modal.getInstance(document.getElementById('rescheduleModal')).hide();
+        Swal.fire({
+          icon: 'success',
+          title: 'Rescheduled!',
+          text: `Booking has been rescheduled to ${date} at ${time}.`,
+          timer: 2500,
+          showConfirmButton: false,
+        }).then(() => location.reload());
+      },
+      error: function () {
+        Swal.fire({
+          icon: 'error',
+          title: 'Failed',
+          text: 'Something went wrong. Please try again.',
+        });
+      }
+    });
+  });
 });
