@@ -7,12 +7,10 @@
 <div class="auth-pattern-extra d-none d-lg-block"></div><header class="px-3 px-md-8 py-5 position-absolute top-0 d-flex justify-content-between align-items-center w-100 z-1">
   <a href="index.html" class="d-flex align-items-end logo-main">
     <img height="35" class="logo-dark" alt="Dark Logo" src="views/assets/images/logo-md.png">
-    <h3 class="text-body-emphasis fw-bolder mb-0 ms-1">Urbix</h3>
+    <h3 class="text-body-emphasis fw-bolder mb-0 ms-1">Almodiel Trucking Service</h3>
   </a>
   <ul class="list-inline mb-0">
-    <li class="list-inline-item pe-4 border-end"><a href="landingpage" class="link-body-emphasis">Home</a></li>
-    <li class="list-inline-item pe-4 border-end"><a href="#!" class="link-body-emphasis">Support</a></li>
-    <li class="list-inline-item"><a href="#!" class="link-body-emphasis">Documentation</a></li>
+    <li class="list-inline-item pe-4 border-end"><a href="landingpage" class="link-body-emphasis">Home</a></li> 
   </ul>
 </header>
 <div class="container">
@@ -20,8 +18,7 @@
     <div class="col-12 col-md-8 col-lg-6 col-xl-5">
       <div class="card mx-xxl-8 shadow-none">
         <div class="card-body p-8">
-          <h3 class="fw-medium text-center">Welcome back!</h3>
-          <p class="mb-8 text-muted text-center">Create Your Account in Minutes</p>
+          <h3 class="fw-medium text-center">Welcome!</h3>
           <form id="formAuthentication" method="POST" action="">
             <div class="mb-4">
               <label for="phoneNumber" class="form-label">Phone Number <span class="text-danger">*</span></label>
@@ -30,7 +27,7 @@
                 class="form-control" 
                 id="phoneNumber" 
                 name="phoneNumber" 
-                value="admin" 
+                value="091234567899" 
                 placeholder="Enter your Phone Number" 
                 autofocus 
                 required>
@@ -43,24 +40,14 @@
                   class="form-control" 
                   id="password" 
                   name = "password"
-                  value="admin"
+                  value="123456"
                   placeholder="&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;"
                   aria-describedby="password" 
                   required>
                 <button type="button" class="btn btn-link position-absolute end-0 top-0 text-decoration-none text-muted toggle-password" id="toggle-password" data-target="password"><i class="ri-eye-off-line align-middle"></i></button>
               </div>
             </div>
-            <div class="my-6">
-              <div class="d-flex justify-content-between align-items-center">
-                <div class="form-check">
-                  <input type="checkbox" class="form-check-input" id="rememberMe">
-                  <label class="form-check-label" for="rememberMe">Remember me</label>
-                </div>
-                <div class="form-text">
-                  <a href="auth-forgot-password.html" class="link">Forgot password?</a>
-                </div>
-              </div>
-            </div>
+            
             <div>
               <button type="submit" name = "loginUser" class="btn btn-primary w-100 mb-4">Sign In</button>
               <?php

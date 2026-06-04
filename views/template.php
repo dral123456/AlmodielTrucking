@@ -62,6 +62,9 @@
   <link href="views/assets/css/app.min.css" id="app-style" rel="stylesheet" type="text/css">
   <link rel="stylesheet" href="views/assets/libs/choices.js/public/assets/styles/choices.min.css">
 
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500&display=swap" rel="stylesheet">
+
+
   <!-- MY CSS -->
   <link rel="stylesheet" href="views/css/stepper.css">
   <!-- <link rel="stylesheet" href="views/css/datepicker.css"> -->
@@ -164,6 +167,9 @@
       if (in_array($route, $allowedRoutes)) {
         if($route == "signup"){
           include "modules/customer-individual/" . $route . ".php";
+        }else if($route == "landingpage"){
+          echo '<link rel="stylesheet" href="views/css/landingpage.css">';
+          include "modules/" . $route . ".php";
         }else{
           include "modules/" . $route . ".php";
         }
@@ -180,6 +186,13 @@
       $modulePaths = include "configs/module-paths.php";
 
       $allowedRoutes = $routeMap[$role] ?? [];
+      $route = isset($_GET["route"]) ? basename($_GET["route"]) : 'sample';              
+      if($route === 'landingpage') {
+        echo '<link rel="stylesheet" href="views/css/landingpage.css">';
+
+        include 'modules/landingpage.php';
+        exit;
+      }
       echo '<div class="layout-wrapper layout-content-navbar">';
         echo '<div class="layout-container">';
           include "partials/sidebar.php";
@@ -187,9 +200,6 @@
             include "partials/header.php";
             echo '<div class="content-wrapper">';
               echo '<div class="container-fluid py-4">';
-              $route = isset($_GET["route"]) ? basename($_GET["route"]) : 'sample';
-              // In your routing logic, before rendering
-              
             if (isset($_GET["route"])) {
               $raw = $_GET["route"];
               // Allow only alphanumeric, hyphens, and ONE slash
@@ -217,6 +227,9 @@
         echo '</div>'; // layout-container
       echo '</div>'; // layout-wrapper
     }else{
+      echo '<link rel="stylesheet" href="views/css/landingpage.css">';
+      echo '<script>
+        console.log("No active session, redirecting to landing page...");</script>';
       include "modules/landingpage.php";
     }
   ?>
@@ -259,6 +272,16 @@
 <script src="views/assets/js/pages/profile.init.js"></script>
 <!-- App js -->
 <script src="views/assets/js/app.js"></script>
+<script>
+  (function () {
+    var stickyMenu = document.querySelector('[data-sticky]') 
+                  || document.getElementById('stickyMenu');
+    if (!stickyMenu) {
+      // Remove the scroll listener app.js attached, if accessible
+      window.onscroll = null;
+    }
+  })();
+</script>
 
 <!-- <script>
   (function() {

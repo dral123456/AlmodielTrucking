@@ -26,19 +26,21 @@ const popovers = initializeBootstrapComponents(
 // Function to handle both sticky menu and button loading
 function initializeAppFeatures() {
   const stickyMenu = document.getElementById("appHeader"); // Ensure this ID matches your HTML
-  const stickyOffset = stickyMenu.offsetTop;
 
-  // Function to toggle sticky class on scroll
-  function toggleStickyMenu() {
-    if (window.scrollY > stickyOffset) {
-      stickyMenu.classList.add("sticky-scroll");
-    } else {
-      stickyMenu.classList.remove("sticky-scroll");
+  // Attach the scroll event listener only when the sticky header exists on this page
+  if (stickyMenu) {
+    const stickyOffset = stickyMenu.offsetTop;
+
+    function toggleStickyMenu() {
+      if (window.scrollY > stickyOffset) {
+        stickyMenu.classList.add("sticky-scroll");
+      } else {
+        stickyMenu.classList.remove("sticky-scroll");
+      }
     }
-  }
 
-  // Attach the scroll event listener
-  window.addEventListener("scroll", toggleStickyMenu);
+    window.addEventListener("scroll", toggleStickyMenu);
+  }
 
   // Attach click event listeners to all loader buttons
   document.querySelectorAll(".btn-loader").forEach((button) => {
@@ -149,7 +151,6 @@ function initializeAppFeatures() {
           item.setAttribute("aria-expanded", "false");
           item.classList.remove("collapsed");
           item.nextElementSibling.classList.remove("show");
-          // console.log(item.nextElementSibling, item);
         }, 300);
       });
     });

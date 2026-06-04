@@ -1,20 +1,14 @@
 <?php
 $title = "Almodiel Trucking Service - Reliable Delivery Solutions";
 $year = date("Y");
+if(isset($_SESSION["loggedIn"]) && $_SESSION["loggedIn"] === "ok") {
+  $bookRoute = "booking-reg";
+}else{
+  $bookRoute = "customer-login";
+}
+
 ?>
-<!DOCTYPE html>
-<html lang="en" data-bs-theme="dark">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><?php echo $title; ?></title>
-
-  <link href="views/assets/css/bootstrap.min.css" rel="stylesheet">
-  <link href="views/assets/css/icons.min.css" rel="stylesheet">
-
-  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500&display=swap" rel="stylesheet">
-
-  <style>
+  <!-- <style>
     :root {
       --brand-primary:   #696cff;
       --brand-dark:      #0d0e1a;
@@ -591,8 +585,7 @@ $year = date("Y");
       .cta-inner    { padding: 2.5rem 1.5rem; }
       .sponsor-card { flex-direction: column; text-align: center; }
     }
-  </style>
-</head>
+  </style> -->
 <body>
 
 <!-- ── NAVBAR ── -->
@@ -606,7 +599,7 @@ $year = date("Y");
       <li><a href="#features">Features</a></li>
       <li><a href="#about">About</a></li>
       <li><a href="#sponsors">Sponsors</a></li>
-      <li><a href="customer-login" class="nav-cta">Book a Service</a></li>
+      <li><a href="<?php echo $bookRoute; ?>" class="nav-cta">Book a Service</a></li>
     </ul>
     <button class="nav-toggle" id="navToggle" aria-label="Toggle menu">
       <i class="ri-menu-line"></i>
@@ -629,7 +622,7 @@ $year = date("Y");
       Almodiel Trucking Service delivers your goods safely — every time.
     </p>
     <div class="hero-actions">
-      <a href="customer-login" class="btn-primary-brand" id="bookServiceBtn">
+      <a href="<?php echo $bookRoute; ?>" class="btn-primary-brand" id="bookServiceBtn">
         <i class="ri-truck-line"></i> Book a Service
       </a>
       <a href="#features" class="btn-ghost-brand">
