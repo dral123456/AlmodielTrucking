@@ -57,7 +57,7 @@ class ModelReport {
                 b.pickupDateTime,
                 b.price,
                 b.status,
-                COALESCE(NULLIF(TRIM(CONCAT(c.customerFName, ' ', c.customerLName)), ''), c.contactPerson, 'Customer') AS customerName,
+                COALESCE(NULLIF(TRIM(b.storeName), ''), NULLIF(TRIM(CONCAT(c.customerFName, ' ', c.customerLName)), ''), c.contactPerson, 'Customer') AS customerName,
                 c.customerType,
                 destination.province AS destinationProvince,
                 destination.city AS destinationCity,

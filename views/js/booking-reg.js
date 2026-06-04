@@ -45,6 +45,7 @@ $(document).ready(function () {
     });
 
     $(document).on('change', '#bookingCustomer', function () {
+      autofillStoreNameFromCustomer();
       applyCompanyWarehousePickup();
       lookupTariffPrice();
     });
@@ -112,7 +113,7 @@ $(document).ready(function () {
 
   $(document).on('click', '#bookingBtnReset', function () {
     if (!IS_CUSTOMER_INDIVIDUAL) {
-      $('#bookingCustomer, #bookingPrice, #bookingFuelPrice, #bookingTruck, #bookingDriver').val('');
+      $('#bookingCustomer, #bookingStoreName, #bookingPrice, #bookingFuelPrice, #bookingTruck, #bookingDriver').val('');
       $('#bookingCrewSalary, #bookingCrewAllowance').val('');
       $('#bookingPrice').data('tariffAutofilled', false).data('settingTariffPrice', false);
       $('#bookingAssistantList .booking-assistant-item').slice(2).remove();
@@ -407,6 +408,19 @@ $(document).ready(function () {
     if (IS_CUSTOMER_INDIVIDUAL) return $(); // no visible select for individual customers
     const $option = $('#bookingCustomer option:selected');
     return $option.length && $option.val() ? $option : $();
+  }
+
+  function autofillStoreNameFromCustomer() {
+    const $storeName = $('#bookingStoreName');
+
+    if (!$storeName.length || $storeName.val().trim() !== '') {
+      return;
+    }
+
+    const customerName = getSelectedCustomerOption().text().trim();
+    if (customerName && customerName !== 'Select customer') {
+      $storeName.val(customerName);
+    }
   }
 
   function selectedCustomerIsCompany() {
@@ -1212,6 +1226,7 @@ $(document).ready(function () {
     }
 
     $('#reviewCustomer').text(customerLabel);
+    $('#reviewStoreName').text($('#bookingStoreName').val().trim() || '-');
     $('#reviewTripSchedule').text($('#bookingPickupDateTime').val() || '-');
 
     if (!IS_CUSTOMER_INDIVIDUAL) {
@@ -1267,6 +1282,7 @@ $(document).ready(function () {
     });
 
     let customerDisplay;
+    const storeName = $('#bookingStoreName').val().trim();
     if (IS_CUSTOMER_INDIVIDUAL) {
       customerDisplay = SESSION_CUSTOMER_ID ? 'Customer #' + SESSION_CUSTOMER_ID : '-';
     } else {
@@ -1279,6 +1295,7 @@ $(document).ready(function () {
         '<p class="mb-2">Please review the details before submitting:</p>' +
         '<div class="text-start bg-light rounded p-3">' +
           '<div><strong>Customer:</strong> '    + customerDisplay + '</div>' +
+          '<div><strong>Store / Customer Name:</strong> ' + (storeName || '-') + '</div>' +
           (!IS_CUSTOMER_INDIVIDUAL
             ? '<div><strong>Truck:</strong> '  + ($('#bookingTruck option:selected').text().trim()  || '-') + '</div>' +
               '<div><strong>Driver:</strong> ' + ($('#bookingDriver option:selected').text().trim() || '-') + '</div>'
@@ -1359,6 +1376,7 @@ $(document).ready(function () {
 
     // Customer: use session ID for individual role, select value otherwise
     formData.append('customerID', IS_CUSTOMER_INDIVIDUAL ? SESSION_CUSTOMER_ID : $('#bookingCustomer').val());
+    formData.append('storeName', $('#bookingStoreName').val().trim());
 
     // Crew: empty strings for individual role
     formData.append('truckID',      IS_CUSTOMER_INDIVIDUAL ? null : $('#bookingTruck').val());

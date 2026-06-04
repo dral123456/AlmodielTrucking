@@ -39,6 +39,7 @@ class BookingRegistration {
     }
     // 🔥 SAFE POST ACCESS (prevents undefined key warnings)
     $customerID      = $_POST["customerID"] ?? null;
+    $storeName       = trim((string) ($_POST["storeName"] ?? ""));
     $truckID         = $_POST["truckID"] ?? null;
     $driverID        = $_POST["driverID"] ?? null;
     $pickupDateTime  = $_POST["pickupDateTime"] ?? null;
@@ -73,6 +74,7 @@ class BookingRegistration {
     // }
     $data = array(
       "customerID" => $_POST["customerID"],
+      "storeName" => $storeName,
       "truckID" => $_POST["truckID"],
       "pickupDateTime" => $_POST["pickupDateTime"],
       "price" => $_POST["price"],

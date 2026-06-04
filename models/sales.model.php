@@ -150,7 +150,7 @@ class ModelSales {
         {$netExpr} AS netAmount,
         {$statusExpr} AS status,
         {$customerTypeExpr} AS customerType,
-        COALESCE(NULLIF(TRIM(CONCAT(c.customerFName, ' ', c.customerLName)), ''), c.contactPerson, 'Customer') AS customerName
+        COALESCE(NULLIF(TRIM(b.storeName), ''), NULLIF(TRIM(CONCAT(c.customerFName, ' ', c.customerLName)), ''), c.contactPerson, 'Customer') AS customerName
       FROM " . self::quoteIdentifier($salesMeta["table"]) . " s
       LEFT JOIN booking b ON b.bookingID = s.bookingID
       LEFT JOIN customer c ON c.id = COALESCE(" . (isset($salesMeta["columns"]["customerID"]) ? "s.customerID" : "NULL") . ", b.customerID)
@@ -243,7 +243,7 @@ class ModelSales {
         b.price,
         b.status,
         c.customerType,
-        COALESCE(NULLIF(TRIM(CONCAT(c.customerFName, ' ', c.customerLName)), ''), c.contactPerson, 'Customer') AS customerName
+        COALESCE(NULLIF(TRIM(b.storeName), ''), NULLIF(TRIM(CONCAT(c.customerFName, ' ', c.customerLName)), ''), c.contactPerson, 'Customer') AS customerName
       FROM booking b
       LEFT JOIN customer c ON c.id = b.customerID
       WHERE {$where}

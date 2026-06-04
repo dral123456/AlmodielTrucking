@@ -298,6 +298,7 @@ class ModelBooking {
         b.bookingID,
         b.tripID,
         b.customerID,
+        b.storeName,
         b.pickupDateTime,
         b.price,
         b.status,
@@ -368,7 +369,8 @@ class ModelBooking {
         $trips[$tripID]["lastPickupDateTime"] = $row["pickupDateTime"];
       }
 
-      $customerName = trim($row["customerFName"] . " " . $row["customerLName"]);
+      $storeName = trim((string) ($row["storeName"] ?? ""));
+      $customerName = $storeName !== "" ? $storeName : trim($row["customerFName"] . " " . $row["customerLName"]);
       if ($customerName === "") {
         $customerName = $row["contactPerson"];
       }
@@ -444,6 +446,7 @@ class ModelBooking {
         b.bookingID,
         b.tripID,
         b.customerID,
+        b.storeName,
         b.pickupDateTime,
         b.price,
         b.status,
@@ -495,7 +498,8 @@ class ModelBooking {
         );
       }
 
-      $customerName = trim($row["customerFName"] . " " . $row["customerLName"]);
+      $storeName = trim((string) ($row["storeName"] ?? ""));
+      $customerName = $storeName !== "" ? $storeName : trim($row["customerFName"] . " " . $row["customerLName"]);
       if ($customerName === "") {
         $customerName = $row["contactPerson"];
       }
@@ -880,9 +884,16 @@ class ModelBooking {
         return $availability["status"] === "inactive" ? "truck-inactive" : "truck-conflict";
       }
 
+      self::ensureBookingStoreNameColumn($pdo);
+      $storeName = trim((string) ($data["storeName"] ?? ""));
+      $hasStoreName = self::columnExists($pdo, "booking", "storeName");
+      $storeNameColumn = $hasStoreName ? "storeName," : "";
+      $storeNameValue = $hasStoreName ? ":storeName," : "";
+
       $stmt = $pdo->prepare("
         INSERT INTO booking (
           customerID,
+          {$storeNameColumn}
           pickupLocationID,
           destinationLocationID,
           tripID,
@@ -893,6 +904,7 @@ class ModelBooking {
           status
         ) VALUES (
           :customerID,
+          {$storeNameValue}
           :pickupLocationID,
           :destinationLocationID,
           :tripID,
@@ -905,6 +917,9 @@ class ModelBooking {
       ");
 
       $stmt->bindParam(":customerID", $data["customerID"], PDO::PARAM_INT);
+      if ($hasStoreName) {
+        $stmt->bindValue(":storeName", $storeName, PDO::PARAM_STR);
+      }
       $stmt->bindParam(":pickupLocationID", $pickupLocationID, PDO::PARAM_INT);
       $stmt->bindParam(":destinationLocationID", $destinationLocationID, PDO::PARAM_INT);
       $stmt->bindParam(":tripID", $tripID, PDO::PARAM_INT);
@@ -1483,6 +1498,14 @@ class ModelBooking {
     return (bool) $stmt->fetchColumn();
   }
 
+  static private function ensureBookingStoreNameColumn($pdo) {
+    if (self::columnExists($pdo, "booking", "storeName")) {
+      return;
+    }
+
+    $pdo->exec("ALTER TABLE booking ADD COLUMN storeName VARCHAR(150) NULL AFTER customerID");
+  }
+
   static private function columnExists($pdo, $tableName, $columnName) {
     $stmt = $pdo->prepare("
       SELECT COUNT(*)
@@ -1507,6 +1530,7 @@ class ModelBooking {
         b.bookingID,
         b.tripID,
         b.customerID,
+        b.storeName,
         b.pickupDateTime,
         b.price,
         b.status,
@@ -1558,7 +1582,8 @@ class ModelBooking {
 
     foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
 
-      $customerName = trim(
+      $storeName = trim((string) ($row["storeName"] ?? ""));
+      $customerName = $storeName !== "" ? $storeName : trim(
         $row["customerFName"] . " " . $row["customerLName"]
       );
 
@@ -1613,6 +1638,7 @@ class ModelBooking {
         b.bookingID,
         b.tripID,
         b.customerID,
+        b.storeName,
         b.pickupDateTime,
         b.price,
         b.status,
@@ -1671,6 +1697,7 @@ class ModelBooking {
           SELECT
               b.bookingID,
               b.tripID,
+              b.storeName,
               b.pickupDateTime,
               b.price,
               b.status,

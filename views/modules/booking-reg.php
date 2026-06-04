@@ -110,6 +110,12 @@ foreach ($trucks as $truck) {
                 </div>
               <?php endif; ?>
 
+              <div class="col-12 col-lg-6 mb-3">
+                <label class="form-label">Store / Customer Name</label>
+                <input type="text" class="form-control" id="bookingStoreName" maxlength="150" placeholder="Example: ZEST-O Silay Branch">
+                <div class="form-text">Optional name to show on this booking, such as a store, branch, or consignee.</div>
+              </div>
+
               <div class="col-12 <?php echo $isCustomerIndividual ? 'col-lg-6' : 'col-lg-6'; ?> mb-3">
                 <label class="form-label">Pickup Date & Time <span class="text-danger">*</span></label>
                 <input type="text" class="form-control" id="bookingPickupDateTime" autocomplete="off" placeholder="Select pickup date and time" data-min-date="<?php echo htmlspecialchars($minimumPickupDateTime); ?>">
@@ -426,6 +432,12 @@ foreach ($trucks as $truck) {
                 <div class="booking-review-box">
                   <span>Customer</span>
                   <strong id="reviewCustomer">-</strong>
+                </div>
+              </div>
+              <div class="col-12 col-lg-6">
+                <div class="booking-review-box">
+                  <span>Store / Customer Name</span>
+                  <strong id="reviewStoreName">-</strong>
                 </div>
               </div>
               <div class="col-12 col-lg-6">
