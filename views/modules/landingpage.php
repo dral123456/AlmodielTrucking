@@ -213,7 +213,7 @@ $year = date("Y");
             Almodiel Trucking Service helps move your cargo safely and efficiently.
         </p>
 
-        <a href="#" class="btn" id="bookServiceBtn">Book a Service</a>
+        <a href="" class="btn" id="bookServiceBtn">Book a Service</a>
     </div>
 </section>
 
@@ -292,7 +292,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
             e.preventDefault();
 
-            window.location.href = "?route=customer-login";
+            window.location.href = "customer-login";
 
         });
 
