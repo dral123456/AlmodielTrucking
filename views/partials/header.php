@@ -1,8 +1,10 @@
 <?php
 if(isset($_SESSION['role'])) {
+    date_default_timezone_set("Asia/Manila");
     $role = $_SESSION['role'];
     if($role === 'customer-individual' || $role === 'customer-company') {
         require_once 'controllers/customer.controller.php';
+        require_once 'models/customer.model.php';
 
         $customer = ControllerCustomer::ctrGetCustomer($_SESSION['id']);
 
@@ -18,6 +20,7 @@ if(isset($_SESSION['role'])) {
         $email = $customer['email'];
     } else {
         require_once 'controllers/employee.controller.php';
+        require_once 'models/employee.model.php';
 
         $employee = ControllerEmployee::ctrGetEmployee($_SESSION['id']);
 
@@ -29,7 +32,135 @@ if(isset($_SESSION['role'])) {
     }
 }
 
+function headerNotificationText($value, $fallback = "-") {
+    $value = trim((string) $value);
+    return htmlspecialchars($value !== "" ? $value : $fallback);
+}
+
+function headerNotificationDate($value) {
+    $timestamp = strtotime((string) $value);
+    return $timestamp ? date("M d, Y h:i A", $timestamp) : "Recently";
+}
+
+function headerNotificationCustomer($trip) {
+    $customers = $trip["customers"] ?? array();
+    if (empty($customers)) {
+        return "Customer";
+    }
+
+    return implode(", ", array_slice($customers, 0, 2));
+}
+
+$adminNotifications = array();
+$adminNotificationCount = 0;
+
+if (($role ?? "") === "admin") {
+    require_once "controllers/booking.controller.php";
+    require_once "models/booking.model.php";
+    require_once "controllers/incident.controller.php";
+    require_once "models/incident.model.php";
+
+    $notificationTrips = ControllerBooking::ctrTripOverviewList(0, "admin");
+    $notificationIncidents = ControllerIncident::ctrIncidentList();
+    $now = strtotime(date("Y-m-d H:i:s"));
+    $upcomingLimit = strtotime("+7 days", $now);
+    $upcomingTrips = array();
+    $completedTrips = array();
+    $activeIncidents = array();
+
+    foreach ($notificationTrips as $trip) {
+        $status = strtolower((string) ($trip["status"] ?? ""));
+        $pickupTimestamp = strtotime((string) ($trip["firstPickupDateTime"] ?? ""));
+
+        if ($pickupTimestamp && $pickupTimestamp >= $now && $pickupTimestamp <= $upcomingLimit && in_array($status, array("pending", "in-transit", "stopover"), true)) {
+            $upcomingTrips[] = $trip;
+        }
+
+        if ($status === "completed") {
+            $completedTrips[] = $trip;
+        }
+    }
+
+    usort($upcomingTrips, function ($a, $b) {
+        return strtotime($a["firstPickupDateTime"] ?? "") <=> strtotime($b["firstPickupDateTime"] ?? "");
+    });
+
+    usort($completedTrips, function ($a, $b) {
+        return strtotime($b["firstPickupDateTime"] ?? "") <=> strtotime($a["firstPickupDateTime"] ?? "");
+    });
+
+    foreach ($notificationIncidents as $incident) {
+        $incidentStatus = strtolower((string) ($incident["status"] ?? ""));
+        if (in_array($incidentStatus, array("open", "reviewing"), true)) {
+            $activeIncidents[] = $incident;
+        }
+    }
+
+    $adminNotificationCount = count($upcomingTrips) + count(array_slice($completedTrips, 0, 3)) + count($activeIncidents);
+
+    foreach (array_slice($activeIncidents, 0, 4) as $incident) {
+        $adminNotifications[] = array(
+            "key" => "incident-" . (int) ($incident["incidentID"] ?? 0) . "-" . ($incident["dateSubmitted"] ?? ""),
+            "icon" => "ri-alarm-warning-line",
+            "class" => "danger",
+            "title" => "Incident report #" . (int) ($incident["incidentID"] ?? 0),
+            "time" => headerNotificationDate($incident["dateSubmitted"] ?? ""),
+            "message" => "Trip #" . (int) ($incident["tripID"] ?? 0) . " by " . ($incident["driverName"] ?? "Driver") . " needs admin review.",
+            "link" => "incident-reports"
+        );
+    }
+
+    foreach (array_slice($upcomingTrips, 0, 4) as $trip) {
+        $adminNotifications[] = array(
+            "key" => "upcoming-trip-" . (int) ($trip["tripID"] ?? 0) . "-" . ($trip["firstPickupDateTime"] ?? "") . "-" . ($trip["status"] ?? ""),
+            "icon" => "ri-calendar-schedule-line",
+            "class" => "primary",
+            "title" => "Upcoming Trip #" . (int) ($trip["tripID"] ?? 0),
+            "time" => headerNotificationDate($trip["firstPickupDateTime"] ?? ""),
+            "message" => headerNotificationCustomer($trip) . " has " . (int) ($trip["bookingCount"] ?? 0) . " booking(s) scheduled.",
+            "link" => "trips"
+        );
+    }
+
+    foreach (array_slice($completedTrips, 0, 3) as $trip) {
+        $adminNotifications[] = array(
+            "key" => "completed-trip-" . (int) ($trip["tripID"] ?? 0) . "-" . ($trip["firstPickupDateTime"] ?? ""),
+            "icon" => "ri-check-double-line",
+            "class" => "success",
+            "title" => "Delivery completed: Trip #" . (int) ($trip["tripID"] ?? 0),
+            "time" => headerNotificationDate($trip["firstPickupDateTime"] ?? ""),
+            "message" => headerNotificationCustomer($trip) . " delivery is marked completed.",
+            "link" => "trips"
+        );
+    }
+}
+
 ?>
+
+<style>
+    .admin-notification-count {
+        position: absolute;
+        top: 2px;
+        right: 2px;
+        min-width: 18px;
+        height: 18px;
+        padding: 0 5px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        background: #ef4444;
+        color: #fff;
+        font-size: 10px;
+        font-weight: 800;
+        line-height: 1;
+        border: 2px solid var(--bs-body-bg);
+    }
+
+    .admin-noti-item .avatar-md {
+        flex: 0 0 auto;
+    }
+</style>
 
 <!-- Begin Header -->
 <header class="app-header" id="appHeader">
@@ -58,15 +189,58 @@ if(isset($_SESSION['role'])) {
             <div class="flex-shrink-0 d-flex align-items-center gap-4">
                 <div class="d-flex gap-2 align-items-center">
                     <div class="dropdown pe-dropdown-mega d-none d-md-block">
-                        <button class="btn header-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Notifications">
+                        <button
+                            class="btn header-btn position-relative"
+                            type="button"
+                            id="adminNotificationButton"
+                            data-admin-id="<?php echo (int) ($_SESSION["id"] ?? 0); ?>"
+                            data-bs-toggle="dropdown"
+                            aria-expanded="false"
+                            aria-label="Notifications"
+                        >
                             <i class="bi bi-bell"></i>
-                            <div class="icon-dot"></div>
+                            <?php if (($role ?? "") === "admin" && $adminNotificationCount > 0): ?>
+                                <div class="icon-dot admin-notification-dot"></div>
+                                <span class="admin-notification-count"><?php echo (int) min($adminNotificationCount, 99); ?></span>
+                            <?php endif; ?>
                         </button>
                         <div class="dropdown-menu dropdown-mega-md header-dropdown-menu pe-noti-dropdown-menu p-0">
                             <div class="p-3 border-bottom">
-                                <h6 class="d-flex align-items-center mb-0">Notification <span class="badge bg-success-subtle text-success ms-auto">4 Unread</span></h6>
+                                <h6 class="d-flex align-items-center mb-0">
+                                    Notification
+                                    <?php if (($role ?? "") === "admin"): ?>
+                                        <span class="badge bg-primary-subtle text-primary ms-auto admin-notification-summary"><?php echo (int) $adminNotificationCount; ?> new</span>
+                                    <?php else: ?>
+                                        <span class="badge bg-secondary-subtle text-secondary ms-auto">No alerts</span>
+                                    <?php endif; ?>
+                                </h6>
                             </div>
                             <div>
+                                <?php if (($role ?? "") === "admin" && !empty($adminNotifications)): ?>
+                                    <?php foreach (array_slice($adminNotifications, 0, 10) as $notification): ?>
+                                        <div class="noti-item admin-noti-item" data-notification-key="<?php echo headerNotificationText($notification["key"] ?? ""); ?>">
+                                            <div class="avatar-md d-flex align-items-center justify-content-center bg-<?php echo headerNotificationText($notification["class"]); ?>-subtle text-<?php echo headerNotificationText($notification["class"]); ?> fs-16">
+                                                <i class="<?php echo headerNotificationText($notification["icon"]); ?>"></i>
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <a href="<?php echo headerNotificationText($notification["link"]); ?>" class="text-decoration-none stretched-link">
+                                                    <h6 class="mb-1 fw-semibold"><?php echo headerNotificationText($notification["title"]); ?></h6>
+                                                </a>
+                                                <p class="text-muted mb-2 fs-12"><?php echo headerNotificationText($notification["time"]); ?></p>
+                                                <div class="p-2 bg-body-tertiary bg-opacity-50 rounded">
+                                                    <p class="mb-0 lh-base fs-13"><?php echo headerNotificationText($notification["message"]); ?></p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <div class="admin-notification-empty text-center p-4">
+                                        <i class="ri-notification-off-line d-block fs-2 text-muted mb-2"></i>
+                                        <h6 class="mb-1">No notifications</h6>
+                                        <p class="text-muted mb-0 fs-13">Upcoming trips, completed deliveries, and incident reports will appear here.</p>
+                                    </div>
+                                <?php endif; ?>
+                                <?php if (false): ?>
                                 <div class="noti-item">
                                     <div class="avatar-md d-flex align-items-center justify-content-center bg-success-subtle text-success fs-16">
                                         <i class="bi bi-bag-check-fill"></i>
@@ -150,7 +324,13 @@ if(isset($_SESSION['role'])) {
                                     </div>
                                     <a href="#!" class="position-absolute top-10 end-0 fs-18 z-1 link link-danger me-3"><i class="bi bi-x"></i></a>
                                 </div>
+                                <?php endif; ?>
                             </div>
+                            <?php if (($role ?? "") === "admin"): ?>
+                                <div class="p-2 border-top d-grid">
+                                    <a href="incident-reports" class="btn btn-sm btn-light">View incident reports</a>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -195,6 +375,85 @@ if(isset($_SESSION['role'])) {
     </div>
 </header>
 <!-- END Header -->
+
+<?php if (($role ?? "") === "admin"): ?>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var button = document.getElementById('adminNotificationButton');
+    var items = Array.prototype.slice.call(document.querySelectorAll('.admin-noti-item[data-notification-key]'));
+    var countBadge = document.querySelector('.admin-notification-count');
+    var summaryBadge = document.querySelector('.admin-notification-summary');
+    var dot = document.querySelector('.admin-notification-dot');
+
+    if (!button) {
+        return;
+    }
+
+    var adminID = button.getAttribute('data-admin-id') || 'admin';
+    var storageKey = 'almodiel.admin.notifications.seen.' + adminID;
+
+    function readSeenKeys() {
+        try {
+            var stored = JSON.parse(localStorage.getItem(storageKey) || '[]');
+            return Array.isArray(stored) ? stored : [];
+        } catch (error) {
+            return [];
+        }
+    }
+
+    function currentKeys() {
+        return items
+            .map(function (item) { return item.getAttribute('data-notification-key') || ''; })
+            .filter(Boolean);
+    }
+
+    function unique(values) {
+        return values.filter(function (value, index) {
+            return values.indexOf(value) === index;
+        });
+    }
+
+    function updateBadge() {
+        var seen = readSeenKeys();
+        var unread = currentKeys().filter(function (key) {
+            return seen.indexOf(key) === -1;
+        });
+        var unreadCount = unread.length;
+
+        if (countBadge) {
+            countBadge.textContent = unreadCount > 99 ? '99' : String(unreadCount);
+            countBadge.classList.toggle('d-none', unreadCount === 0);
+        }
+
+        if (dot) {
+            dot.classList.toggle('d-none', unreadCount === 0);
+        }
+
+        if (summaryBadge) {
+            summaryBadge.textContent = unreadCount + ' new';
+            summaryBadge.classList.toggle('bg-primary-subtle', unreadCount > 0);
+            summaryBadge.classList.toggle('text-primary', unreadCount > 0);
+            summaryBadge.classList.toggle('bg-secondary-subtle', unreadCount === 0);
+            summaryBadge.classList.toggle('text-secondary', unreadCount === 0);
+        }
+    }
+
+    function markCurrentAsSeen() {
+        var seen = readSeenKeys();
+        var merged = unique(seen.concat(currentKeys())).slice(-100);
+        localStorage.setItem(storageKey, JSON.stringify(merged));
+        updateBadge();
+    }
+
+    button.addEventListener('shown.bs.dropdown', markCurrentAsSeen);
+    button.addEventListener('click', function () {
+        setTimeout(markCurrentAsSeen, 150);
+    });
+
+    updateBadge();
+});
+</script>
+<?php endif; ?>
 
 <!-- Search Modal -->
 <div class="modal fade search-modal" id="searchModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="searchModalLabel" aria-hidden="true">
