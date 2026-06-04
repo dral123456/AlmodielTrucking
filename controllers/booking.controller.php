@@ -1,4 +1,6 @@
 <?php
+
+require_once "models/booking.model.php";
 class ControllerBooking {
   static public function ctrCustomerList() {
     return (new ModelBooking)->mdlCustomerList();
