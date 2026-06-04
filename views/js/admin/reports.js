@@ -13,15 +13,12 @@
   var clearButton = document.getElementById("reportClearDate");
   var csvButton = document.getElementById("reportExportCsv");
   var pdfButton = document.getElementById("reportExportPdf");
-<<<<<<< HEAD
   if (pdfButton) {
     pdfButton.addEventListener("click", function () {
       exportPdf();
     });
   }
-=======
   var addExpenseButton = document.getElementById("reportAddExpense");
->>>>>>> 6119ee673ff417b1dc47d90c9d94a630af527e62
   var specificOptions = {
     billing: [
       { value: "all", label: "All Billing" },

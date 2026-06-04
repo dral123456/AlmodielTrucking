@@ -91,7 +91,7 @@ function manageDate($value, $format = "M d, Y") {
                     <div class="small text-muted">Expires <?php echo htmlspecialchars($employee["licenseExpire"]); ?></div>
                   <?php endif; ?>
                   <?php if (!empty($employee["licenseImage"])): ?>
-                    <a class="small" href="uploads/licenses/<?php echo htmlspecialchars($employee["licenseImage"]); ?>" target="_blank">View license</a>
+                    <a class="small" href="<?php echo htmlspecialchars($employee["licenseImage"]); ?>" target="_blank">View license</a>
                   <?php endif; ?>
                 </td>
                 <td>

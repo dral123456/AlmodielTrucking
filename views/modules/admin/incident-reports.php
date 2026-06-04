@@ -128,7 +128,7 @@ function incidentSeverityClass($severity) {
               <th>Incident</th>
               <th>Details</th>
               <th>Status</th>
-              <th class="text-end">Actions</th>
+              <th class="text-center">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -264,7 +264,8 @@ function incidentSeverityClass($severity) {
   }
 
   .incident-table {
-    min-width: 1120px;
+    width: 100%;
+    table-layout: fixed;
   }
 
   .incident-row {
@@ -398,6 +399,18 @@ function incidentSeverityClass($severity) {
   .incident-review-actions .btn {
     border-radius: 0.5rem;
     min-width: 104px;
+  }
+
+  .incident-table th:first-child,
+  .incident-table td:first-child {
+    width: 110px;
+    min-width: 110px;
+    max-width: 110px;
+  }
+
+  .incident-table td:first-child .small {
+    white-space: normal;
+    line-height: 1.2;
   }
 
   @media (max-width: 1199.98px) {
