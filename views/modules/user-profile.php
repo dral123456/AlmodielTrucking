@@ -87,20 +87,18 @@ $roleIcon = match($role) {
 $bookingList  = [];
 $tripList     = [];
 $showTripList = false;
+require_once "controllers/booking.controller.php";
 
 if ($isCustomerIndividual || $isCustomerCompany) {
-    require_once "controllers/booking.controller.php";
-    $bookingList = ControllerBooking::ctrCustomerBookingList((int)$id);
+  $bookingList = ControllerBooking::ctrCustomerBookingList((int)$id);
 
 } elseif ($isDriver) {
-    require_once "controllers/booking.controller.php";
-    $tripList     = ControllerBooking::ctrDriverTripList((int)$id, true);
-    $showTripList = true;
-
+  $tripList     = ControllerBooking::ctrEmployeeTripList((int)$id, 'driver');
+  $showTripList = true;
+  
 } elseif ($isAssistant) {
-    require_once "controllers/booking.controller.php";
-    $tripList     = ControllerBooking::ctrTripOverviewList((int)$id, 'assistant');
-    $showTripList = true;
+  $tripList     = ControllerBooking::ctrEmployeeTripList((int)$id, 'assistant');
+  $showTripList = true;
 }
 
 // ── Helpers ───────────────────────────────────────────────────
@@ -380,81 +378,6 @@ function profileStatusClass($status) {
               </div>
 
               <?php elseif ($showTripList): ?>
-
-              <p class="profile-section-title mb-3">
-                <i class="ri-route-line me-1"></i>Trips Involved In
-              </p>
-
-              <?php if (empty($tripList)): ?>
-                <div class="profile-empty">
-                  <i class="ri-inbox-line fs-4 mb-2 d-block"></i>
-                  No trips found.
-                </div>
-              <?php else: ?>
-                <div class="profile-booking-list">
-                  <?php foreach ($tripList as $t): ?>
-                    <div class="profile-booking-card">
-
-                      <div class="profile-booking-header">
-                        <div>
-                          <div class="fw-semibold small">
-                            Trip #<?= (int)($t["tripID"] ?? $t["id"] ?? 0) ?>
-                          </div>
-                          <div class="text-muted" style="font-size:0.78rem;">
-                            <i class="ri-calendar-line me-1"></i>
-                            <?= profileText(profileDate($t["pickupDateTime"] ?? $t["tripDate"] ?? '')) ?>
-                          </div>
-                        </div>
-                        <?php
-                          $tStatus = $t["status"] ?? $t["deliveryStatus"] ?? 'pending';
-                        ?>
-                        <span class="badge <?= profileStatusClass($tStatus) ?>">
-                          <?= profileText(ucfirst(str_replace('-', ' ', $tStatus))) ?>
-                        </span>
-                      </div>
-
-                      <div class="profile-booking-route">
-                        <?php if (!empty($t["pickupAddress"] ?? $t["origin"] ?? '')): ?>
-                        <div class="profile-booking-route-row">
-                          <i class="ri-map-pin-2-line text-primary mt-1 flex-shrink-0"></i>
-                          <div>
-                            <div style="font-size:0.7rem;font-weight:600;color:var(--bs-secondary-color);margin-bottom:1px;">Pickup</div>
-                            <?= profileText($t["pickupAddress"] ?? $t["origin"] ?? '—') ?>
-                          </div>
-                        </div>
-                        <?php endif; ?>
-                        <?php if (!empty($t["destinationAddress"] ?? $t["destination"] ?? '')): ?>
-                        <div class="profile-booking-route-row">
-                          <i class="ri-flag-line text-danger mt-1 flex-shrink-0"></i>
-                          <div>
-                            <div style="font-size:0.7rem;font-weight:600;color:var(--bs-secondary-color);margin-bottom:1px;">Destination</div>
-                            <?= profileText($t["destinationAddress"] ?? $t["destination"] ?? '—') ?>
-                          </div>
-                        </div>
-                        <?php endif; ?>
-                      </div>
-
-                      <div class="profile-booking-footer">
-                        <?php if (!empty($t["truckPlate"] ?? $t["plateNumber"] ?? '')): ?>
-                          <div class="text-muted small">
-                            <i class="ri-truck-line me-1"></i>
-                            <?= profileText($t["truckPlate"] ?? $t["plateNumber"] ?? '') ?>
-                          </div>
-                        <?php else: ?>
-                          <div></div>
-                        <?php endif; ?>
-                        <a href="?route=trip-details&tripID=<?= (int)($t["tripID"] ?? $t["id"] ?? 0) ?>"
-                          class="btn btn-sm btn-light">
-                          <i class="ri-eye-line me-1"></i>View Trip
-                        </a>
-                      </div>
-
-                    </div>
-                  <?php endforeach; ?>
-                </div>
-              <?php endif; ?>
-
-              
               <?php endif; ?>
               <?php if ($address): ?>
               <div class="profile-info-row">
@@ -475,95 +398,172 @@ function profileStatusClass($status) {
         <div class="card mb-0">
           <div class="card-body">
 
-            <?php if ($isAdmin): ?>
+          <?php if ($isAdmin): ?>
 
-              <p class="profile-section-title">
-                <i class="ri-file-list-3-line me-1"></i>Bookings
-              </p>
-              <div class="profile-empty">
-                <i class="ri-information-line fs-4 mb-2 d-block"></i>
-                Admins do not have associated bookings.
-              </div>
+          <p class="profile-section-title">
+            <i class="ri-file-list-3-line me-1"></i>Bookings
+          </p>
+          <div class="profile-empty">
+            <i class="ri-information-line fs-4 mb-2 d-block"></i>
+            Admins do not have associated bookings.
+          </div>
 
-            <?php else: ?>
+          <?php elseif ($showTripList): ?>
 
-              <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
-                <p class="profile-section-title mb-0">
-                  <i class="ri-file-list-3-line me-1"></i>
-                  <?= ($isCustomerIndividual || $isCustomerCompany) ? 'My Bookings' : 'Bookings Involved In' ?>
-                </p>
-                <?php if ($isCustomerIndividual || $isCustomerCompany): ?>
-                  <a href="?route=booking-reg" class="btn btn-sm btn-primary">
-                    <i class="ri-add-line me-1"></i>Add Booking
-                  </a>
-                <?php endif; ?>
-              </div>
+          <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+            <p class="profile-section-title mb-0">
+              <i class="ri-route-line me-1"></i>Trips Involved In
+            </p>
+          </div>
 
-              <?php if (empty($bookingList)): ?>
-                <div class="profile-empty">
-                  <i class="ri-inbox-line fs-4 mb-2 d-block"></i>
-                  No bookings found.
-                </div>
-              <?php else: ?>
-                <div class="profile-booking-list">
-                  <?php foreach ($bookingList as $b): ?>
-                    <div class="profile-booking-card">
+          <?php if (empty($tripList)): ?>
+            <div class="profile-empty">
+              <i class="ri-inbox-line fs-4 mb-2 d-block"></i>
+              No trips found.
+            </div>
+          <?php else: ?>
+            <div class="profile-booking-list">
+              <?php foreach ($tripList as $trip): ?>
+                <div class="profile-booking-card">
 
-                      <div class="profile-booking-header">
+                  <div class="profile-booking-header">
+                    <div>
+                      <div class="fw-semibold small">
+                        Trip #<?= (int)$trip["tripID"] ?>
+                      </div>
+                      <div class="text-muted" style="font-size:0.78rem;">
+                        <i class="ri-calendar-line me-1"></i><?= profileText(profileDate($trip["pickupDateTime"])) ?>
+                        &nbsp;·&nbsp;
+                        <i class="ri-file-list-line me-1"></i><?= (int)$trip["bookingCount"] ?> booking<?= $trip["bookingCount"] != 1 ? 's' : '' ?>
+                      </div>
+                    </div>
+                    <span class="badge <?= profileStatusClass($trip["status"]) ?>">
+                      <?= profileText(ucfirst(str_replace('-', ' ', $trip["status"]))) ?>
+                    </span>
+                  </div>
+
+                  <?php foreach ($trip["bookings"] as $b): ?>
+                    <div class="profile-booking-route mb-2">
+                      <div style="font-size:0.72rem;font-weight:700;color:var(--bs-secondary-color);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.375rem;">
+                        Booking #<?= (int)$b["bookingID"] ?> &mdash; <?= htmlspecialchars($b["customerName"]) ?>
+                      </div>
+                      <div class="profile-booking-route-row">
+                        <i class="ri-map-pin-2-line text-primary mt-1 flex-shrink-0"></i>
                         <div>
-                          <div class="fw-semibold small">
-                            Booking #<?= (int)$b["bookingID"] ?>
-                          </div>
-                          <div class="text-muted" style="font-size:0.78rem;">
-                            <i class="ri-road-map-line me-1"></i>Trip #<?= (int)$b["tripID"] ?>
-                            &nbsp;·&nbsp;
-                            <i class="ri-calendar-line me-1"></i><?= profileText(profileDate($b["pickupDateTime"])) ?>
-                          </div>
-                        </div>
-                        <span class="badge <?= profileStatusClass($b["status"]) ?>">
-                          <?= profileText(ucfirst(str_replace('-', ' ', $b["status"]))) ?>
-                        </span>
-                      </div>
-
-                      <div class="profile-booking-route">
-                        <div class="profile-booking-route-row">
-                          <i class="ri-map-pin-2-line text-primary mt-1 flex-shrink-0"></i>
-                          <div>
-                            <div style="font-size:0.7rem;font-weight:600;color:var(--bs-secondary-color);margin-bottom:1px;">Pickup</div>
-                            <?= profileText($b["pickupAddress"]) ?>
-                            <?php if (!empty($b["pickupDescription"])): ?>
-                              <div class="text-muted" style="font-size:0.78rem;"><?= profileText($b["pickupDescription"]) ?></div>
-                            <?php endif; ?>
-                          </div>
-                        </div>
-                        <div class="profile-booking-route-row">
-                          <i class="ri-flag-line text-danger mt-1 flex-shrink-0"></i>
-                          <div>
-                            <div style="font-size:0.7rem;font-weight:600;color:var(--bs-secondary-color);margin-bottom:1px;">Destination</div>
-                            <?= profileText($b["destinationAddress"]) ?>
-                            <?php if (!empty($b["destinationDescription"])): ?>
-                              <div class="text-muted" style="font-size:0.78rem;"><?= profileText($b["destinationDescription"]) ?></div>
-                            <?php endif; ?>
-                          </div>
+                          <div style="font-size:0.7rem;font-weight:600;color:var(--bs-secondary-color);margin-bottom:1px;">Pickup</div>
+                          <?= profileText($b["pickupAddress"]) ?>
+                          <?php if (!empty($b["pickupDescription"])): ?>
+                            <div class="text-muted" style="font-size:0.78rem;"><?= profileText($b["pickupDescription"]) ?></div>
+                          <?php endif; ?>
                         </div>
                       </div>
-
-                      <div class="profile-booking-footer">
-                        <div class="fw-semibold text-primary" style="font-size:0.95rem;">
-                          PHP <?= number_format((float)$b["price"], 2) ?>
+                      <div class="profile-booking-route-row">
+                        <i class="ri-flag-line text-danger mt-1 flex-shrink-0"></i>
+                        <div>
+                          <div style="font-size:0.7rem;font-weight:600;color:var(--bs-secondary-color);margin-bottom:1px;">Destination</div>
+                          <?= profileText($b["destinationAddress"]) ?>
+                          <?php if (!empty($b["destinationDescription"])): ?>
+                            <div class="text-muted" style="font-size:0.78rem;"><?= profileText($b["destinationDescription"]) ?></div>
+                          <?php endif; ?>
                         </div>
-                        <button type="button" class="btn btn-sm btn-light viewDetails"
-                                data-id="<?= (int)$b["bookingID"] ?>">
-                          <i class="ri-eye-line me-1"></i>View Details
-                        </button>
                       </div>
-
                     </div>
                   <?php endforeach; ?>
-                </div>
-              <?php endif; ?>
 
+                  <div class="profile-booking-footer">
+                    <div class="text-muted" style="font-size:0.8rem;">
+                      <i class="ri-price-tag-3-line me-1"></i>
+                      PHP <?= number_format(array_sum(array_column($trip["bookings"], "price")), 2) ?>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-light"
+                            onclick="sessionStorage.setItem('selectedTripID', '<?= (int)$trip["tripID"] ?>'); window.location.href='trip-details';"
+                      <i class="ri-eye-line me-1"></i>View Details
+                    </button>
+                  </div>
+
+                </div>
+              <?php endforeach; ?>
+            </div>
+          <?php endif; ?>
+
+          <?php else: ?>
+
+          <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+            <p class="profile-section-title mb-0">
+              <i class="ri-file-list-3-line me-1"></i>My Bookings
+            </p>
+            <?php if ($isCustomerIndividual || $isCustomerCompany): ?>
+              <a href="?route=booking-reg" class="btn btn-sm btn-primary">
+                <i class="ri-add-line me-1"></i>Add Booking
+              </a>
             <?php endif; ?>
+          </div>
+
+          <?php if (empty($bookingList)): ?>
+            <div class="profile-empty">
+              <i class="ri-inbox-line fs-4 mb-2 d-block"></i>
+              No bookings found.
+            </div>
+          <?php else: ?>
+            <div class="profile-booking-list">
+              <?php foreach ($bookingList as $b): ?>
+                <div class="profile-booking-card">
+
+                  <div class="profile-booking-header">
+                    <div>
+                      <div class="fw-semibold small">
+                        Booking #<?= (int)$b["bookingID"] ?>
+                      </div>
+                      <div class="text-muted" style="font-size:0.78rem;">
+                        <i class="ri-road-map-line me-1"></i>Trip #<?= (int)$b["tripID"] ?>
+                        &nbsp;·&nbsp;
+                        <i class="ri-calendar-line me-1"></i><?= profileText(profileDate($b["pickupDateTime"])) ?>
+                      </div>
+                    </div>
+                    <span class="badge <?= profileStatusClass($b["status"]) ?>">
+                      <?= profileText(ucfirst(str_replace('-', ' ', $b["status"]))) ?>
+                    </span>
+                  </div>
+
+                  <div class="profile-booking-route">
+                    <div class="profile-booking-route-row">
+                      <i class="ri-map-pin-2-line text-primary mt-1 flex-shrink-0"></i>
+                      <div>
+                        <div style="font-size:0.7rem;font-weight:600;color:var(--bs-secondary-color);margin-bottom:1px;">Pickup</div>
+                        <?= profileText($b["pickupAddress"]) ?>
+                        <?php if (!empty($b["pickupDescription"])): ?>
+                          <div class="text-muted" style="font-size:0.78rem;"><?= profileText($b["pickupDescription"]) ?></div>
+                        <?php endif; ?>
+                      </div>
+                    </div>
+                    <div class="profile-booking-route-row">
+                      <i class="ri-flag-line text-danger mt-1 flex-shrink-0"></i>
+                      <div>
+                        <div style="font-size:0.7rem;font-weight:600;color:var(--bs-secondary-color);margin-bottom:1px;">Destination</div>
+                        <?= profileText($b["destinationAddress"]) ?>
+                        <?php if (!empty($b["destinationDescription"])): ?>
+                          <div class="text-muted" style="font-size:0.78rem;"><?= profileText($b["destinationDescription"]) ?></div>
+                        <?php endif; ?>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="profile-booking-footer">
+                    <div class="fw-semibold text-primary" style="font-size:0.95rem;">
+                      PHP <?= number_format((float)$b["price"], 2) ?>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-light viewDetails"
+                            data-id="<?= (int)$b["bookingID"] ?>">
+                      <i class="ri-eye-line me-1"></i>View Details
+                    </button>
+                  </div>
+
+                </div>
+              <?php endforeach; ?>
+            </div>
+          <?php endif; ?>
+
+          <?php endif; ?>
 
           </div>
         </div>

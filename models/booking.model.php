@@ -423,6 +423,100 @@ class ModelBooking {
     return array_values($trips);
   }
 
+  static public function mdlEmployeeTripList($empID, $role) {
+    $pdo = (new Connection)->connect();
+
+    $stmt = $pdo->prepare("
+      SELECT
+        b.bookingID,
+        b.tripID,
+        b.customerID,
+        b.pickupDateTime,
+        b.price,
+        b.status,
+        c.customerType,
+        c.customerFName,
+        c.customerLName,
+        c.contactPerson,
+        COALESCE(NULLIF(TRIM(pickup.province), ''), customerPickup.province) AS pickupProvince,
+        COALESCE(NULLIF(TRIM(pickup.city), ''), customerPickup.city) AS pickupCity,
+        COALESCE(NULLIF(TRIM(pickup.barangay), ''), customerPickup.barangay) AS pickupBarangay,
+        COALESCE(NULLIF(TRIM(pickup.street), ''), customerPickup.street) AS pickupStreet,
+        COALESCE(NULLIF(TRIM(pickup.description), ''), customerPickup.description, CASE WHEN c.customerType = 'company' THEN 'Company warehouse pickup point' ELSE '' END) AS pickupDescription,
+        COALESCE(NULLIF(pickup.latitude, 0), NULLIF(customerPickup.latitude, 0), c.warehouseLatitude) AS pickupLatitude,
+        COALESCE(NULLIF(pickup.longitude, 0), NULLIF(customerPickup.longitude, 0), c.warehouseLongitude) AS pickupLongitude,
+        destination.province AS destinationProvince,
+        destination.city AS destinationCity,
+        destination.barangay AS destinationBarangay,
+        destination.street AS destinationStreet,
+        destination.description AS destinationDescription,
+        destination.latitude AS destinationLatitude,
+        destination.longitude AS destinationLongitude
+      FROM booking b
+      INNER JOIN customer c ON c.id = b.customerID
+      LEFT JOIN location pickup ON pickup.locationID = b.pickupLocationID
+      LEFT JOIN location customerPickup ON customerPickup.locationID = c.locationID
+      LEFT JOIN location destination ON destination.locationID = b.destinationLocationID
+      WHERE b.status IN ('pending', 'in-transit', 'stopover')
+        AND EXISTS (
+          SELECT 1
+          FROM tripemployee te
+          WHERE te.tripID = b.tripID
+            AND te.empID = :empID
+            AND te.role = :empRole
+        )
+      ORDER BY b.pickupDateTime ASC, b.tripID ASC, b.bookingID ASC
+    ");
+
+    $stmt->bindParam(":empID", $empID, PDO::PARAM_INT);
+    $stmt->bindParam(":empRole", $role, PDO::PARAM_STR);
+    $stmt->execute();
+
+    $trips = array();
+
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+      $tripID = (string) $row["tripID"];
+
+      if (!isset($trips[$tripID])) {
+        $trips[$tripID] = array(
+          "tripID" => (int) $row["tripID"],
+          "pickupDateTime" => $row["pickupDateTime"],
+          "status" => $row["status"],
+          "bookingCount" => 0,
+          "bookings" => array()
+        );
+      }
+
+      $customerName = trim($row["customerFName"] . " " . $row["customerLName"]);
+      if ($customerName === "") {
+        $customerName = $row["contactPerson"];
+      }
+
+      $trips[$tripID]["bookingCount"]++;
+      $trips[$tripID]["bookings"][] = array(
+        "bookingID" => (int) $row["bookingID"],
+        "customerName" => $customerName,
+        "customerType" => $row["customerType"],
+        "status" => $row["status"],
+        "pickupDateTime" => $row["pickupDateTime"],
+        "pickupAddress" => self::formatAddress($row["pickupStreet"], $row["pickupBarangay"], $row["pickupCity"], $row["pickupProvince"], $row["pickupDescription"], $row["pickupLatitude"], $row["pickupLongitude"]),
+        "pickupDescription" => $row["pickupDescription"],
+        "pickupLatitude" => (float) $row["pickupLatitude"],
+        "pickupLongitude" => (float) $row["pickupLongitude"],
+        "destinationAddress" => self::formatAddress($row["destinationStreet"], $row["destinationBarangay"], $row["destinationCity"], $row["destinationProvince"], $row["destinationDescription"], $row["destinationLatitude"], $row["destinationLongitude"]),
+        "destinationDescription" => $row["destinationDescription"],
+        "destinationLatitude" => (float) $row["destinationLatitude"],
+        "destinationLongitude" => (float) $row["destinationLongitude"]
+      );
+    }
+
+    foreach ($trips as $tripID => $trip) {
+      $trips[$tripID]["status"] = self::deriveTripStatus($trip["bookings"]);
+    }
+
+    return array_values($trips);
+  }
+
   static public function mdlDriverTripList($driverID, $showAll = false) {
     $pdo = (new Connection)->connect();
     $driverFilter = "";
@@ -451,7 +545,7 @@ class ModelBooking {
         c.customerFName,
         c.customerLName,
         c.contactPerson,
-        COALESCE(NULLIF(TRIM(pickup.province), ''), customerPickup.province, c.province) AS pickupProvince,
+        COALESCE(NULLIF(TRIM(pickup.province), ''), customerPickup.province) AS pickupProvince,
         COALESCE(NULLIF(TRIM(pickup.city), ''), customerPickup.city) AS pickupCity,
         COALESCE(NULLIF(TRIM(pickup.barangay), ''), customerPickup.barangay) AS pickupBarangay,
         COALESCE(NULLIF(TRIM(pickup.street), ''), customerPickup.street) AS pickupStreet,

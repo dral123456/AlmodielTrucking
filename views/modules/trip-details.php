@@ -2,6 +2,7 @@
 require_once "controllers/booking.controller.php";
 require_once "models/booking.model.php";
 
+$selectedTripID = null; // will be resolved client-side from sessionStorage
 $role = $_SESSION["role"] ?? "";
 $employeeID = isset($_SESSION["id"]) ? (int) $_SESSION["id"] : 0;
 $trips = ControllerBooking::ctrTripOverviewList($employeeID, $role);

@@ -13,7 +13,7 @@ if(isset($_SESSION['role'])) {
         } else {
             $mI = $customer['customerMI'];
             $lName = $customer['customerLName'];
-            $fullName = $fName . ' ' . $mI . ' ' . $lName;
+            $fullName = $fName . ' ' . $mI . '.' . ' ' . $lName;
         }
         $email = $customer['email'];
     } else {
@@ -24,7 +24,7 @@ if(isset($_SESSION['role'])) {
         $fName = $employee['empFName'];
         $mI = $employee['empMI'];
         $lName = $employee['empLName'];
-        $fullName = $fName . ' ' . $mI . ' ' . $lName;
+        $fullName = $fName . ' ' . $mI . '.' . ' ' . $lName;
         $email = $employee['empEmail'];
     }
 }

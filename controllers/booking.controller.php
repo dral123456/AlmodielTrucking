@@ -37,6 +37,9 @@ class ControllerBooking {
   static public function ctrTripOverviewList($employeeID = 0, $employeeRole = "") {
     return (new ModelBooking)->mdlTripOverviewList($employeeID, $employeeRole);
   }
+  static public function ctrEmployeeTripList($empID, $role) {
+    return (new ModelBooking)->mdlEmployeeTripList($empID, $role);
+  }
 
   static public function ctrDriverTripList($driverID, $showAll = false) {
     return (new ModelBooking)->mdlDriverTripList($driverID, $showAll);

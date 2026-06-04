@@ -599,7 +599,7 @@ if(isset($_SESSION["loggedIn"]) && $_SESSION["loggedIn"] === "ok") {
       <li><a href="#features">Features</a></li>
       <li><a href="#about">About</a></li>
       <li><a href="#sponsors">Sponsors</a></li>
-      <li><a href="<?php echo $bookRoute; ?>" class="nav-cta">Book a Service</a></li>
+      <li><a href="customer-login" class="nav-cta">Login</a></li>
     </ul>
     <button class="nav-toggle" id="navToggle" aria-label="Toggle menu">
       <i class="ri-menu-line"></i>
@@ -612,9 +612,8 @@ if(isset($_SESSION["loggedIn"]) && $_SESSION["loggedIn"] === "ok") {
   <div class="hero-bg"></div>
   <div class="hero-glow"></div>
   <div class="hero-inner">
-    <div class="hero-eyebrow">
-      <span class="hero-eyebrow-dot"></span>
-      Trusted Since 2010 · Negros Island
+    <div >
+
     </div>
     <h1>Move Your Cargo<br>With <span>Confidence</span></h1>
     <p class="hero-sub">
