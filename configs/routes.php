@@ -23,8 +23,8 @@ $adminRoutes = [
 
 $driverRoutes = [
     'trips',
+    'driver-salary',
     'logout',
-    'driverDashboard',
     'trip-details',
     'user-profile',
     'landingpage',

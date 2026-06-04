@@ -186,7 +186,8 @@
       $modulePaths = include "configs/module-paths.php";
 
       $allowedRoutes = $routeMap[$role] ?? [];
-      $route = isset($_GET["route"]) ? basename($_GET["route"]) : 'sample';              
+      $defaultRoute = $role === 'driver' ? 'trips' : 'sample';
+      $route = isset($_GET["route"]) ? basename($_GET["route"]) : $defaultRoute;
       if($route === 'landingpage') {
         echo '<link rel="stylesheet" href="views/css/landingpage.css">';
 

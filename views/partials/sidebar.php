@@ -6,7 +6,7 @@ $allowed     = $allRoutes[$role] ?? [];
 $dashboardRoute = match ($role) {
     'admin' => 'sample',
     'assistant' => 'assistantDashboard',
-    'driver' => 'driverDashboard',
+    'driver' => 'trips',
     'customer', 'customer-individual', 'customer-company' => 'customer-individual/profile',
     default => null,
 };
@@ -85,6 +85,27 @@ $sidebarItems = [
     'route' => 'incident-reports',
   ],
 ];
+
+if ($role === 'driver') {
+  $sidebarItems = [
+    [
+      'type'  => 'title',
+      'label' => 'Driver',
+    ],
+    [
+      'type'  => 'link',
+      'icon'  => 'ri-route-line',
+      'label' => 'My Trips',
+      'route' => 'trips',
+    ],
+    [
+      'type'  => 'link',
+      'icon'  => 'ri-money-dollar-circle-line',
+      'label' => 'My Salary',
+      'route' => 'driver-salary',
+    ],
+  ];
+}
 
 // Pre-compute which titles have visible content
 $processedItems = [];
