@@ -940,6 +940,11 @@ class ModelBooking {
 
     try {
       $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+      self::ensureBookingStoreNameColumn($pdo);
+      if ((float) ($data["haulingAmount"] ?? 0) > 0) {
+        self::ensureDeliveryChargeTable($pdo);
+      }
+
       $pdo->beginTransaction();
 
       // ✅ FIX: ensure arrays exist (prevents undefined index + null location IDs)
@@ -978,7 +983,6 @@ class ModelBooking {
         return $availability["status"] === "inactive" ? "truck-inactive" : "truck-conflict";
       }
 
-      self::ensureBookingStoreNameColumn($pdo);
       $storeName = trim((string) ($data["storeName"] ?? ""));
       $hasStoreName = self::columnExists($pdo, "booking", "storeName");
       $storeNameColumn = $hasStoreName ? "storeName," : "";
@@ -1028,7 +1032,11 @@ class ModelBooking {
 
       if (isset($data["truckID"], $data["crew"]) && !self::tripHasEmployees($pdo, $tripID)) {
         self::insertTripEmployees($pdo, $tripID, $data["truckID"], $data["crew"]);
-        self::insertCrewSalaryRecords($pdo, $tripID, $bookingID, $data);
+        try {
+          self::insertCrewSalaryRecords($pdo, $tripID, $bookingID, $data);
+        } catch (Throwable $salaryError) {
+          error_log("Booking saved but salary auto-create failed: " . $salaryError->getMessage());
+        }
       }
 
       $pdo->commit();
@@ -1040,6 +1048,7 @@ class ModelBooking {
         $pdo->rollBack();
       }
 
+      error_log("Booking save failed: " . $e->getMessage());
       return "error";
     }
   }
@@ -1397,8 +1406,6 @@ class ModelBooking {
       return;
     }
 
-    self::ensureDeliveryChargeTable($pdo);
-
     $stmt = $pdo->prepare("
       INSERT INTO deliverycharge (
         bookingID,
@@ -1468,6 +1475,33 @@ class ModelBooking {
   static private function insertCrewSalaryRecords($pdo, $tripID, $bookingID, $data) {
     if (!self::tableExists($pdo, "staffsalary")) {
       return;
+    }
+
+    $requiredColumns = array(
+      "empID",
+      "tripID",
+      "creditedBookingID",
+      "creditedDistanceKm",
+      "tripRole",
+      "payPeriodStart",
+      "payPeriodEnd",
+      "payType",
+      "baseRate",
+      "grossPay",
+      "deductions",
+      "netPay",
+      "datePaid",
+      "status",
+      "remarks",
+      "createdBy",
+      "dateCreated"
+    );
+
+    foreach ($requiredColumns as $column) {
+      if (!self::columnExists($pdo, "staffsalary", $column)) {
+        error_log("Skipped salary auto-create because staffsalary." . $column . " is missing.");
+        return;
+      }
     }
 
     $crew = $data["crew"] ?? array();
@@ -1650,7 +1684,7 @@ class ModelBooking {
         PRIMARY KEY (deliveryChargeID),
         KEY idx_deliverycharge_bookingID (bookingID),
         KEY idx_deliverycharge_tripID (tripID)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ");
   }
 
