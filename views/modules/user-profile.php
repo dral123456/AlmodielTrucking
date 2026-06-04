@@ -368,15 +368,6 @@ function profileStatusClass($status) {
               <?php endif; ?>
 
               <?php if ($isAdmin): ?>
-
-              <p class="profile-section-title">
-                <i class="ri-file-list-3-line me-1"></i>Bookings
-              </p>
-              <div class="profile-empty">
-                <i class="ri-information-line fs-4 mb-2 d-block"></i>
-                Admins do not have associated bookings.
-              </div>
-
               <?php elseif ($showTripList): ?>
               <?php endif; ?>
               <?php if ($address): ?>
