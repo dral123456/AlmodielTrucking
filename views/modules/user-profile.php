@@ -1,279 +1,217 @@
 <?php
 $role = $_SESSION["role"] ?? '';
-$id   = $_SESSION["id"]   ?? null;
+$id   = $_SESSION["id"] ?? null;
 
-// Normalize role
+// Roles
 $isCustomerIndividual = $role === 'customer-individual';
 $isCustomerCompany    = $role === 'customer-company';
 $isDriver             = $role === 'driver';
 $isAssistant          = $role === 'assistant';
 $isAdmin              = $role === 'admin';
 
-// Fetch data based on role
-$user     = null;
+// Fetch data
+$user = null;
 $location = null;
 
 if ($isCustomerIndividual || $isCustomerCompany) {
+
     require_once "models/customer.model.php";
     $user = ControllerCustomer::ctrGetCustomer($id);
 
-    // Fetch location if locationID exists
     if (!empty($user["locationID"])) {
-        $pdo  = (new Connection)->connect();
+        $pdo = (new Connection)->connect();
         $stmt = $pdo->prepare("SELECT * FROM location WHERE locationID = :locationID LIMIT 1");
-        $stmt->bindValue(":locationID", (int) $user["locationID"], PDO::PARAM_INT);
+        $stmt->bindValue(":locationID", (int)$user["locationID"], PDO::PARAM_INT);
         $stmt->execute();
         $location = $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-} elseif ($isDriver || $isAssistant || $isAdmin) {
+} else {
+
     require_once "models/employee.model.php";
     $user = ControllerEmployee::ctrGetEmployee($id);
 }
 
 if (!$user) {
-    echo '<div class="alert alert-danger">Unable to load profile.</div>';
+    echo "<div class='alert alert-danger'>Unable to load profile</div>";
     return;
 }
 
-// Build display name and details
-if ($isCustomerIndividual) {
-    $displayName = trim($user["customerFName"] . " " . $user["customerMI"] . " " . $user["customerLName"]);
-    $subTitle     = "Individual Customer";
-} elseif ($isCustomerCompany) {
-    $displayName = $user["customerFName"]; // company name
-    $subTitle     = "Company";
-} elseif ($isDriver) {
-    $displayName = trim($user["empFName"] . " " . $user["empMI"] . " " . $user["empLName"]);
-    $subTitle     = "Driver";
-} elseif ($isAssistant) {
-    $displayName = trim($user["empFName"] . " " . $user["empMI"] . " " . $user["empLName"]);
-    $subTitle     = "Assistant";
-} elseif ($isAdmin) {
-    $displayName = trim($user["empFName"] . " " . $user["empMI"] . " " . $user["empLName"]);
-    $subTitle     = "Administrator";
-}
+// Name
+$displayName = $isCustomerIndividual || $isCustomerCompany
+    ? trim($user["customerFName"] . " " . ($user["customerMI"] ?? '') . " " . $user["customerLName"])
+    : trim($user["empFName"] . " " . $user["empMI"] . " " . $user["empLName"]);
 
-// Build address string from location
-$addressParts = [];
+$subTitle = ucfirst($role);
+
+// Address
+$address = "—";
 if ($location) {
-    foreach (["street", "barangay", "city", "province"] as $part) {
-        if (!empty($location[$part])) $addressParts[] = $location[$part];
-    }
-} elseif (!empty($user["province"])) {
-    $addressParts[] = $user["province"];
+    $address = implode(", ", array_filter([
+        $location["street"] ?? null,
+        $location["barangay"] ?? null,
+        $location["city"] ?? null,
+        $location["province"] ?? null
+    ]));
 }
-$address = !empty($addressParts) ? implode(", ", $addressParts) : "—";
 ?>
 
-<div class="pages-profile">
+<!-- ===================== THEME ===================== -->
+<style>
 
-    <!-- Breadcrumb -->
-    <div class="main-breadcrumb d-flex align-items-center my-3">
-        <h2 class="breadcrumb-title mb-0 flex-grow-1 fs-14">Profile</h2>
-        <nav aria-label="breadcrumb">
-            <ol class="breadcrumb mb-0">
-                <li class="breadcrumb-item"><a href="#">Page</a></li>
-                <li class="breadcrumb-item active">Profile</li>
-            </ol>
-        </nav>
-    </div>
+/* LIGHT MODE */
+:root {
+    --card-bg: #ffffff;
+    --card-header: #f8f9fa;
+    --text: #212529;
+    --muted: #6c757d;
+}
 
-</div>
+/* DARK MODE */
+body.dark-mode,
+html.dark-mode {
+    --card-bg: #1b1b28;
+    --card-header: #242436;
+    --text: #e9ecef;
+    --muted: #a9b0bb;
+}
 
-<!-- Background Header -->
+/* FORCE CARDS */
+body.dark-mode .card,
+html.dark-mode .card {
+    background: var(--card-bg) !important;
+    color: var(--text) !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+}
+
+body.dark-mode .card-header,
+html.dark-mode .card-header {
+    background: var(--card-header) !important;
+    color: var(--text) !important;
+}
+
+body.dark-mode .bg-white,
+html.dark-mode .bg-white {
+    background: var(--card-header) !important;
+}
+
+body.dark-mode .text-muted,
+html.dark-mode .text-muted {
+    color: var(--muted) !important;
+}
+
+/* HEADER */
+body.dark-mode {
+    --title-color: #66b2ff;
+}
+
+/* BUTTON */
+.theme-toggle {
+    position: fixed;
+    top: 15px;
+    right: 15px;
+    z-index: 9999;
+    padding: 8px 14px;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+}
+</style>
+
+<!-- ===================== TOGGLE BUTTON ===================== -->
+<button class="theme-toggle btn btn-primary" onclick="toggleTheme()">
+    Toggle Theme
+</button>
+
+<!-- ===================== HEADER ===================== -->
 <div class="main-profile-bg position-relative mb-4">
 
     <img src="views/assets/images/background.avif"
          class="w-100 rounded-3"
          style="height: 180px; object-fit: cover; object-position: center 60%;">
 
-    <!-- Center Text -->
     <div class="position-absolute top-50 start-50 translate-middle text-center">
-        <h1 class="fw-bold m-0" style="color: #0d6efd; font-size: 42px;">
+        <h1 style="color:#0d6efd; font-size:42px; font-weight:bold;">
             Almodiel Trucking
         </h1>
     </div>
 
 </div>
 
-<!-- PROFILE HEADER CARD -->
-<div class="card shadow-sm border-0 mb-4">
-    <div class="card-body p-4">
+<!-- ===================== PROFILE CARD ===================== -->
+<div class="card shadow-sm mb-4">
+    <div class="card-body d-flex gap-3 align-items-center">
 
-        <div class="d-flex align-items-center gap-4 flex-wrap">
+        <img src="views/assets/images/avatar/avatar-3.jpg"
+             width="90" height="90"
+             class="rounded-circle border">
 
-            <!-- Avatar -->
-            <div class="position-relative">
-                <img src="views/assets/images/avatar/avatar-3.jpg"
-                     class="rounded-circle border"
-                     width="90" height="90">
-
-                <span class="position-absolute bottom-0 end-0 bg-success rounded-circle border border-white"
-                      style="width:12px; height:12px;"></span>
-            </div>
-
-            <!-- Info -->
-            <div class="flex-grow-1">
-                <h4 class="mb-1"><?= htmlspecialchars($displayName) ?></h4>
-                <div class="text-muted mb-1"><?= htmlspecialchars($subTitle) ?></div>
-                <div class="text-muted small">
-                    <i class="ri-map-pin-line"></i>
-                    <?= htmlspecialchars($address) ?>
-                </div>
-            </div>
-
+        <div>
+            <h4 class="mb-1"><?= htmlspecialchars($displayName) ?></h4>
+            <div class="text-muted"><?= htmlspecialchars($subTitle) ?></div>
+            <div class="text-muted small"><?= htmlspecialchars($address) ?></div>
         </div>
 
     </div>
 </div>
 
-<!-- PROFILE DETAILS -->
+<!-- ===================== DETAILS ===================== -->
 <div class="row g-4">
 
-    <!-- LEFT CARD -->
     <div class="col-lg-4">
-
-        <div class="card shadow-sm border-0">
-            <div class="card-header bg-white border-0">
-                <h5 class="mb-0">Account Summary</h5>
+        <div class="card">
+            <div class="card-header">Account Summary</div>
+            <div class="card-body">
+                <p><b>Role:</b> <?= ucfirst($role) ?></p>
+                <p><b>Name:</b> <?= htmlspecialchars($displayName) ?></p>
+                <p><b>Status:</b> <span class="badge bg-success">Active</span></p>
             </div>
+        </div>
+    </div>
 
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">Personal Info</div>
             <div class="card-body">
 
-                <div class="mb-3">
-                    <small class="text-muted">Role</small>
-                    <div class="fw-semibold"><?= ucfirst($role) ?></div>
-                </div>
+                <?php if ($isCustomerIndividual): ?>
+                    <p>Email: <?= htmlspecialchars($user["email"] ?? "—") ?></p>
+                    <p>Phone: <?= htmlspecialchars($user["phoneNumber"] ?? "—") ?></p>
 
-                <div class="mb-3">
-                    <small class="text-muted">Full Name</small>
-                    <div class="fw-semibold"><?= htmlspecialchars($displayName) ?></div>
-                </div>
-
-                <div class="mb-3">
-                    <small class="text-muted">Status</small><br>
-                    <span class="badge bg-success">Active</span>
-                </div>
-
-                <?php if ($isCustomerIndividual || $isCustomerCompany): ?>
-                <div>
-                    <small class="text-muted">Location</small>
-                    <div class="fw-semibold"><?= htmlspecialchars($address) ?></div>
-                </div>
+                <?php elseif ($isDriver || $isAssistant || $isAdmin): ?>
+                    <p>Email: <?= htmlspecialchars($user["empEmail"] ?? "—") ?></p>
+                    <p>Phone: <?= htmlspecialchars($user["empPhoneNumber"] ?? "—") ?></p>
                 <?php endif; ?>
 
             </div>
         </div>
-
-    </div>
-
-    <!-- RIGHT CARD -->
-    <div class="col-lg-8">
-
-        <div class="card shadow-sm border-0">
-
-            <div class="card-header bg-white border-0">
-                <h5 class="mb-0">Personal Information</h5>
-            </div>
-
-            <div class="card-body">
-
-                <div class="row g-3">
-
-                    <?php if ($isCustomerIndividual): ?>
-
-                        <div class="col-md-6">
-                            <label class="form-label text-muted">Full Name</label>
-                            <div class="fw-semibold">
-                                <?= htmlspecialchars($user["customerFName"] . " " . $user["customerMI"] . " " . $user["customerLName"]) ?>
-                            </div>
-                        </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label text-muted">Email</label>
-                            <div class="fw-semibold"><?= htmlspecialchars($user["email"] ?? "—") ?></div>
-                        </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label text-muted">Phone</label>
-                            <div class="fw-semibold"><?= htmlspecialchars($user["phoneNumber"] ?? "—") ?></div>
-                        </div>
-
-                    <?php elseif ($isCustomerCompany): ?>
-
-                        <div class="col-md-6">
-                            <label class="form-label text-muted">Company Name</label>
-                            <div class="fw-semibold"><?= htmlspecialchars($user["customerFName"]) ?></div>
-                        </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label text-muted">Contact Person</label>
-                            <div class="fw-semibold"><?= htmlspecialchars($user["contactPerson"] ?? "—") ?></div>
-                        </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label text-muted">Email</label>
-                            <div class="fw-semibold"><?= htmlspecialchars($user["email"] ?? "—") ?></div>
-                        </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label text-muted">Phone</label>
-                            <div class="fw-semibold"><?= htmlspecialchars($user["phoneNumber"] ?? "—") ?></div>
-                        </div>
-
-                    <?php elseif ($isDriver): ?>
-
-                        <div class="col-md-6">
-                            <label class="form-label text-muted">Email</label>
-                            <div class="fw-semibold"><?= htmlspecialchars($user["empEmail"] ?? "—") ?></div>
-                        </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label text-muted">Phone</label>
-                            <div class="fw-semibold"><?= htmlspecialchars($user["empPhoneNumber"] ?? "—") ?></div>
-                        </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label text-muted">License No</label>
-                            <div class="fw-semibold"><?= htmlspecialchars($user["licenseNumber"] ?? "—") ?></div>
-                        </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label text-muted">License Expiry</label>
-                            <div class="fw-semibold"><?= htmlspecialchars($user["licenseExpire"] ?? "—") ?></div>
-                        </div>
-
-                    <?php elseif ($isAssistant || $isAdmin): ?>
-
-                        <div class="col-md-6">
-                            <label class="form-label text-muted">Email</label>
-                            <div class="fw-semibold"><?= htmlspecialchars($user["empEmail"] ?? "—") ?></div>
-                        </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label text-muted">Phone</label>
-                            <div class="fw-semibold"><?= htmlspecialchars($user["empPhoneNumber"] ?? "—") ?></div>
-                        </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label text-muted">Birth Date</label>
-                            <div class="fw-semibold"><?= htmlspecialchars($user["empBirthDate"] ?? "—") ?></div>
-                        </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label text-muted">Role</label>
-                            <div class="fw-semibold"><?= ucfirst($role) ?></div>
-                        </div>
-
-                    <?php endif; ?>
-
-                </div>
-
-            </div>
-
-        </div>
-
     </div>
 
 </div>
+
+<!-- ===================== DARK MODE SCRIPT ===================== -->
+<script>
+
+// Load saved theme
+(function () {
+    const theme = localStorage.getItem("theme");
+
+    if (theme === "dark") {
+        document.body.classList.add("dark-mode");
+        document.documentElement.classList.add("dark-mode");
+    }
+})();
+
+// Toggle theme
+function toggleTheme() {
+    document.body.classList.toggle("dark-mode");
+    document.documentElement.classList.toggle("dark-mode");
+
+    if (document.body.classList.contains("dark-mode")) {
+        localStorage.setItem("theme", "dark");
+    } else {
+        localStorage.setItem("theme", "light");
+    }
+}
+
+</script>
