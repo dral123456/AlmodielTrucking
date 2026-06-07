@@ -2,10 +2,12 @@
 require_once "controllers/booking.controller.php";
 require_once "models/booking.model.php";
 
-$isCustomerIndividual = isset($_SESSION["role"]) && $_SESSION["role"] === "customer-individual";
-$sessionCustomerID    = $isCustomerIndividual ? ($_SESSION["id"] ?? "") : "";
+$isCustomer = isset($_SESSION["role"]) && substr($_SESSION["role"], 0, 8) === "customer";
+$sessionCustomerID    = $isCustomer ? ($_SESSION["id"] ?? "") : "";
 
-$customers = $isCustomerIndividual ? [] : ControllerBooking::ctrCustomerList();
+echo '<script>console.log("role: ' . ($_SESSION["role"] ?? 'none') . '");</script>';
+
+$customers = $isCustomer ? [] : ControllerBooking::ctrCustomerList();
 $trucks    = ControllerBooking::ctrTruckList();
 $drivers   = ControllerBooking::ctrEmployeeListByType("driver");
 $assistants = ControllerBooking::ctrEmployeeListByType("assistant");
@@ -19,7 +21,7 @@ foreach ($trucks as $truck) {
 
 <script>
   window.bookingTruckCrew        = <?php echo json_encode($truckCrewMap); ?>;
-  window.bookingIsCustomerIndividual = <?php echo $isCustomerIndividual ? 'true' : 'false'; ?>;
+  window.bookingIsCustomerIndividual = <?php echo $isCustomer ? 'true' : 'false'; ?>;
   window.bookingSessionCustomerID    = <?php echo json_encode($sessionCustomerID); ?>;
 </script>
 
@@ -31,9 +33,6 @@ foreach ($trucks as $truck) {
           <h5 class="mb-0">Booking Registration</h5>
           <p class="text-muted small mb-0">Create a delivery booking step by step.</p>
         </div>
-        <span class="badge bg-primary-subtle text-primary fs-6 booking-badge">
-          <i class="ri-route-line me-1"></i> Stepper
-        </span>
       </div>
 
       <div class="card-body p-4">
@@ -68,7 +67,7 @@ foreach ($trucks as $truck) {
             </h6>
             <div class="row">
 
-              <?php if ($isCustomerIndividual): ?>
+              <?php if ($isCustomer): ?>
                 <input type="hidden" id="bookingCustomer" value="<?php echo htmlspecialchars($sessionCustomerID); ?>">
               <?php else: ?>
                 <div class="col-12 col-lg-6 mb-3">
@@ -78,7 +77,7 @@ foreach ($trucks as $truck) {
                     <?php foreach ($customers as $customer): ?>
                       <?php
                         $customerName = "";
-                        if ($isCustomerIndividual) {
+                        if ($isCustomer) {
                           $customerName = $_SESSION["fullname"] ?? trim(
                             ($_SESSION["fname"] ?? "") . " " .
                             ($_SESSION["MI"] ?? "") . " " .
@@ -116,10 +115,10 @@ foreach ($trucks as $truck) {
                 <div class="form-text">Optional name to show on this booking, such as a store, branch, or consignee.</div>
               </div>
 
-              <div class="col-12 <?php echo $isCustomerIndividual ? 'col-lg-6' : 'col-lg-6'; ?> mb-3">
+              <div class="col-12 <?php echo $isCustomer ? 'col-lg-6' : 'col-lg-6'; ?> mb-3">
                 <label class="form-label">Pickup Date & Time <span class="text-danger">*</span></label>
                 <input type="text" class="form-control" id="bookingPickupDateTime" autocomplete="off" placeholder="Select pickup date and time" data-min-date="<?php echo htmlspecialchars($minimumPickupDateTime); ?>">
-                <?php if (!$isCustomerIndividual): ?>
+                <?php if (!$isCustomer): ?>
                   <div class="booking-calendar-legend mt-2" aria-label="Truck date availability legend">
                     <span><i class="booking-calendar-key booking-calendar-key-unavailable"></i> Booked / unavailable</span>
                   </div>
@@ -129,7 +128,7 @@ foreach ($trucks as $truck) {
                 <?php endif; ?>
               </div>
 
-              <?php if (!$isCustomerIndividual): ?>
+              <?php if (!$isCustomer): ?>
                 <div class="col-12">
                   <hr class="my-3">
                   <h6 class="text-uppercase text-muted mb-3">
@@ -268,7 +267,7 @@ foreach ($trucks as $truck) {
             <div class="row g-4">
 
               <!-- Left column: address fields -->
-              <div class="col-12 <?php echo $isCustomerIndividual ? 'col-xl-5' : 'col-xl-5'; ?>">
+              <div class="col-12 <?php echo $isCustomer ? 'col-xl-5' : 'col-xl-5'; ?>">
 
                 <!-- Pickup -->
                 <h6 class="text-uppercase text-muted mb-3">
@@ -328,7 +327,7 @@ foreach ($trucks as $truck) {
                   <input type="hidden" id="destinationLongitude">
                 </div>
 
-                <?php if (!$isCustomerIndividual): ?>
+                <?php if (!$isCustomer): ?>
                   <h6 class="text-uppercase text-muted mb-3">
                     <i class="ri-money-dollar-circle-line me-1"></i> Pricing
                   </h6>
@@ -366,7 +365,7 @@ foreach ($trucks as $truck) {
               </div>
 
               <!-- Right column: map -->
-              <div class="col-12 <?php echo $isCustomerIndividual ? 'col-xl-7' : 'col-xl-7'; ?>">
+              <div class="col-12 <?php echo $isCustomer ? 'col-xl-7' : 'col-xl-7'; ?>">
                 <div class="booking-map-panel">
 
                   <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
@@ -455,7 +454,7 @@ foreach ($trucks as $truck) {
                   <strong id="reviewTripSchedule">-</strong>
                 </div>
               </div>
-              <?php if (!$isCustomerIndividual): ?>
+              <?php if (!$isCustomer): ?>
                 <div class="col-12 col-lg-6">
                   <div class="booking-review-box">
                     <span>Truck / Crew</span>
@@ -469,7 +468,7 @@ foreach ($trucks as $truck) {
                   <strong id="reviewCargo">-</strong>
                 </div>
               </div>
-              <?php if (!$isCustomerIndividual): ?>
+              <?php if (!$isCustomer): ?>
                 <div class="col-12 col-lg-6">
                   <div class="booking-review-box">
                     <span>Price</span>

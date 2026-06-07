@@ -10,8 +10,8 @@ if(isset($_SESSION['role'])) {
 
         $customerType = $customer['customerType'];
         $fName = $customer['customerFName'];
-        if(strtolower($customerType) === 'company') {
-            $fullname = $fName;
+        if($role === 'customer-company') {
+            $fullName = $fName;
         } else {
             $mI = $customer['customerMI'];
             $lName = $customer['customerLName'];

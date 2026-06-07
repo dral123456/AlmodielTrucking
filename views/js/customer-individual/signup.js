@@ -82,6 +82,28 @@ $(document).ready(function () {
   async function doMapSearch() {
     const query = $('#mapSearchInput').val().trim();
     if (!query) return;
+  
+    $('#regLocationSuggestions').hide().empty();
+  
+    // Try local DB first
+    try {
+      const results = await $.getJSON('ajax/location_search.ajax.php', { q: query });
+      if (results && results.length > 0) {
+        const loc = results[0];
+        if (loc.lat && loc.lng) {
+          placeMarker(loc.lat, loc.lng);
+          if (regMap) regMap.setView([loc.lat, loc.lng], 15);
+        }
+        $('#provinceIndiv').val(loc.province    || '').removeClass('is-invalid');
+        $('#cityIndiv').val(loc.city             || '').removeClass('is-invalid');
+        $('#barangayIndiv').val(loc.barangay     || '').removeClass('is-invalid');
+        $('#streetIndiv').val(loc.street         || '');
+        $('#locationDescription').val(loc.description || '');
+        return;
+      }
+    } catch (e) { /* fall through to Nominatim */ }
+  
+    // Fall back to Nominatim
     try {
       const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`;
       const res = await fetch(url);
@@ -101,66 +123,57 @@ $(document).ready(function () {
   }
 
     // ===== LOCATION SUGGESTIONS =====
-  let regSuggestTimer = null;
-
-  $(document).on('input', '#mapSearchInput', function () {
-    clearTimeout(regSuggestTimer);
-    const query = $(this).val().trim();
-    if (query.length < 2) {
-      $('#regLocationSuggestions').hide().empty();
-      return;
-    }
-    regSuggestTimer = setTimeout(function () {
-      fetchRegSuggestions(query);
-    }, 300);
-  });
-
-  function fetchRegSuggestions(query) {
-    $.ajax({
-      url: '/almodieltrucking/ajax/location_search.ajax.php',
-      method: 'GET',
-      data: { q: query },
-      dataType: 'json',
-      success: function (results) {
-        const $box = $('#regLocationSuggestions');
-        $box.empty();
-        if (!results || results.length === 0) {
-          $box.hide();
-          return;
-        }
-        results.forEach(function (loc) {
-          const $item = $('<div class="reg-suggestion-item"></div>').text(loc.label);
-          $item.on('click', function () {
-            // Fill search input
-            $('#mapSearchInput').val(loc.label);
-            $box.hide().empty();
-
-            // Place marker on map
-            if (loc.lat && loc.lng) {
-              placeMarker(loc.lat, loc.lng);
-              if (regMap) regMap.setView([loc.lat, loc.lng], 15);
-            }
-
-            // Fill address fields
-            $('#provinceIndiv').val(loc.province  || '').removeClass('is-invalid');
-            $('#cityIndiv').val(loc.city          || '').removeClass('is-invalid');
-            $('#barangayIndiv').val(loc.barangay  || '').removeClass('is-invalid');
-            $('#streetIndiv').val(loc.street      || '');
-            $('#locationDescription').val(loc.description || '');
+    let regSuggestTimer = null;
+    
+    $(document).on('input', '#mapSearchInput', function () {
+      clearTimeout(regSuggestTimer);
+      const query = $(this).val().trim();
+      if (query.length < 2) {
+        $('#regLocationSuggestions').hide().empty();
+        return;
+      }
+      regSuggestTimer = setTimeout(function () {
+        fetchRegSuggestions(query);
+      }, 280);
+    });
+    
+    function fetchRegSuggestions(query) {
+      $.getJSON('ajax/location_search.ajax.php', { q: query })
+        .done(function (results) {
+          const $box = $('#regLocationSuggestions');
+          $box.empty();
+          if (!results || !results.length) { $box.hide(); return; }
+    
+          results.forEach(function (loc) {
+            const $item = $('<div class="reg-suggestion-item"></div>').text(loc.label);
+            $item.on('click', function () {
+              $('#mapSearchInput').val(loc.label);
+              $box.hide().empty();
+    
+              if (loc.lat && loc.lng) {
+                placeMarker(loc.lat, loc.lng);
+                if (regMap) regMap.setView([loc.lat, loc.lng], 15);
+              }
+    
+              $('#provinceIndiv').val(loc.province    || '').removeClass('is-invalid');
+              $('#cityIndiv').val(loc.city             || '').removeClass('is-invalid');
+              $('#barangayIndiv').val(loc.barangay     || '').removeClass('is-invalid');
+              $('#streetIndiv').val(loc.street         || '');
+              $('#locationDescription').val(loc.description || '');
+            });
+            $box.append($item);
           });
-          $box.append($item);
+    
+          $box.show();
         });
-        $box.show();
+    }
+    
+    // Hide suggestions when clicking outside
+    $(document).on('click', function (e) {
+      if (!$(e.target).closest('#mapSearch').length) {
+        $('#regLocationSuggestions').hide().empty();
       }
     });
-  }
-
-  // Hide suggestions when clicking outside
-  $(document).on('click', function (e) {
-    if (!$(e.target).closest('#mapSearch').length) {
-      $('#regLocationSuggestions').hide().empty();
-    }
-  });
 
   // ===== NAVIGATION =====
   $(document).on('input', '#phoneIndiv', function () {
@@ -323,7 +336,7 @@ $(document).ready(function () {
     locationData.append('longitude',   $('#lng').val());
 
     $.ajax({
-      url: '/almodieltrucking/ajax/location_save_record.ajax.php',
+      url: 'ajax/location_save_record.ajax.php',
       method: 'POST',
       data: locationData,
       cache: false,
@@ -356,7 +369,7 @@ $(document).ready(function () {
     formData.append('locationID',    locationID);
 
     $.ajax({
-      url: '/almodieltrucking/ajax/customer_save_record.ajax.php',
+      url: 'ajax/customer_save_record.ajax.php',
       method: 'POST',
       data: formData,
       cache: false,

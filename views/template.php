@@ -186,6 +186,7 @@
       $modulePaths = include "configs/module-paths.php";
 
       $allowedRoutes = $routeMap[$role] ?? [];
+      echo '<script>console.log("User ID:", "' . $_SESSION['id'] . '", "Allowed routes:", ' . json_encode($allowedRoutes) . ');</script>';
       $defaultRoute = $role === 'driver' ? 'trips' : 'sample';
       $route = isset($_GET["route"]) ? basename($_GET["route"]) : $defaultRoute;
       if($route === 'landingpage') {
@@ -331,7 +332,7 @@
   if (isset($route)) {
     $routeScripts = [
       "customer-reg" => ["customer-reg.js"],
-      "employee-reg" => ["employee-reg.js"],
+      "employee-reg" => ["admin/employee-reg.js"],
       "truck-reg" => ["admin/truck-reg.js"],
       "booking-reg" => ["booking-reg.js"],
       "signup" => ["customer-individual/signup.js"],
@@ -339,7 +340,7 @@
       "trip-details" => ["trip-details.js"],
       "sales" => ["sales.js"],
       "incident-reports" => ["admin/incident-reports.js"],
-      "manage-tariff" => ["manage.js", "manage-tariff.js"],
+      "manage-tariff" => ["admin/manage.js", "manage-tariff.js"],
       "reports" => ["admin/reports.js"],
       "manage-company" => ["admin/manage.js"],
       "manage-employee" => ["admin/manage.js"],

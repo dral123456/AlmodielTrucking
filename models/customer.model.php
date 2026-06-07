@@ -172,7 +172,7 @@ class ModelCustomer {
             $pdo->rollBack();
         }
         error_log("INDIVIDUAL SAVE ERROR: " . $e->getMessage());
-        return "error";
+        return $e->getMessage();
     }
   }
 

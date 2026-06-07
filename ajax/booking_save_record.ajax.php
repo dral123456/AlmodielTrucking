@@ -55,10 +55,6 @@ class BookingRegistration {
 
     // 🔴 VALIDATION (IMPORTANT)
     if (
-      empty($customerID) ||
-      empty($truckID) ||
-      empty($driverID) ||
-      empty($pickupDateTime) ||
       empty($pickupLocationID) ||
       empty($destinationLocationID)
     ) {

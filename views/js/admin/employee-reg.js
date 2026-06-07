@@ -49,7 +49,7 @@ $(document).ready(function () {
   }
 
   // Tile click
-  $(document).on('click', '.emp-type-tile', function () {
+  $('.emp-type-tile').on('click', function () {
     $('#empType').val($(this).data('type'));
     applyEmpType();
   });

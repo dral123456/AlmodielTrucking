@@ -1393,9 +1393,9 @@ $(document).ready(function () {
     formData.append('storeName', $('#bookingStoreName').val().trim());
 
     // Crew: empty strings for individual role
-    formData.append('truckID',      IS_CUSTOMER_INDIVIDUAL ? null : $('#bookingTruck').val());
-    formData.append('driverID',     IS_CUSTOMER_INDIVIDUAL ? null : $('#bookingDriver').val());
-    formData.append('assistantIDs', IS_CUSTOMER_INDIVIDUAL ? JSON.stringify([null, null]) : JSON.stringify(getAssistantIDs()));
+    formData.append('truckID',      IS_CUSTOMER_INDIVIDUAL ? 1 : $('#bookingTruck').val());
+    formData.append('driverID',     IS_CUSTOMER_INDIVIDUAL ? 1 : $('#bookingDriver').val());
+    formData.append('assistantIDs', IS_CUSTOMER_INDIVIDUAL ? JSON.stringify([1,1]) : JSON.stringify(getAssistantIDs()));
     formData.append('crewSalary',   IS_CUSTOMER_INDIVIDUAL ? '0' : $('#bookingCrewSalary').val());
     formData.append('crewAllowance', IS_CUSTOMER_INDIVIDUAL ? '0' : $('#bookingCrewAllowance').val());
 
