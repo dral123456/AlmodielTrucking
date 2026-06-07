@@ -384,7 +384,7 @@ $(document).ready(function () {
             title: 'Registered!',
             text: 'Customer registered successfully.',
             confirmButtonColor: '#696cff'
-          }).then(() => location.reload());
+          }).then(() => window.location.href = 'customer-login');
         } else if (res === 'existing') {
           Swal.fire({ icon: 'info',  title: 'Already Exists', text: 'This customer already exists.', confirmButtonColor: '#696cff' });
         } else {

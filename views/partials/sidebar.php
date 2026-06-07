@@ -7,7 +7,7 @@ $dashboardRoute = match ($role) {
     'admin' => 'sample',
     'assistant' => 'assistantDashboard',
     'driver' => 'trips',
-    'customer', 'customer-individual', 'customer-company' => 'customer-individual/profile',
+    'customer', 'customer-individual', 'customer-company' => 'sample',
     default => null,
 };
 

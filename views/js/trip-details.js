@@ -443,6 +443,50 @@ $(document).ready(function () {
     }) || (trip.bookings || [])[0] || {};
   }
 
+  function updateTripDeliveryStatus(tripID, status, button) {
+    $.ajax({
+      url: 'ajax/trip_update_status.ajax.php',
+      method: 'POST',
+      dataType: 'json',
+      data: {
+        tripID: tripID,
+        status: status
+      },
+      success: function (response) {
+        console.log(response);
+        
+        if (response && response.status === 'success') {
+          Swal.fire({
+            icon: 'success',
+            title: 'Trip Updated',
+            text: 'Trip status was updated successfully.',
+            confirmButtonColor: '#696cff'
+          }).then(function () {
+            location.reload();
+          });
+          return;
+        }
+  
+        button.prop('disabled', false);
+        Swal.fire({
+          icon: 'error',
+          title: 'Update Failed',
+          text: (response && response.message) ? response.message : 'Unable to update trip status.',
+          confirmButtonColor: '#696cff'
+        });
+      },
+      error: function () {
+        button.prop('disabled', false);
+        Swal.fire({
+          icon: 'error',
+          title: 'Update Failed',
+          text: 'Something went wrong while updating trip status.',
+          confirmButtonColor: '#696cff'
+        });
+      }
+    });
+  }
+
   function populateTripBookingFields(booking) {
     const destination = booking.destination || {};
     const price = booking.price !== undefined && booking.price !== null ? booking.price : '';

@@ -10,9 +10,11 @@
           <div>
             <h5 class="mb-0">Customer Registration</h5>
           </div>
+          <?php if(!isset($_SESSION['role']) || !($_SESSION['role'] == 'admin')): ?>
           <a href="customer-login" class="btn btn-outline-secondary btn-sm">
             <i class="ri-arrow-left-line me-1"></i> Back to Login
           </a>
+          <?php endif; ?>
         </div>
 
         <div class="card-body">
