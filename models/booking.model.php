@@ -530,7 +530,7 @@ class ModelBooking {
           FROM tripemployee te
           WHERE te.tripID = b.tripID
             AND te.empID = :driverID
-            AND te.role = 'driver'
+            AND LOWER(te.role) = 'driver'
         )
       ";
     }
@@ -631,6 +631,7 @@ class ModelBooking {
     }
 
     $pdo = (new Connection)->connect();
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     ModelTruck::mdlEnsureTruckUsageTables($pdo);
     $driverFilter = "";
 
@@ -641,12 +642,25 @@ class ModelBooking {
           FROM tripemployee te
           WHERE te.tripID = booking.tripID
             AND te.empID = :driverID
-            AND te.role = 'driver'
+            AND LOWER(te.role) = 'driver'
         )
       ";
     }
 
     try {
+      $currentStatuses = self::tripCurrentStatuses($pdo, $tripID, $driverID, $showAll);
+      if (empty($currentStatuses)) {
+        return "not-assigned";
+      }
+
+      if (count($currentStatuses) === 1 && $currentStatuses[0] === "completed") {
+        return "already-completed";
+      }
+
+      if (!self::isValidDeliveryTransition($currentStatuses, $status)) {
+        return "invalid-transition";
+      }
+
       $pdo->beginTransaction();
 
       $stmt = $pdo->prepare("
@@ -668,6 +682,11 @@ class ModelBooking {
         return "error";
       }
 
+      if ($stmt->rowCount() < 1) {
+        $pdo->rollBack();
+        return "not-updated";
+      }
+
       if ($status === "completed") {
         ModelSales::mdlSyncSalesForTrip($pdo, $tripID);
         $usageAnswer = ModelTruck::mdlApplyCompletedTripUsage($pdo, $tripID);
@@ -683,8 +702,62 @@ class ModelBooking {
       if ($pdo->inTransaction()) {
         $pdo->rollBack();
       }
+      error_log("Driver trip status update failed: " . $e->getMessage());
       return "error";
     }
+  }
+
+  static private function tripCurrentStatuses($pdo, $tripID, $driverID, $showAll = false) {
+    $driverFilter = "";
+
+    if (!$showAll && self::tableExists($pdo, "tripemployee")) {
+      $driverFilter = "
+        AND EXISTS (
+          SELECT 1
+          FROM tripemployee te
+          WHERE te.tripID = booking.tripID
+            AND te.empID = :driverID
+            AND LOWER(te.role) = 'driver'
+        )
+      ";
+    }
+
+    $stmt = $pdo->prepare("
+      SELECT DISTINCT status
+      FROM booking
+      WHERE tripID = :tripID
+      {$driverFilter}
+    ");
+
+    $stmt->bindValue(":tripID", (int) $tripID, PDO::PARAM_INT);
+    if ($driverFilter !== "") {
+      $stmt->bindValue(":driverID", (int) $driverID, PDO::PARAM_INT);
+    }
+    $stmt->execute();
+
+    return array_values(array_filter(array_map(function ($status) {
+      return strtolower(trim((string) $status));
+    }, $stmt->fetchAll(PDO::FETCH_COLUMN))));
+  }
+
+  static private function isValidDeliveryTransition($currentStatuses, $nextStatus) {
+    $currentStatuses = array_values(array_unique(array_map(function ($status) {
+      return strtolower(trim((string) $status));
+    }, $currentStatuses)));
+
+    if ($nextStatus === "in-transit") {
+      return in_array("pending", $currentStatuses, true);
+    }
+
+    if ($nextStatus === "stopover") {
+      return in_array("in-transit", $currentStatuses, true);
+    }
+
+    if ($nextStatus === "completed") {
+      return in_array("in-transit", $currentStatuses, true) || in_array("stopover", $currentStatuses, true);
+    }
+
+    return false;
   }
 
   static public function mdlUpdateTripInfo($tripID, $data) {

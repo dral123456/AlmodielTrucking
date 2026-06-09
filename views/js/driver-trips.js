@@ -71,7 +71,7 @@ $(document).ready(function () {
             .addClass('bg-primary-subtle text-primary')
             .text('In transit');
           updateTripStatus(tripID, 'in-transit');
-          button.remove();
+          setRowActionButtons(row, 'in-transit');
           return;
         }
 
@@ -80,7 +80,7 @@ $(document).ready(function () {
           .addClass('bg-info-subtle text-info')
           .text('Stopover');
         updateTripStatus(tripID, 'stopover');
-        button.prop('disabled', false);
+        setRowActionButtons(row, 'stopover');
       },
       error: function () {
         alert('Unable to update trip.');
@@ -130,6 +130,40 @@ $(document).ready(function () {
       booking.status = status;
     });
     renderMap(trip);
+  }
+
+  function setRowActionButtons(row, status) {
+    const actions = row.find('.driver-trip-actions');
+    actions.find('.driver-status-action').remove();
+
+    if (status === 'pending') {
+      actions.append(
+        '<button type="button" class="btn btn-sm btn-primary driver-status-action" data-status="in-transit">' +
+          '<i class="ri-play-circle-line me-1"></i> Start' +
+        '</button>'
+      );
+      return;
+    }
+
+    if (status === 'in-transit') {
+      actions.append(
+        '<button type="button" class="btn btn-sm btn-info driver-status-action" data-status="stopover">' +
+          '<i class="ri-map-pin-time-line me-1"></i> Stopover' +
+        '</button>' +
+        '<button type="button" class="btn btn-sm btn-success driver-status-action" data-status="completed">' +
+          '<i class="ri-check-double-line me-1"></i> Delivered' +
+        '</button>'
+      );
+      return;
+    }
+
+    if (status === 'stopover') {
+      actions.append(
+        '<button type="button" class="btn btn-sm btn-success driver-status-action" data-status="completed">' +
+          '<i class="ri-check-double-line me-1"></i> Delivered' +
+        '</button>'
+      );
+    }
   }
 
   function renderMap(trip) {
