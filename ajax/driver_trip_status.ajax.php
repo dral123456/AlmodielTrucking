@@ -23,8 +23,17 @@ if ($tripID <= 0 || !in_array($status, array("in-transit", "stopover", "complete
 }
 
 $answer = ControllerBooking::ctrUpdateTripDeliveryStatus($tripID, $status, $driverID, $showAll);
+$messages = array(
+  "success" => "Trip updated",
+  "invalid" => "Invalid delivery status.",
+  "not-assigned" => "This trip is not assigned to your driver account.",
+  "already-completed" => "This trip is already completed.",
+  "invalid-transition" => "Please start the delivery before marking stopover or delivered.",
+  "not-updated" => "No trip was updated. Please refresh the page and try again.",
+  "error" => "Unable to update trip."
+);
 
 echo json_encode(array(
   "status" => $answer === "success" ? "success" : "error",
-  "message" => $answer === "success" ? "Trip updated" : "Unable to update trip"
+  "message" => $messages[$answer] ?? "Unable to update trip"
 ));

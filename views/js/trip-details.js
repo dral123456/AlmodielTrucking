@@ -191,8 +191,12 @@ $(document).ready(function () {
       html += '<button type="button" class="btn btn-sm btn-primary trip-status-action" data-status="in-transit"><i class="ri-play-circle-line me-1"></i> Start Delivery</button>';
     }
 
-    if (trip.status !== 'completed') {
+    if (trip.status === 'in-transit') {
       html += '<button type="button" class="btn btn-sm btn-info trip-status-action" data-status="stopover"><i class="ri-map-pin-time-line me-1"></i> Stopover</button>';
+      html += '<button type="button" class="btn btn-sm btn-success trip-status-action" data-status="completed"><i class="ri-check-double-line me-1"></i> Delivered</button>';
+    }
+
+    if (trip.status === 'stopover') {
       html += '<button type="button" class="btn btn-sm btn-success trip-status-action" data-status="completed"><i class="ri-check-double-line me-1"></i> Delivered</button>';
     }
 
@@ -780,6 +784,49 @@ $(document).ready(function () {
         showTripSaveError('Something went wrong while saving trip information.');
       }
     });
+  }
+
+  function updateTripDeliveryStatus(tripID, status, button) {
+    $.ajax({
+      url: 'ajax/driver_trip_status.ajax.php',
+      method: 'POST',
+      dataType: 'json',
+      data: {
+        tripID: tripID,
+        status: status
+      },
+      success: function (response) {
+        if (!response || response.status !== 'success') {
+          showTripSaveError(response && response.message ? response.message : 'Unable to update trip.');
+          button.prop('disabled', false);
+          return;
+        }
+
+        const trip = applyTripStatus(tripID, status);
+        if (trip) {
+          renderTripDetails(trip);
+        }
+      },
+      error: function () {
+        showTripSaveError('Unable to update trip status.');
+        button.prop('disabled', false);
+      }
+    });
+  }
+
+  function applyTripStatus(tripID, status) {
+    const trip = getTripByID(tripID);
+
+    if (!trip) {
+      return null;
+    }
+
+    trip.status = status;
+    (trip.bookings || []).forEach(function (booking) {
+      booking.status = status;
+    });
+
+    return trip;
   }
 
   function showTripSaveError(message) {

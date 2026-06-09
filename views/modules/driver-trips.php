@@ -180,12 +180,16 @@ function driverTripMoney($value) {
                               <i class="ri-play-circle-line me-1"></i> Start
                             </button>
                           <?php endif; ?>
-                          <button type="button" class="btn btn-sm btn-info driver-status-action" data-status="stopover">
-                            <i class="ri-map-pin-time-line me-1"></i> Stopover
-                          </button>
-                          <button type="button" class="btn btn-sm btn-success driver-status-action" data-status="completed">
-                            <i class="ri-check-double-line me-1"></i> Delivered
-                          </button>
+                          <?php if ($canStartDelivery && $trip["status"] === "in-transit"): ?>
+                            <button type="button" class="btn btn-sm btn-info driver-status-action" data-status="stopover">
+                              <i class="ri-map-pin-time-line me-1"></i> Stopover
+                            </button>
+                          <?php endif; ?>
+                          <?php if ($canStartDelivery && in_array($trip["status"], array("in-transit", "stopover"), true)): ?>
+                            <button type="button" class="btn btn-sm btn-success driver-status-action" data-status="completed">
+                              <i class="ri-check-double-line me-1"></i> Delivered
+                            </button>
+                          <?php endif; ?>
                         </div>
                       </td>
                     </tr>

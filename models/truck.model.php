@@ -710,7 +710,7 @@ class ModelTruck {
         PRIMARY KEY (truckFuelLogID),
         KEY idx_truckfuellog_truckID (truckID),
         KEY idx_truckfuellog_logDate (logDate)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ");
   }
 
@@ -732,7 +732,7 @@ class ModelTruck {
         PRIMARY KEY (truckTripUsageID),
         UNIQUE KEY uq_trucktripusage_tripID (tripID),
         KEY idx_trucktripusage_truckID (truckID)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ");
   }
 
