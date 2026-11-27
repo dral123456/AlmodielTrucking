@@ -1,0 +1,19 @@
+{
+  "name": "testscript",
+  "version": "1.0.0",
+  "description": "Playwright tests for Almodiel Trucking Services",
+  "main": "index.js",
+  "scripts": {
+    "test": "playwright test",
+    "test:login": "playwright test tests/login.spec.js",
+    "report": "playwright show-report"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@playwright/test": "^1.65.1",
+    "@types/node": "^26.6.11"
+  }
+}
