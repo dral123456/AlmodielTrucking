@@ -14,6 +14,16 @@ import { test, expect } from '@playwright/test';
  * Override with environment variables when running against another dataset:
  *   ADMIN_PHONE / ADMIN_PASSWORD, etc.
  */
+/**
+ * @typedef {Object} LoginUser
+ * @property {string} path      Route of the login screen, relative to baseURL.
+ * @property {string} heading   Heading rendered on that screen.
+ * @property {string} phone
+ * @property {string} password
+ * @property {RegExp} landsOn   URL the app redirects to after a successful login.
+ */
+
+/** @type {Record<string, LoginUser>} */
 const USERS = {
   admin: {
     path: 'admin-login',
@@ -45,7 +55,11 @@ const USERS = {
   },
 };
 
-/** Fill and submit the shared login form, then wait for the app's JS redirect. */
+/**
+ * Fill and submit the shared login form, then wait for the app's JS redirect.
+ * @param {import('@playwright/test').Page} page
+ * @param {LoginUser} user
+ */
 async function logIn(page, user) {
   await page.goto(user.path);
   await expect(page.getByRole('heading', { name: user.heading })).toBeVisible();
